@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
+import { Link } from 'react-router-dom'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { vaultProducts } from '../../data/content'
@@ -120,9 +121,10 @@ const VaultShowcase = forwardRef(function VaultShowcase({ carouselCars = [] }, r
           {activeCars.map((product) => {
             const meta = getCollectorMetadata(product.name)
             return (
-              <div 
+              <Link 
                 key={product.id || product.name} 
-                className="relative w-[85vw] sm:w-[350px] md:w-[420px] h-[55vh] min-h-[460px] shrink-0 rounded-[2.5rem] border border-[#2A2A2A] bg-[#111111]/85 backdrop-blur-xl overflow-hidden group transition-all duration-500 hover:border-[#E10600]/40 hover:shadow-[0_25px_60px_rgba(0,0,0,0.95)]"
+                to="/marketplace"
+                className="relative w-[85vw] sm:w-[350px] md:w-[420px] h-[55vh] min-h-[460px] shrink-0 rounded-[2.5rem] border border-[#2A2A2A] bg-[#111111]/85 backdrop-blur-xl overflow-hidden group transition-all duration-500 hover:border-[#E10600]/40 hover:shadow-[0_25px_60px_rgba(0,0,0,0.95)] block"
               >
                 {/* Glossy gradient overlays */}
                 <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/40 to-transparent z-10" />
@@ -177,7 +179,7 @@ const VaultShowcase = forwardRef(function VaultShowcase({ carouselCars = [] }, r
                   </div>
                 </div>
 
-              </div>
+              </Link>
             )
           })}
         </div>

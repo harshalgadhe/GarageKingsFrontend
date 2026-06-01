@@ -1,41 +1,17 @@
 // ============================================================================
-// GARAGEKINGS CLIENT REST API GATEWAY MODULE (WITH HYBRID AUTH SUPPORT)
+// GARAGEKINGS CLIENT REST API GATEWAY MODULE (PURE AWS ARCHITECTURE)
 // Refactored off direct Firebase Firestore calls to target NestJS REST APIs
 // Optimized for Vercel/CloudFront deployments and Cognito security guards
 // ============================================================================
 
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
-// Initialize Firebase locally solely for Admin Auth during the Vercel transition phase
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
-};
-
-export const isFirebaseConfigured = !!import.meta.env.VITE_FIREBASE_API_KEY;
-
-let app, auth;
-if (isFirebaseConfigured) {
-  try {
-    app = initializeApp(firebaseConfig);
-    auth = getAuth(app);
-  } catch (error) {
-    console.error("Firebase auth initialization failed:", error);
-  }
-}
-
-export { auth };
+// Mocked configuration checker for backwards-compatibility checks in legacy page loads
+export const isFirebaseConfigured = true;
 
 // Helper to extract the Cognito ID/Access token from secure localStorage
 function getAuthHeaders() {
-  const token = localStorage.getItem('gk_cognito_access_token');
+  const token = localStorage.getItem('gk_cognito_id_token') || localStorage.getItem('gk_cognito_access_token');
   return {
     'Content-Type': 'application/json',
     ...(token ? { 'Authorization': `Bearer ${token}` } : {})

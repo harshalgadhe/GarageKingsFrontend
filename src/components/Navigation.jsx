@@ -3,6 +3,9 @@ import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { BRAND } from '../data/content'
 import { scrollToSection, useLenis } from '../providers/SmoothScroll'
+import { getCurrentUser, signOutCognito } from '../lib/auth'
+import AuthModal from './AuthModal'
+import { LogOut, User } from 'lucide-react'
 
 const links = [
   { id: 'hero', label: 'Home' },
@@ -17,6 +20,25 @@ export default function Navigation({ activeSection }) {
   const lenisRef = useLenis()
   const [isOpen, setIsOpen] = useState(false)
   const [activeTab, setActiveTab] = useState('hero')
+  const [user, setUser] = useState(null)
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
+
+  useEffect(() => {
+    setUser(getCurrentUser())
+  }, [])
+
+  const handleProfileClick = () => {
+    if (user) {
+      window.location.href = '/admin'
+    } else {
+      setIsAuthModalOpen(true)
+    }
+  }
+
+  const handleLogout = () => {
+    signOutCognito()
+    window.location.reload()
+  }
 
   // Lock body scroll when mobile menu is open
   useEffect(() => {
@@ -103,13 +125,24 @@ export default function Navigation({ activeSection }) {
             </button>
             <button 
               type="button"
-              className="p-2.5 rounded-xl bg-white/5 border border-white/5 hover:border-[#E10600]/30 hover:bg-[#E10600]/5 text-white/80 hover:text-white transition-all cursor-pointer group"
-              title="Collector Profile"
+              onClick={handleProfileClick}
+              className={`p-2.5 rounded-xl bg-white/5 border hover:border-[#E10600]/30 hover:bg-[#E10600]/5 hover:text-white transition-all cursor-pointer group ${user ? 'border-gk-yellow/40 text-gk-yellow' : 'border-white/5 text-white/80'}`}
+              title={user ? `Collector Profile (${user.email})` : "Collector Profile"}
             >
               <svg className="w-4.5 h-4.5 group-hover:scale-105 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             </button>
+            {user && (
+              <button 
+                type="button"
+                onClick={handleLogout}
+                className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500 hover:text-white hover:shadow-[0_0_20px_rgba(220,38,38,0.5)] transition-all cursor-pointer group"
+                title="Logout Session"
+              >
+                <LogOut className="w-4.5 h-4.5 group-hover:scale-105 transition-transform" />
+              </button>
+            )}
             <button 
               type="button"
               className="p-2.5 rounded-xl bg-white/5 border border-white/5 hover:border-[#E10600]/30 hover:bg-[#E10600]/5 text-white/80 hover:text-white transition-all cursor-pointer group relative"
@@ -176,6 +209,43 @@ export default function Navigation({ activeSection }) {
               >
                 Marketplace
               </motion.a>
+
+              {user ? (
+                <>
+                  <motion.a
+                    href="/admin"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 20 }}
+                    transition={{ duration: 0.4, delay: (links.length + 1) * 0.04 + 0.1, ease: [0.22, 1, 0.36, 1] }}
+                    className="flex items-center gap-2 text-3xl font-black uppercase tracking-tighter text-gk-yellow hover:text-yellow-400 transition-colors"
+                  >
+                    Your Profile
+                  </motion.a>
+                  
+                  <motion.button
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 20 }}
+                    transition={{ duration: 0.4, delay: (links.length + 2) * 0.04 + 0.1, ease: [0.22, 1, 0.36, 1] }}
+                    onClick={handleLogout}
+                    className="flex items-center gap-2 text-3xl font-black uppercase tracking-tighter text-red-500 hover:text-red-400 transition-colors cursor-pointer bg-transparent border-none"
+                  >
+                    Sign Out
+                  </motion.button>
+                </>
+              ) : (
+                <motion.button
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 20 }}
+                  transition={{ duration: 0.4, delay: (links.length + 1) * 0.04 + 0.1, ease: [0.22, 1, 0.36, 1] }}
+                  onClick={handleProfileClick}
+                  className="flex items-center gap-2 text-3xl font-black uppercase tracking-tighter text-white/40 hover:text-white transition-colors cursor-pointer bg-transparent border-none"
+                >
+                  Collector Log In
+                </motion.button>
+              )}
             </nav>
           </motion.div>
         )}
@@ -230,7 +300,8 @@ export default function Navigation({ activeSection }) {
           </button>
 
           <button 
-            className="flex flex-col items-center gap-1 flex-1 py-1 hover:text-white transition-colors cursor-pointer"
+            onClick={handleProfileClick}
+            className={`flex flex-col items-center gap-1 flex-1 py-1 transition-colors cursor-pointer ${user ? 'text-gk-yellow' : 'hover:text-white'}`}
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -240,6 +311,20 @@ export default function Navigation({ activeSection }) {
         </div>,
         document.body
       )}
+
+      <AnimatePresence>
+        {isAuthModalOpen && (
+          <AuthModal 
+            isOpen={isAuthModalOpen} 
+            onClose={() => setIsAuthModalOpen(false)} 
+            themeColor="orange" 
+            onAuthSuccess={() => {
+              setIsAuthModalOpen(false);
+              window.location.reload();
+            }}
+          />
+        )}
+      </AnimatePresence>
     </>
   )
 }

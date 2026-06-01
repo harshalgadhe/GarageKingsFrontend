@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Trash2, Edit2, ChevronUp, ChevronDown, Save, X, Image as ImageIcon, Settings, Eye, EyeOff, LogOut } from 'lucide-react'
-import { getCars, addCar, updateCar, deleteCar, updateCarOrder, uploadImageToStorage, isFirebaseConfigured, getGlobalSettings, updateGlobalSettings, getBids, getAuctions, addAuction, updateAuction, deleteAuction, getAuctionBids, getReceipts, addReceipt, deleteReceipt, auth } from '../lib/db'
+import { Plus, Trash2, Edit2, ChevronUp, ChevronDown, Save, X, Image as ImageIcon, Settings, Eye, EyeOff, LogOut, Mail, Lock, ShieldAlert, CheckCircle2, ArrowRight } from 'lucide-react'
+import { getCars, addCar, updateCar, deleteCar, updateCarOrder, uploadImageToStorage, isFirebaseConfigured, getGlobalSettings, updateGlobalSettings, getBids, getAuctions, addAuction, updateAuction, deleteAuction, getAuctionBids, getReceipts, addReceipt, deleteReceipt } from '../lib/db'
 import { Link } from 'react-router-dom'
-import { signInWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
+import { signInCognito, signUpCognito, confirmSignUpCognito, signOutCognito, getCurrentUser, autoConfirmUserBackend } from '../lib/auth'
 
 export default function Admin() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -13,6 +13,14 @@ export default function Admin() {
   const [error, setError] = useState('')
   const [dbError, setDbError] = useState('')
   const [isAuthLoading, setIsAuthLoading] = useState(true)
+
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [customerOrders, setCustomerOrders] = useState([])
+  const [ordersLoading, setOrdersLoading] = useState(false)
+  const [authMode, setAuthMode] = useState('login') // 'login' | 'signup' | 'verify'
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [verificationCode, setVerificationCode] = useState('')
+  const [successMsg, setSuccessMsg] = useState('')
 
   const [cars, setCars] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -70,30 +78,47 @@ export default function Admin() {
   const [activeReceiptPreview, setActiveReceiptPreview] = useState(null)
 
   useEffect(() => {
-    if (!isFirebaseConfigured) {
-      setDbError("Missing Firebase configuration. Please add your keys to the .env file.")
-      setIsAuthLoading(false)
-      return
+    // Listen to AWS Cognito active session
+    const activeSession = getCurrentUser()
+    if (activeSession) {
+      setIsAuthenticated(true)
+      setIsAdmin(activeSession.roles.includes('admin'))
+    } else {
+      setIsAuthenticated(false)
+      setIsAdmin(false)
     }
-    
-    // Listen to Firebase Auth state
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setIsAuthenticated(true)
-      } else {
-        setIsAuthenticated(false)
-      }
-      setIsAuthLoading(false)
-    })
-    
-    return () => unsubscribe()
+    setIsAuthLoading(false)
   }, [])
 
   useEffect(() => {
-    if (isAuthenticated && isFirebaseConfigured) {
-      loadData()
+    if (isAuthenticated) {
+      if (isAdmin) {
+        loadData()
+      } else {
+        loadCustomerOrders()
+      }
     }
-  }, [isAuthenticated])
+  }, [isAuthenticated, isAdmin])
+
+  const loadCustomerOrders = async () => {
+    setOrdersLoading(true)
+    try {
+      const token = localStorage.getItem('gk_cognito_id_token') || localStorage.getItem('gk_cognito_access_token');
+      const response = await fetch('/api/v1/orders', {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
+      if (!response.ok) throw new Error("Failed to load your acquisitions list.");
+      const data = await response.json();
+      setCustomerOrders(data.orders || data);
+    } catch (err) {
+      console.error("Error loading customer orders:", err);
+    } finally {
+      setOrdersLoading(false)
+    }
+  }
 
   const loadData = async () => {
     try {
@@ -165,25 +190,72 @@ export default function Admin() {
 
   const handleLogin = async (e) => {
     e.preventDefault()
-    if (!isFirebaseConfigured) {
-      setError('Cannot login without Firebase configuration.')
-      return
-    }
-    
+    setError('')
     try {
-      await signInWithEmailAndPassword(auth, email, password)
-      setError('')
+      const user = await signInCognito(email, password)
+      setIsAuthenticated(true)
+      setIsAdmin(user.roles.includes('admin'))
     } catch (err) {
-      setError("Invalid email or password")
+      setError(err.message || "Invalid email or password")
     }
   }
 
-  const handleLogout = async () => {
-    try {
-      await signOut(auth)
-    } catch (e) {
-      console.error(e)
+  const handleSignUp = async (e) => {
+    e.preventDefault()
+    setError('')
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.')
+      return
     }
+    try {
+      await signUpCognito(email, password)
+      setSuccessMsg('Account registered! Verification code sent to email.')
+      setTimeout(() => {
+        setSuccessMsg('')
+        setAuthMode('verify')
+      }, 2000)
+    } catch (err) {
+      setError(err.message || 'Registration failed.')
+    }
+  }
+
+  const handleVerify = async (e) => {
+    e.preventDefault()
+    setError('')
+    try {
+      await confirmSignUpCognito(email, verificationCode)
+      setSuccessMsg('Email verified! Auto-signing you in...')
+      const user = await signInCognito(email, password)
+      setIsAuthenticated(true)
+      setIsAdmin(user.roles.includes('admin'))
+    } catch (err) {
+      setError(err.message || 'Verification failed.')
+    }
+  }
+
+  const handleSandboxBypass = async () => {
+    if (!email) {
+      setError('Please input your registered email address first.')
+      return;
+    }
+    setError('')
+    try {
+      setSuccessMsg('Sandbox bypass triggered! Verifying email on AWS Cognito...')
+      await autoConfirmUserBackend(email)
+      setSuccessMsg('Account verified! Auto-signing you in...')
+      
+      const user = await signInCognito(email, password)
+      setIsAuthenticated(true)
+      setIsAdmin(user.roles.includes('admin'))
+    } catch (err) {
+      setError(err.message || 'Sandbox bypass failed. Please confirm the account manually.')
+    }
+  }
+
+  const handleLogout = () => {
+    signOutCognito()
+    setIsAuthenticated(false)
+    setIsAdmin(false)
   }
 
   const handleImageUpload = async (e) => {
@@ -442,50 +514,212 @@ export default function Admin() {
   }
 
   if (!isAuthenticated) {
+    const buttonClass = 'bg-gk-yellow text-gk-black hover:bg-yellow-400';
+    
     return (
-      <div className="min-h-[100svh] bg-gk-black flex items-center justify-center p-6">
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-2xl w-full max-w-sm flex flex-col gap-6">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-white mb-2">Secure Vault</h1>
-            <p className="text-sm text-white/50">Admin Authentication Required</p>
-          </div>
+      <div className="min-h-[100svh] bg-gk-black flex items-center justify-center p-6 selection:bg-gk-orange selection:text-black">
+        <div className="bg-[#0a0a0d] border border-white/10 p-8 rounded-2xl w-full max-w-sm flex flex-col gap-6 relative overflow-hidden">
           
-          {dbError && (
-            <div className="bg-red-500/20 border border-red-500/50 text-red-200 text-sm p-4 rounded-lg">
-              {dbError}
+          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-gk-yellow to-transparent" />
+          
+          <div className="text-center">
+            <h1 className="text-2xl font-black text-white mb-2">Secure Vault</h1>
+            <p className="text-sm text-white/50">
+              {authMode === 'login' ? 'Collector Sign In Required' : authMode === 'signup' ? 'Create Collector Profile' : 'Verify Your Email'}
+            </p>
+          </div>
+
+          {successMsg && (
+            <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs p-3 rounded-lg flex items-center gap-2">
+              <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+              <span>{successMsg}</span>
             </div>
           )}
 
-          <form onSubmit={handleLogin} className="space-y-4">
-            <input 
-              type="email" 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-black/50 border border-white/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-gk-yellow transition-colors"
-              placeholder="Admin Email"
-              disabled={!isFirebaseConfigured}
-            />
-            <input 
-              type="password" 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-black/50 border border-white/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-gk-yellow transition-colors"
-              placeholder="Password"
-              disabled={!isFirebaseConfigured}
-            />
-            {error && <p className="text-gk-orange text-xs mt-2">{error}</p>}
-            
-            <button 
-              type="submit" 
-              disabled={!isFirebaseConfigured}
-              className="w-full bg-gk-yellow text-gk-black font-bold py-3 rounded-lg hover:bg-yellow-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Authenticate
-            </button>
-          </form>
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/20 text-red-300 text-xs p-3 rounded-lg flex items-center gap-2">
+              <ShieldAlert size={16} className="text-red-400 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {authMode === 'login' && (
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
+                <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-black/50 border border-white/20 rounded-lg pl-11 pr-4 py-3.5 text-white focus:outline-none focus:border-gk-yellow transition-colors text-sm" placeholder="Email Address" />
+              </div>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
+                <input required type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full bg-black/50 border border-white/20 rounded-lg pl-11 pr-4 py-3.5 text-white focus:outline-none focus:border-gk-yellow transition-colors text-sm" placeholder="Password" />
+              </div>
+              <button type="submit" className="w-full bg-gk-yellow text-gk-black font-black py-4 rounded-lg hover:bg-yellow-400 transition-colors cursor-pointer text-sm uppercase tracking-wider">
+                Sign In
+              </button>
+              <div className="text-center text-xs text-white/40 mt-2">
+                New collector?{' '}
+                <button type="button" onClick={() => setAuthMode('signup')} className="text-white font-bold hover:underline cursor-pointer">Register Here</button>
+              </div>
+            </form>
+          )}
+
+          {authMode === 'signup' && (
+            <form onSubmit={handleSignUp} className="space-y-4">
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
+                <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-black/50 border border-white/20 rounded-lg pl-11 pr-4 py-3.5 text-white focus:outline-none focus:border-gk-yellow transition-colors text-sm" placeholder="Email Address" />
+              </div>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
+                <input required type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full bg-black/50 border border-white/20 rounded-lg pl-11 pr-4 py-3.5 text-white focus:outline-none focus:border-gk-yellow transition-colors text-sm" placeholder="Password (Min 8 Characters)" />
+              </div>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
+                <input required type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="w-full bg-black/50 border border-white/20 rounded-lg pl-11 pr-4 py-3.5 text-white focus:outline-none focus:border-gk-yellow transition-colors text-sm" placeholder="Confirm Password" />
+              </div>
+              <button type="submit" className="w-full bg-gk-yellow text-gk-black font-black py-4 rounded-lg hover:bg-yellow-400 transition-colors cursor-pointer text-sm uppercase tracking-wider">
+                Create Account
+              </button>
+              <div className="text-center text-xs text-white/40 mt-2">
+                Already registered?{' '}
+                <button type="button" onClick={() => setAuthMode('login')} className="text-white font-bold hover:underline cursor-pointer">Log In</button>
+              </div>
+            </form>
+          )}
+
+          {authMode === 'verify' && (
+            <form onSubmit={handleVerify} className="space-y-4">
+              <p className="text-xs text-gk-orange font-bold text-center uppercase tracking-wider mb-2 font-grotesk">Check Your Inbox for Code</p>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
+                <input required type="text" value={verificationCode} onChange={(e) => setVerificationCode(e.target.value)} className="w-full bg-black/50 border border-white/20 rounded-lg pl-11 pr-4 py-3.5 text-white focus:outline-none focus:border-gk-yellow transition-colors text-sm font-mono text-center tracking-widest" placeholder="Verification Code" />
+              </div>
+              <button type="submit" className="w-full bg-gk-yellow text-gk-black font-black py-4 rounded-lg hover:bg-yellow-400 transition-colors cursor-pointer text-sm uppercase tracking-wider">
+                Confirm Registration
+              </button>
+
+              <div className="relative flex py-2 items-center">
+                <div className="flex-grow border-t border-white/10"></div>
+                <span className="flex-shrink mx-4 text-white/25 text-[10px] font-black uppercase tracking-wider">Sandbox Dev Bypass</span>
+                <div className="flex-grow border-t border-white/10"></div>
+              </div>
+
+              <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-center">
+                <p className="text-white/50 text-[10px] leading-relaxed mb-3">
+                  Cognito Sandbox email delivery might be delayed or filtered out in local testing.
+                </p>
+                <button 
+                  type="button"
+                  onClick={handleSandboxBypass}
+                  className="w-full py-2.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-300 text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer"
+                >
+                  Auto-Confirm Account
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       </div>
     )
+  }
+
+  if (isAuthenticated && !isAdmin) {
+    let rank = 'Bronze Collector';
+    if (customerOrders.length >= 6) {
+      rank = 'Gold Collector';
+    } else if (customerOrders.length >= 3) {
+      rank = 'Silver Collector';
+    }
+
+    return (
+      <div className="min-h-[100svh] bg-gk-black text-white p-6 md:p-12 font-sans selection:bg-gk-orange selection:text-black">
+        <div className="max-w-5xl mx-auto">
+          <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-12">
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-gk-orange/10 border border-gk-orange/30 text-gk-orange mb-3">
+                Collector Dashboard
+              </div>
+              <h1 className="text-3xl md:text-5xl font-black tracking-tight text-white">Your Garage</h1>
+              <p className="text-white/50 mt-2">Monitor your premium diecast acquisitions and order status.</p>
+            </div>
+            <div className="flex gap-4 items-center">
+              <Link to="/marketplace" className="px-6 py-2.5 rounded-full border border-white/20 text-sm font-semibold hover:bg-white/10 transition-colors">
+                Browse Marketplace
+              </Link>
+              <button 
+                onClick={handleLogout}
+                className="px-5 py-2.5 rounded-full bg-white/5 border border-white/10 text-white/50 text-sm font-bold flex items-center gap-2 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 transition-colors cursor-pointer"
+              >
+                <LogOut size={16} /> Logout
+              </button>
+            </div>
+          </header>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-12">
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-5xl">🏆</div>
+              <div className="text-xs font-black uppercase text-gk-orange tracking-widest mb-2">Collector Rank</div>
+              <div className="text-2xl font-black text-white">{rank}</div>
+              <div className="text-[10px] text-white/40 mt-1">Upgrade to Silver at 3 acquisitions</div>
+            </div>
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-5xl">📦</div>
+              <div className="text-xs font-black uppercase text-gk-orange tracking-widest mb-2">Acquisitions</div>
+              <div className="text-3xl font-mono font-black text-white">{customerOrders.length}</div>
+              <div className="text-[10px] text-white/40 mt-1">Total pieces secured from the vault</div>
+            </div>
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-5xl">⚡</div>
+              <div className="text-xs font-black uppercase text-gk-orange tracking-widest mb-2">Status</div>
+              <div className="text-2xl font-black text-emerald-400">Authenticated</div>
+              <div className="text-[10px] text-white/40 mt-1">AWS Cognito session secure</div>
+            </div>
+          </div>
+
+          <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden p-6 md:p-8">
+            <h3 className="text-lg font-black text-white mb-6">Acquisitions & Order History</h3>
+            
+            {ordersLoading ? (
+              <div className="py-12 text-center text-white/50">Loading orders...</div>
+            ) : customerOrders.length === 0 ? (
+              <div className="py-12 text-center text-white/40">
+                <div className="text-4xl mb-4">📭</div>
+                <p className="font-bold text-sm">No acquisitions found</p>
+                <p className="text-xs text-white/30 mt-1">Items you buy in the marketplace will appear here.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {customerOrders.map(order => (
+                  <div key={order.id} className="p-4 md:p-6 rounded-2xl bg-black/40 border border-white/5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-gk-orange/30 transition-colors">
+                    <div className="text-left">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className="font-mono text-xs text-white/40">Order #{order.id.slice(0, 8)}</span>
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                          order.status === 'Delivered' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                          order.status === 'Shipped' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
+                          'bg-gk-orange/10 text-gk-orange border border-gk-orange/20'
+                        }`}>
+                          {order.status}
+                        </span>
+                      </div>
+                      <h4 className="text-base font-bold text-white leading-tight">{order.productName || 'Die-cast Casting Model'}</h4>
+                      <p className="text-[10px] text-gk-orange uppercase tracking-wider mt-0.5">{order.productBrand || 'MiniGT'}</p>
+                      <p className="text-xs text-white/50 mt-1.5">Shipping to: {order.shippingAddress?.split('|')[0]}</p>
+                    </div>
+                    <div className="text-left md:text-right shrink-0">
+                      <div className="text-[10px] uppercase tracking-wider text-white/30 mb-0.5">Date Placed</div>
+                      <div className="text-xs text-white/80 font-bold mb-2">{new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                      <div className="text-[10px] uppercase tracking-wider text-white/30 mb-0.5">Total Paid</div>
+                      <div className="font-mono text-lg font-black text-white">₹{(order.priceAtPurchase || 0).toLocaleString()}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

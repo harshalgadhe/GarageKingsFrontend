@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getAuctions, isFirebaseConfigured, addAuctionBid, listenToAuctionTopBid, listenToAuctionBidCount, listenToAuctionRecentBids } from '../lib/db'
+import { getCurrentUser } from '../lib/auth'
+import AuthModal from '../components/AuthModal'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Gavel, TrendingUp, Users, Clock, X, Trophy, AlertCircle, ChevronRight } from 'lucide-react'
 import { BRAND } from '../data/content'
@@ -47,8 +49,9 @@ function useAuctionLive(id) {
 
 // ── Bid Modal ─────────────────────────────────────────────────────
 function BidModal({ auction, topBid, onClose }) {
-  const [name, setName] = useState('')
-  const [contact, setContact] = useState('')
+  const activeUser = getCurrentUser()
+  const [name, setName] = useState(activeUser?.email ? activeUser.email.split('@')[0] : '')
+  const [contact, setContact] = useState(activeUser?.email || '')
   const [amount, setAmount] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -293,12 +296,22 @@ export default function Auctions() {
   const [error, setError] = useState('')
   const [tab, setTab] = useState('live')
   const [bidModal, setBidModal] = useState(null)
+  const [authModalOpen, setAuthModalOpen] = useState(false)
+  const [user, setUser] = useState(getCurrentUser())
   const navigate = useNavigate()
 
   useEffect(() => {
-    if (!isFirebaseConfigured) { setError('Firebase not configured.'); setIsLoading(false); return }
     getAuctions().then(setAuctions).catch(e => setError(e.message)).finally(() => setIsLoading(false))
   }, [])
+
+  const handleBidClick = (auctionItem, currentTopBid) => {
+    const activeSession = getCurrentUser()
+    if (!activeSession) {
+      setAuthModalOpen(true)
+      return
+    }
+    setBidModal({ auction: auctionItem, topBid: currentTopBid })
+  }
 
   const getStatus = (a) => {
     const target = new Date(`${a.endDate}T${a.endTime}:00+05:30`)
@@ -386,7 +399,7 @@ export default function Auctions() {
                   <Trophy size={14} className="text-gk-yellow" />
                   <span className="text-xs font-black uppercase tracking-widest text-gk-yellow">Featured Auction</span>
                 </div>
-                <AuctionCard auction={featured} onBid={(a, tb) => setBidModal({ auction: a, topBid: tb })} featured />
+                <AuctionCard auction={featured} onBid={handleBidClick} featured />
               </div>
             )}
             {rest.length > 0 && (
@@ -396,7 +409,7 @@ export default function Auctions() {
                   <span className="text-xs font-black uppercase tracking-widest text-purple-400">All Auctions</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {rest.map(a => <AuctionCard key={a.id} auction={a} onBid={(a, tb) => setBidModal({ auction: a, topBid: tb })} featured={false} />)}
+                  {rest.map(a => <AuctionCard key={a.id} auction={a} onBid={handleBidClick} featured={false} />)}
                 </div>
               </>
             )}
@@ -406,6 +419,7 @@ export default function Auctions() {
 
       <AnimatePresence>
         {bidModal && <BidModal auction={bidModal.auction} topBid={bidModal.topBid} onClose={() => setBidModal(null)} />}
+        {authModalOpen && <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} themeColor="purple" onAuthSuccess={(u) => { setUser(u); setAuthModalOpen(false); }} />}
       </AnimatePresence>
     </div>
   )
