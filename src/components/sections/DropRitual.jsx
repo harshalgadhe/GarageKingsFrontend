@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { footerCopy } from '../../data/content'
+import { footerCopy, BRAND } from '../../data/content'
 
 function getNextDropTime(targetDateStr, targetTimeStr) {
   if (!targetDateStr) return 0
