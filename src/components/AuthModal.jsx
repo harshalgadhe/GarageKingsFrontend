@@ -301,8 +301,23 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'purple', onAu
                 </div>
 
                 {/* Real native browser Google OAuth Sign-in Button */}
-                <div className="w-full flex justify-center py-1">
+                <div className="w-full flex flex-col items-center gap-3 py-1">
                   <div id="google-signin-btn-container" className="w-full flex justify-center"></div>
+                  
+                  {(!import.meta.env.VITE_GOOGLE_CLIENT_ID || import.meta.env.VITE_GOOGLE_CLIENT_ID.includes('dummy')) && (
+                    <div className="w-full bg-[#D4AF37]/5 border border-[#D4AF37]/20 rounded-xl p-3 text-center">
+                      <p className="text-[#D4AF37] text-[10px] leading-relaxed mb-2 font-inter">
+                        ⚠️ <strong>Google OAuth Setup Required</strong>: To enable the browser-native accounts pop-up, you must add your Google Client ID to <code>.env</code> as <code>VITE_GOOGLE_CLIENT_ID="..."</code>.
+                      </p>
+                      <button 
+                        type="button"
+                        onClick={() => handleSelectGoogleAccount('harshalgadhe123@gmail.com')}
+                        className="text-[10px] text-white underline font-black hover:text-white/80 transition-colors cursor-pointer bg-transparent border-none"
+                      >
+                        Bypass & Test Google Login as harshalgadhe123@gmail.com
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="text-center text-xs mt-4 text-white/40">
