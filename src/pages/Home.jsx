@@ -4,19 +4,23 @@ import Navigation from '../components/Navigation'
 
 import AmbientScene from '../components/AmbientScene'
 import Hero from '../components/sections/Hero'
-import GarageKingStandard from '../components/sections/GarageKingStandard'
+import WhyGarageKings from '../components/sections/WhyGarageKings'
 import PitStopLanes from '../components/sections/PitStopLanes'
 import VaultShowcase from '../components/sections/VaultShowcase'
-import AuctionPreview from '../components/sections/AuctionPreview'
+import MarketplacePreview from '../components/sections/MarketplacePreview'
+import VirtualGaragePromo from '../components/sections/VirtualGaragePromo'
+import CommunityShowcase from '../components/sections/CommunityShowcase'
 import DropRitual from '../components/sections/DropRitual'
 import { getCars, getGlobalSettings } from '../lib/db'
 
 export default function Home() {
   const heroRef = useRef(null)
-  const standardRef = useRef(null)
+  const whyRef = useRef(null)
   const lanesRef = useRef(null)
   const vaultRef = useRef(null)
-  const auctionRef = useRef(null)
+  const marketRef = useRef(null)
+  const garageRef = useRef(null)
+  const commRef = useRef(null)
   const dropRef = useRef(null)
 
   const [heroImages, setHeroImages] = useState([])
@@ -49,25 +53,28 @@ export default function Home() {
     fetchData()
   }, [])
 
+  // Wire up the new storyteller refs list to Lenis scroll journey trackers
   const pitStopRefs = useMemo(
-    () => [heroRef, standardRef, lanesRef, vaultRef, auctionRef, dropRef],
+    () => [heroRef, whyRef, lanesRef, vaultRef, marketRef, garageRef, commRef, dropRef],
     [],
   )
 
   const activeSection = useActiveSection(pitStopRefs)
 
   return (
-    <div className="relative bg-gk-black text-white">
+    <div className="relative bg-[#050505] text-white">
       <AmbientScene />
       <Navigation activeSection={activeSection} />
 
-      {/* Main content full width for centralized scrolling */}
+      {/* Main storyteller content columns */}
       <main className="relative z-10 w-full">
         <Hero ref={heroRef} heroImages={heroImages} />
-        <GarageKingStandard ref={standardRef} />
+        <WhyGarageKings ref={whyRef} />
         <PitStopLanes ref={lanesRef} />
         <VaultShowcase ref={vaultRef} carouselCars={carouselCars} />
-        <AuctionPreview ref={auctionRef} />
+        <MarketplacePreview ref={marketRef} />
+        <VirtualGaragePromo ref={garageRef} />
+        <CommunityShowcase ref={commRef} />
         <DropRitual ref={dropRef} dropSettings={dropSettings} />
       </main>
     </div>

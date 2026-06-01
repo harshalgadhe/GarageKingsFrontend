@@ -1,144 +1,199 @@
 import { forwardRef, useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import gsap from 'gsap'
-import { ScrollTrigger } from 'gsap/ScrollTrigger'
-import { BRAND } from '../../data/content'
 import { scrollToSection, useLenis } from '../../providers/SmoothScroll'
 
-gsap.registerPlugin(ScrollTrigger)
-
-const DEFAULT_HERO_IMAGES = [
-  '/hotwheels-car.png',
-  '/vault-3.png',
-  '/vault-4.png',
-  '/vault-5.png',
+const HERO_SHOWCASE_VEHICLES = [
+  {
+    image: '/hotwheels-car.png',
+    name: 'Nissan Skyline GT-R R34',
+    brand: 'MINI GT',
+    rarity: 'ULTRA RARE',
+    series: 'Grail Division'
+  },
+  {
+    image: '/vault-3.png',
+    name: 'Porsche 934 Turbo RSR',
+    brand: 'INNO64',
+    rarity: 'LIMITED CHASE',
+    series: 'Euro Speed'
+  },
+  {
+    image: '/vault-4.png',
+    name: "'83 Chevy Silverado",
+    brand: 'HOT WHEELS PREMIUM',
+    rarity: 'STH GRAIL',
+    series: 'Truck Legends'
+  }
 ]
 
 const Hero = forwardRef(function Hero({ heroImages = [] }, ref) {
   const lenisRef = useLenis()
-  const carRef = useRef(null)
-  const containerRef = useRef(null)
-  const [currentImgIndex, setCurrentImgIndex] = useState(0)
+  const [currentIdx, setCurrentIdx] = useState(0)
 
-  // Always use a static image for the first slide so the page loads instantly.
-  // The database images will begin showing from the second slide onwards.
-  const staticFirstImage = '/hotwheels-car.png'
-  
-  const activeImages = heroImages && heroImages.length > 0 
-    ? [staticFirstImage, ...heroImages] 
-    : DEFAULT_HERO_IMAGES
-
-  // Preload all hero images in the background so there's no delay/flicker when the slider changes
+  // Preload showcase images
   useEffect(() => {
-    activeImages.forEach(src => {
+    HERO_SHOWCASE_VEHICLES.forEach(v => {
       const img = new Image()
-      img.src = src
+      img.src = v.image
     })
-  }, [activeImages])
+  }, [])
 
-  // Carousel auto-scroll
+  // Auto-scroll showcase every 4 seconds
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentImgIndex((prev) => (prev + 1) % activeImages.length)
-    }, 4500)
+      setCurrentIdx(prev => (prev + 1) % HERO_SHOWCASE_VEHICLES.length)
+    }, 4000)
     return () => clearInterval(timer)
-  }, [activeImages.length])
-
-  useEffect(() => {
-    const el = carRef.current
-    const container = containerRef.current
-    if (!el || !container) return
-
-    // Apple-style parallax: pin the car and scale it up slightly while fading out
-    const tl = gsap.timeline({
-      scrollTrigger: {
-        trigger: container,
-        start: 'top top',
-        end: 'bottom top',
-        scrub: true,
-      },
-    })
-
-    tl.to(el, {
-      yPercent: 20,
-      scale: 1.15,
-      opacity: 0,
-      ease: 'none',
-    })
-
-    return () => {
-      tl.kill()
-    }
   }, [])
+
+  const currentVehicle = HERO_SHOWCASE_VEHICLES[currentIdx]
 
   return (
     <section
-      ref={(node) => {
-        if (typeof ref === 'function') ref(node)
-        else if (ref) ref.current = node
-        containerRef.current = node
-      }}
+      ref={ref}
       id="hero"
-      className="relative flex h-[100svh] w-full flex-col items-start justify-end px-10 sm:px-12 md:px-16 pb-24 md:pb-32 overflow-hidden bg-gk-black"
+      className="relative min-h-[100svh] w-full flex flex-col justify-between pt-32 pb-12 px-6 md:px-12 lg:px-16 overflow-hidden bg-[#050505]"
     >
-      {/* Full-Screen Cinematic Hero Image Carousel */}
-      <div className="absolute inset-0 z-0 pointer-events-none" ref={carRef}>
-        <AnimatePresence>
-          <motion.img
-            key={currentImgIndex}
-            src={activeImages[currentImgIndex]}
-            alt="Garage Kings Vault"
-            className="absolute inset-0 w-full h-full object-cover object-[center_75%] md:object-center"
-            initial={{ opacity: 0, scale: 1.05 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 1.2, ease: "easeInOut" }}
-          />
-        </AnimatePresence>
+      {/* Background Ambience */}
+      <div className="absolute inset-0 z-0 pointer-events-none bg-[radial-gradient(circle_at_70%_30%,rgba(225,6,0,0.06)_0%,transparent_60%)]" />
+
+      {/* Main Split Screen Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center w-full max-w-7xl mx-auto my-auto z-10">
         
-        {/* Gradients to protect text at bottom left */}
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-gk-black z-10 opacity-80" />
-        <div className="absolute inset-0 bg-gradient-to-tr from-black/90 via-black/20 to-transparent z-10" />
+        {/* Left Side: Brand Storytelling Stack */}
+        <div className="lg:col-span-6 flex flex-col items-start text-left">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-[#E10600]/10 border border-[#E10600]/20 text-[#E10600] text-[10px] font-black uppercase tracking-[0.25em] mb-6"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-[#E10600] animate-pulse" />
+            Enthusiast Clubhouse
+          </motion.div>
+
+          <motion.h1
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+            className="text-5xl sm:text-6xl md:text-7xl font-black leading-[0.9] tracking-tighter text-white uppercase font-grotesk"
+          >
+            Build Your <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-[#D9D9D9] to-white/50">Dream</span> <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#E10600] to-[#FF2A1A] drop-shadow-[0_0_30px_rgba(225,6,0,0.2)]">Garage</span>
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.8 }}
+            className="mt-6 text-base md:text-lg leading-relaxed text-[#A1A1AA] max-w-lg font-inter"
+          >
+            Discover rare Hot Wheels, Mini GT, Inno64 and collector-grade die-cast models curated for enthusiasts.
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.8 }}
+            className="mt-8 flex flex-wrap gap-4 w-full sm:w-auto"
+          >
+            <button
+              onClick={() => scrollToSection(lenisRef, 'vault')}
+              className="px-8 py-4 rounded-xl bg-[#E10600] hover:bg-[#FF2A1A] text-white font-black uppercase tracking-wider text-xs transition-all shadow-[0_0_35px_rgba(225,6,0,0.3)] hover:shadow-[0_0_45px_rgba(255,42,26,0.55)] cursor-pointer"
+            >
+              Explore Collection
+            </button>
+            <button
+              onClick={() => scrollToSection(lenisRef, 'drop')}
+              className="px-8 py-4 rounded-xl bg-[#111111] border border-[#2A2A2A] hover:border-white/20 text-white font-black uppercase tracking-wider text-xs transition-colors cursor-pointer"
+            >
+              View Limited Drops
+            </button>
+          </motion.div>
+        </div>
+
+        {/* Right Side: Featured Premium Spotlight Vehicle Showcase */}
+        <div className="lg:col-span-6 flex justify-center items-center w-full relative min-h-[350px] md:min-h-[450px]">
+          {/* Spotlight Glow Rings */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(225,6,0,0.1)_0%,transparent_60%)] pointer-events-none" />
+          <div className="absolute w-80 h-80 rounded-full border border-white/5 bg-white/[0.01] blur-3xl pointer-events-none" />
+          <div className="absolute w-64 h-64 rounded-full border border-[#E10600]/10 shadow-[0_0_80px_rgba(225,6,0,0.15)] animate-pulse pointer-events-none" />
+
+          {/* Dynamic Swapping Card Surface */}
+          <div className="relative w-full max-w-[420px] rounded-[2.5rem] border border-[#2A2A2A] bg-[#111111] p-8 shadow-[0_30px_70px_rgba(0,0,0,0.95)] overflow-hidden group">
+            {/* Glossy Reflection Highlight */}
+            <div className="absolute inset-0 bg-gradient-to-tr from-[#E10600]/5 via-transparent to-white/[0.02] pointer-events-none" />
+
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentIdx}
+                initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: -15 }}
+                transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+                className="flex flex-col items-center"
+              >
+                {/* Vehicle Showcase Details header */}
+                <div className="w-full flex justify-between items-center mb-6">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-[#D4AF37] border border-[#D4AF37]/30 px-2.5 py-1 rounded bg-[#D4AF37]/5 font-grotesk">
+                    {currentVehicle.rarity}
+                  </span>
+                  <span className="text-[9px] font-black uppercase tracking-widest text-[#A1A1AA]">
+                    {currentVehicle.brand}
+                  </span>
+                </div>
+
+                {/* Main Vehicle Image */}
+                <div className="w-full h-48 md:h-56 relative flex items-center justify-center mb-6">
+                  <img
+                    src={currentVehicle.image}
+                    alt={currentVehicle.name}
+                    className="max-h-full max-w-full object-contain filter drop-shadow-[0_15px_25px_rgba(0,0,0,0.7)] transform hover:scale-105 transition-transform duration-500"
+                  />
+                </div>
+
+                {/* Title stack */}
+                <div className="w-full text-center">
+                  <h3 className="text-xl md:text-2xl font-black italic uppercase tracking-wider text-white mb-1.5 font-grotesk">
+                    {currentVehicle.name}
+                  </h3>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-[#A1A1AA]">
+                    Series: {currentVehicle.series} · 1:64
+                  </p>
+                </div>
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </div>
+
       </div>
 
-      <motion.div className="relative z-20 w-full max-w-3xl flex flex-col items-start text-left">
-        <motion.p
-          className="mb-4 text-xs font-bold uppercase tracking-[0.4em] text-gk-yellow drop-shadow-[0_2px_10px_rgba(0,0,0,1)]"
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15, duration: 0.8 }}
-        >
-          {BRAND.tagline}
-        </motion.p>
-
-        <motion.h1
-          className="text-4xl sm:text-5xl font-bold leading-[1.05] tracking-tighter text-white md:text-6xl lg:text-7xl drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)]"
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25, duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-        >
-          Die-Cast<br/>Curators.
-        </motion.h1>
-      </motion.div>
-
-      {/* Scroll Down Indicator - Absolute Centered at Bottom */}
-      <motion.button
-        onClick={() => scrollToSection(lenisRef, 'vault')}
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-white/50 hover:text-gk-yellow transition-colors z-20"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1, duration: 1 }}
+      {/* Trust Statistics Ribbon (Bottom row, full width) */}
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4, duration: 0.8 }}
+        className="relative z-10 w-full max-w-7xl mx-auto mt-16 md:mt-24 border border-[#2A2A2A] rounded-2xl bg-[#111111]/80 backdrop-blur-md px-6 py-6 md:px-12"
       >
-        <span className="hidden md:block text-[10px] uppercase tracking-widest font-semibold">Scroll to explore</span>
-        <motion.div
-          animate={{ y: [0, 8, 0] }}
-          transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="m6 9 6 6 6-6"/>
-          </svg>
-        </motion.div>
-      </motion.button>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-4 divide-y-0 divide-x-0 md:divide-x divide-[#2A2A2A] text-center">
+          {[
+            { value: '10,000+', label: 'Models Sold' },
+            { value: '5,000+', label: 'Collectors' },
+            { value: '500+', label: 'Rare Models' },
+            { value: '99%', label: 'Positive Feedback' }
+          ].map((stat, i) => (
+            <div key={i} className={`flex flex-col items-center justify-center ${i >= 2 ? 'border-t md:border-t-0 border-[#2A2A2A] pt-4 md:pt-0' : ''} ${i % 2 !== 0 ? 'border-l-0 md:border-l-0' : ''} ${i > 0 && i !== 2 ? 'md:pl-4' : ''}`}>
+              <span className="text-2xl md:text-3xl font-black text-white font-sora tracking-tight">
+                {stat.value}
+              </span>
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#A1A1AA] mt-1.5">
+                {stat.label}
+              </span>
+            </div>
+          ))}
+        </div>
+      </motion.div>
     </section>
   )
 })
