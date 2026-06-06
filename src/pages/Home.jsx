@@ -9,18 +9,18 @@ import PitStopLanes from '../components/sections/PitStopLanes'
 import VaultShowcase from '../components/sections/VaultShowcase'
 import MarketplacePreview from '../components/sections/MarketplacePreview'
 import VirtualGaragePromo from '../components/sections/VirtualGaragePromo'
-import CommunityShowcase from '../components/sections/CommunityShowcase'
 import DropRitual from '../components/sections/DropRitual'
 import { getCars, getGlobalSettings } from '../lib/db'
+import { scrollToSection, useLenis } from '../providers/SmoothScroll'
 
 export default function Home() {
+  const lenisRef = useLenis()
   const heroRef = useRef(null)
   const whyRef = useRef(null)
   const lanesRef = useRef(null)
   const vaultRef = useRef(null)
   const marketRef = useRef(null)
   const garageRef = useRef(null)
-  const commRef = useRef(null)
   const dropRef = useRef(null)
 
   const [heroImages, setHeroImages] = useState([])
@@ -53,13 +53,29 @@ export default function Home() {
     fetchData()
   }, [])
 
+  // Listen to incoming hashes from subpages (like marketplace) and scroll smoothly
+  useEffect(() => {
+    if (window.location.hash) {
+      const targetId = window.location.hash.substring(1)
+      setTimeout(() => {
+        scrollToSection(lenisRef, targetId)
+      }, 600)
+    }
+  }, [lenisRef])
+
   // Wire up the new storyteller refs list to Lenis scroll journey trackers
   const pitStopRefs = useMemo(
-    () => [heroRef, whyRef, lanesRef, vaultRef, marketRef, garageRef, commRef, dropRef],
+    () => [heroRef, whyRef, lanesRef, vaultRef, marketRef, garageRef, dropRef],
     [],
   )
 
-  const activeSection = useActiveSection(pitStopRefs)
+  const activeSectionIndex = useActiveSection(pitStopRefs)
+  
+  // Map index to section ID string to resolve nav item highlights correctly
+  const activeSection = useMemo(() => {
+    const map = ['hero', 'why', 'lanes', 'vault', 'marketplace', 'garage', 'drop']
+    return map[activeSectionIndex] || 'hero'
+  }, [activeSectionIndex])
 
   return (
     <div className="relative bg-[#050505] text-white">
@@ -74,7 +90,6 @@ export default function Home() {
         <VaultShowcase ref={vaultRef} carouselCars={carouselCars} />
         <MarketplacePreview ref={marketRef} />
         <VirtualGaragePromo ref={garageRef} />
-        <CommunityShowcase ref={commRef} />
         <DropRitual ref={dropRef} dropSettings={dropSettings} />
       </main>
     </div>

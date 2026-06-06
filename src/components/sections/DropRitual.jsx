@@ -159,7 +159,6 @@ const DropRitual = forwardRef(function DropRitual({ dropSettings }, ref) {
             <ul className="flex flex-col gap-2.5 text-xs text-[#A1A1AA]">
               <li><a href="#vault" className="hover:text-[#E10600] transition-colors">The Vault</a></li>
               <li><a href="/marketplace" className="hover:text-[#E10600] transition-colors">Marketplace</a></li>
-              <li><a href="/auctions" className="hover:text-[#E10600] transition-colors">Live Auctions</a></li>
               <li><a href="#garage" className="hover:text-[#E10600] transition-colors">Collector Garage</a></li>
             </ul>
           </div>

@@ -146,7 +146,7 @@ const VirtualGaragePromo = forwardRef(function VirtualGaragePromo(_props, ref) {
             >
               <button 
                 type="button"
-                onClick={() => { window.location.href = '/admin'; }}
+                onClick={() => { window.location.href = '/garage'; }}
                 className="px-10 py-5 rounded-xl bg-[#E10600] hover:bg-[#FF2A1A] text-white font-black uppercase tracking-wider text-xs transition-all shadow-[0_0_35px_rgba(225,6,0,0.35)] hover:shadow-[0_0_45px_rgba(255,42,26,0.6)] cursor-pointer"
               >
                 Create Your Garage

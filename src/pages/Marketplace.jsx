@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { getCars, isFirebaseConfigured, getGlobalSettings } from '../lib/db'
 import { getCurrentUser } from '../lib/auth'
 import AuthModal from '../components/AuthModal'
+import Navigation from '../components/Navigation'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Search, X } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 import { BRAND } from '../data/content'
 
 export function CheckoutModal({ car, onClose, onOrderPlaced }) {
@@ -101,6 +102,7 @@ export default function Marketplace() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [activeFilter, setActiveFilter] = useState('All')
   const [authModalOpen, setAuthModalOpen] = useState(false)
   const [checkoutCar, setCheckoutCar] = useState(null)
   const [user, setUser] = useState(getCurrentUser())
@@ -128,35 +130,43 @@ export default function Marketplace() {
       }
     }
     load()
+
+    // Autofocus the search bar if requested via navigation
+    if (window.location.search.includes('focus=true')) {
+      setTimeout(() => {
+        const input = document.getElementById('marketplace-search-input');
+        if (input) {
+          input.focus();
+        }
+      }, 350);
+    }
   }, [])
 
   const filteredCars = useMemo(() => {
-    if (!searchQuery.trim()) return cars
-    const query = searchQuery.toLowerCase()
-    return cars.filter(car =>
-      (car.name && car.name.toLowerCase().includes(query)) ||
-      (car.brand && car.brand.toLowerCase().includes(query)) ||
-      (car.carBrand && car.carBrand.toLowerCase().includes(query)) ||
-      (car.lane && car.lane.toLowerCase().includes(query))
-    )
-  }, [cars, searchQuery])
+    let result = cars;
+    
+    // Apply tag filter
+    if (activeFilter !== 'All') {
+      result = result.filter(car => car.tags && car.tags.includes(activeFilter));
+    }
+    
+    // Apply search query filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(car =>
+        (car.name && car.name.toLowerCase().includes(query)) ||
+        (car.brand && car.brand.toLowerCase().includes(query)) ||
+        (car.carBrand && car.carBrand.toLowerCase().includes(query)) ||
+        (car.lane && car.lane.toLowerCase().includes(query))
+      );
+    }
+    
+    return result;
+  }, [cars, activeFilter, searchQuery])
 
   return (
-    <div className="min-h-[100svh] bg-gk-black text-white selection:bg-gk-yellow selection:text-black">
-      
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-gk-black/80 backdrop-blur-xl border-b border-white/5">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <button onClick={() => navigate('/')} className="flex items-center gap-2 text-white/50 hover:text-white transition-colors">
-            <ArrowLeft size={18} />
-            <span className="text-sm font-bold uppercase tracking-wider">Back</span>
-          </button>
-          <div className="flex items-center gap-3">
-            <img src="/brand-logo.png" alt="Logo" className="w-8 h-8 rounded-full border border-white/20" />
-            <span className="font-black tracking-tight">{BRAND.name}</span>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-[100svh] bg-gk-black text-white selection:bg-gk-yellow selection:text-black pt-16">
+      <Navigation activeSection="vault" />
 
       {/* Hero */}
       <div className="relative py-16 md:py-24 overflow-hidden border-b border-white/5">
@@ -173,6 +183,7 @@ export default function Marketplace() {
               <Search size={20} />
             </div>
             <input 
+              id="marketplace-search-input"
               type="text" 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -185,6 +196,29 @@ export default function Marketplace() {
 
       {/* Grid */}
       <div className="max-w-7xl mx-auto px-6 py-12 md:py-20">
+        
+        {/* Horizontal Tags Filter Bar */}
+        {!error && !isLoading && cars.length > 0 && (
+          <div className="flex flex-wrap gap-2 justify-center items-center mb-10 bg-white/[0.02] border border-white/5 p-2 rounded-2xl max-w-2xl mx-auto backdrop-blur-md">
+            {['All', 'Hot', 'Trending', 'Rare', 'New Release', 'Exclusive'].map(filter => {
+              const isActive = activeFilter === filter;
+              return (
+                <button
+                  key={filter}
+                  onClick={() => setActiveFilter(filter)}
+                  className={`px-5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all relative cursor-pointer ${
+                    isActive 
+                      ? 'bg-gk-orange text-white shadow-[0_0_20px_rgba(225,6,0,0.3)]' 
+                      : 'text-white/50 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  {filter}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {error ? (
           <div className="text-center py-20 md:py-32">
             <div className="inline-block bg-red-500/20 border border-red-500/50 text-red-200 p-6 rounded-2xl max-w-lg">
@@ -237,6 +271,22 @@ export default function Marketplace() {
                   {(car.brand || car.carBrand) && (
                     <div className="text-[10px] font-black uppercase tracking-widest text-gk-orange mb-1">
                       {car.carBrand ? `${car.brand} • ${car.carBrand}` : car.brand}
+                    </div>
+                  )}
+                  
+                  {car.tags && car.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mb-2.5">
+                      {car.tags.map(tag => {
+                        let colorClass = 'bg-white/10 text-white/70 border-white/10';
+                        if (tag === 'Hot') colorClass = 'bg-[#E10600]/15 text-[#E10600] border-[#E10600]/30 shadow-[0_0_10px_rgba(225,6,0,0.15)]';
+                        if (tag === 'Trending') colorClass = 'bg-purple-500/15 text-purple-400 border-purple-500/30 shadow-[0_0_10px_rgba(168,85,247,0.15)]';
+                        if (tag === 'Rare') colorClass = 'bg-amber-500/15 text-amber-400 border-amber-500/30 shadow-[0_0_10px_rgba(245,158,11,0.15)]';
+                        return (
+                          <span key={tag} className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider border ${colorClass}`}>
+                            {tag}
+                          </span>
+                        );
+                      })}
                     </div>
                   )}
                   

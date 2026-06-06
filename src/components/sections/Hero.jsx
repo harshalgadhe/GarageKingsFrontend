@@ -1,6 +1,8 @@
 import { forwardRef, useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { scrollToSection, useLenis } from '../../providers/SmoothScroll'
+import { getCurrentUser } from '../../lib/auth'
+import { Link } from 'react-router-dom'
 
 const HERO_SHOWCASE_VEHICLES = [
   {
@@ -29,6 +31,11 @@ const HERO_SHOWCASE_VEHICLES = [
 const Hero = forwardRef(function Hero({ heroImages = [] }, ref) {
   const lenisRef = useLenis()
   const [currentIdx, setCurrentIdx] = useState(0)
+  const [user, setUser] = useState(null)
+
+  useEffect(() => {
+    setUser(getCurrentUser())
+  }, [])
 
   // Preload showcase images
   useEffect(() => {
@@ -89,7 +96,10 @@ const Hero = forwardRef(function Hero({ heroImages = [] }, ref) {
             transition={{ delay: 0.2, duration: 0.8 }}
             className="mt-6 text-base md:text-lg leading-relaxed text-[#A1A1AA] max-w-lg font-inter"
           >
-            Discover rare Hot Wheels, Mini GT, Inno64 and collector-grade die-cast models curated for enthusiasts.
+            {user 
+              ? `Welcome back, Collector! View your garage collection, check your acquisition history, or secure upcoming drops.`
+              : 'Discover rare Hot Wheels, Mini GT, Inno64 and collector-grade die-cast models curated for enthusiasts.'
+            }
           </motion.p>
 
           <motion.div
@@ -98,12 +108,21 @@ const Hero = forwardRef(function Hero({ heroImages = [] }, ref) {
             transition={{ delay: 0.3, duration: 0.8 }}
             className="mt-8 flex flex-wrap gap-4 w-full sm:w-auto"
           >
-            <button
-              onClick={() => scrollToSection(lenisRef, 'vault')}
-              className="px-8 py-4 rounded-xl bg-[#E10600] hover:bg-[#FF2A1A] text-white font-black uppercase tracking-wider text-xs transition-all shadow-[0_0_35px_rgba(225,6,0,0.3)] hover:shadow-[0_0_45px_rgba(255,42,26,0.55)] cursor-pointer"
-            >
-              Explore Collection
-            </button>
+            {user ? (
+              <Link
+                to="/garage"
+                className="px-8 py-4 rounded-xl bg-[#E10600] hover:bg-[#FF2A1A] text-white font-black uppercase tracking-wider text-xs transition-all shadow-[0_0_35px_rgba(225,6,0,0.3)] hover:shadow-[0_0_45px_rgba(255,42,26,0.55)] cursor-pointer flex items-center justify-center text-center"
+              >
+                Enter Your Garage
+              </Link>
+            ) : (
+              <button
+                onClick={() => scrollToSection(lenisRef, 'vault')}
+                className="px-8 py-4 rounded-xl bg-[#E10600] hover:bg-[#FF2A1A] text-white font-black uppercase tracking-wider text-xs transition-all shadow-[0_0_35px_rgba(225,6,0,0.3)] hover:shadow-[0_0_45px_rgba(255,42,26,0.55)] cursor-pointer"
+              >
+                Explore Collection
+              </button>
+            )}
             <button
               onClick={() => scrollToSection(lenisRef, 'drop')}
               className="px-8 py-4 rounded-xl bg-[#111111] border border-[#2A2A2A] hover:border-white/20 text-white font-black uppercase tracking-wider text-xs transition-colors cursor-pointer"
@@ -166,36 +185,10 @@ const Hero = forwardRef(function Hero({ heroImages = [] }, ref) {
             </AnimatePresence>
           </div>
         </div>
-
       </div>
-
-      {/* Trust Statistics Ribbon (Bottom row, full width) */}
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4, duration: 0.8 }}
-        className="relative z-10 w-full max-w-7xl mx-auto mt-16 md:mt-24 border border-[#2A2A2A] rounded-2xl bg-[#111111]/80 backdrop-blur-md px-6 py-6 md:px-12"
-      >
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-4 divide-y-0 divide-x-0 md:divide-x divide-[#2A2A2A] text-center">
-          {[
-            { value: '10,000+', label: 'Models Sold' },
-            { value: '5,000+', label: 'Collectors' },
-            { value: '500+', label: 'Rare Models' },
-            { value: '99%', label: 'Positive Feedback' }
-          ].map((stat, i) => (
-            <div key={i} className={`flex flex-col items-center justify-center ${i >= 2 ? 'border-t md:border-t-0 border-[#2A2A2A] pt-4 md:pt-0' : ''} ${i % 2 !== 0 ? 'border-l-0 md:border-l-0' : ''} ${i > 0 && i !== 2 ? 'md:pl-4' : ''}`}>
-              <span className="text-2xl md:text-3xl font-black text-white font-sora tracking-tight">
-                {stat.value}
-              </span>
-              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#A1A1AA] mt-1.5">
-                {stat.label}
-              </span>
-            </div>
-          ))}
-        </div>
-      </motion.div>
     </section>
   )
 })
 
 export default Hero
+

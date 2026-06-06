@@ -192,31 +192,31 @@ export async function autoConfirmUserBackend(email) {
 }
 
 /**
- * Direct Google Social Sign-In option: Auto-registers (if new) and logs user in using Cognito federated flow.
+ * Direct Google Social Sign-In option: Syncs account with Cognito administratively on backend,
+ * and logs user in using Cognito federated flow.
  * Instantly fetches a REAL, VALID Cognito JWT ID Token without requiring third-party OAuth redirect panels!
  */
-export async function signInWithGoogleProfile(email) {
-  const federatedPassword = 'GoogleSecureProd2026!';
+export async function signInWithGoogleProfile(googleIdToken) {
   try {
-    console.log(`[GoogleProfileAuth] Attempting standard Cognito sign-in for ${email}`);
-    return await signInCognito(email, federatedPassword);
-  } catch (error) {
-    const errMsg = error.message || '';
-    if (
-      errMsg.includes('UserNotFoundException') || 
-      errMsg.toLowerCase().includes('not found') || 
-      errMsg.toLowerCase().includes('user does not exist') ||
-      errMsg.toLowerCase().includes('incorrect username')
-    ) {
-      console.log(`[GoogleProfileAuth] Account not found. Instantiating auto-signup for ${email}`);
-      await signUpCognito(email, federatedPassword);
-      
-      console.log(`[GoogleProfileAuth] Bypassing sandbox email. Auto-confirming ${email} via backend...`);
-      await autoConfirmUserBackend(email);
-      
-      console.log(`[GoogleProfileAuth] Auto-confirmation completed. Finalizing sign-in...`);
-      return await signInCognito(email, federatedPassword);
+    console.log(`[GoogleProfileAuth] Verifying and syncing Google ID token via backend...`);
+    const response = await fetch(`${API_BASE_URL}/auth/google-login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ idToken: googleIdToken })
+    });
+    
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Backend Google login federated sync failed.');
     }
+    
+    const { email, temporaryPassword } = data;
+    console.log(`[GoogleProfileAuth] Sync completed. Finalizing standard Cognito sign-in for ${email}...`);
+    return await signInCognito(email, temporaryPassword);
+  } catch (error) {
+    console.error("Google social sign-in failed:", error);
     throw error;
   }
 }

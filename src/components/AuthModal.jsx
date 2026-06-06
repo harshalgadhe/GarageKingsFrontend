@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Mail, Lock, ShieldAlert, CheckCircle2, ArrowRight, ArrowLeft } from 'lucide-react'
+import { X, Mail, Lock, ShieldAlert, CheckCircle2, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react'
 import { signInCognito, signUpCognito, confirmSignUpCognito, signInWithGoogleProfile, autoConfirmUserBackend, parseJwt } from '../lib/auth'
 
 export default function AuthModal({ isOpen, onClose, themeColor = 'purple', onAuthSuccess }) {
@@ -17,21 +17,19 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'purple', onAu
 
   useEffect(() => {
     if (isOpen && mode === 'login') {
+      const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+      // Only initialize native Google Sign-In if a valid custom client ID is set
+      if (!clientId || clientId.includes('dummy') || clientId === '818913587248-1jgrq7f5d4g3d8a1c9h8t2s1p0c0o0p0.apps.googleusercontent.com') {
+        return;
+      }
+
       const initGoogleOAuth = () => {
         if (window.google && window.google.accounts) {
           window.google.accounts.id.initialize({
-            client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || '818913587248-1jgrq7f5d4g3d8a1c9h8t2s1p0c0o0p0.apps.googleusercontent.com',
+            client_id: clientId,
             callback: (response) => {
               if (response.credential) {
-                try {
-                  const payload = parseJwt(response.credential);
-                  if (payload && payload.email) {
-                    handleSelectGoogleAccount(payload.email);
-                  }
-                } catch (e) {
-                  console.error("Failed to parse Google ID Token:", e);
-                  setError("Google authentication parsing failed.");
-                }
+                handleSelectGoogleAccount(response.credential);
               }
             }
           });
@@ -70,13 +68,24 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'purple', onAu
     setIsGoogleSelectOpen(true);
   };
 
-  const handleSelectGoogleAccount = async (selectedEmail) => {
+  const handleSelectGoogleAccount = async (tokenOrEmail) => {
     setIsGoogleSelectOpen(false);
     setLoading(true);
     setError('');
     try {
-      const user = await signInWithGoogleProfile(selectedEmail);
-      setSuccessMessage(`Signed in as Google User: ${selectedEmail}!`);
+      const user = await signInWithGoogleProfile(tokenOrEmail);
+      let displayEmail = tokenOrEmail;
+      if (tokenOrEmail.includes('.')) {
+        try {
+          const payload = parseJwt(tokenOrEmail);
+          if (payload && payload.email) {
+            displayEmail = payload.email;
+          }
+        } catch (e) {
+          console.error("Failed to parse Google ID Token for display:", e);
+        }
+      }
+      setSuccessMessage(`Signed in as Google User: ${displayEmail}!`);
       if (onAuthSuccess) {
         setTimeout(() => {
           onAuthSuccess(user);
@@ -239,16 +248,16 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'purple', onAu
           </div>
         ) : (
           <>
-            <div className="mb-6">
-              <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border mb-3 ${accentClass}`}>
-                <Lock size={9} />
-                Secure Portal
-              </div>
-              <h3 className="text-2xl font-black tracking-tight text-white leading-tight">
-                {mode === 'login' ? 'Access Your Collection' : mode === 'signup' ? 'Create Collector Profile' : 'Verify Your Email'}
+            <div className="mb-8 text-center sm:text-left">
+              <h3 className="text-2xl font-black italic tracking-tight text-white leading-tight uppercase font-grotesk">
+                {mode === 'login' ? 'Welcome Back' : mode === 'signup' ? 'Join the Vault' : 'Account Verification'}
               </h3>
-              <p className="text-white/40 text-xs mt-1">
-                {mode === 'login' ? 'Authentication required to place bids and checkout orders.' : mode === 'signup' ? 'Join Garage Kings to build your vault and participate in live drops.' : 'We\'ve sent a confirmation code to ' + email}
+              <p className="text-white/40 text-xs mt-2.5 font-medium leading-relaxed">
+                {mode === 'login' 
+                  ? 'Sign in to access your custom garage, secure exclusive drops, and track your orders.' 
+                  : mode === 'signup' 
+                    ? 'Create a profile to begin collecting, tracking, and unlocking exclusive premium drops.' 
+                    : 'A 6-digit verification code has been dispatched to ' + email}
               </p>
             </div>
 
@@ -287,17 +296,40 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'purple', onAu
                 <button 
                   type="submit" 
                   disabled={loading}
-                  className={`w-full py-4 rounded-xl text-white font-black text-sm uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 ${buttonClass}`}
+                  className={`w-full py-4 rounded-xl text-white font-black text-sm uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2.5 relative overflow-hidden ${buttonClass} ${loading ? 'opacity-85 pointer-events-none' : ''}`}
                 >
-                  {loading ? 'Authenticating...' : 'Sign In'}
-                  {!loading && <ArrowRight size={14} />}
+                  <AnimatePresence mode="wait">
+                    {loading ? (
+                      <motion.div 
+                        key="loading-signin"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="flex items-center gap-2"
+                      >
+                        <Loader2 className="w-4 h-4 animate-spin text-white" />
+                        <span>Authenticating...</span>
+                      </motion.div>
+                    ) : (
+                      <motion.div 
+                        key="normal-signin"
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 10 }}
+                        className="flex items-center gap-1.5"
+                      >
+                        <span>Sign In</span>
+                        <ArrowRight size={14} />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </button>
 
                 {/* Google Sign In option */}
-                <div className="relative flex py-2 items-center">
-                  <div className="flex-grow border-t border-white/10"></div>
-                  <span className="flex-shrink mx-4 text-white/25 text-[10px] font-black uppercase tracking-wider">Or Continue With</span>
-                  <div className="flex-grow border-t border-white/10"></div>
+                <div className="relative flex py-3 items-center">
+                  <div className="flex-grow border-t border-white/5"></div>
+                  <span className="flex-shrink mx-4 text-white/20 text-[9px] font-bold uppercase tracking-widest">Or Continue With</span>
+                  <div className="flex-grow border-t border-white/5"></div>
                 </div>
 
                 {/* Real native browser Google OAuth Sign-in Button */}
@@ -305,18 +337,43 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'purple', onAu
                   <div id="google-signin-btn-container" className="w-full flex justify-center"></div>
                   
                   {(!import.meta.env.VITE_GOOGLE_CLIENT_ID || import.meta.env.VITE_GOOGLE_CLIENT_ID.includes('dummy')) && (
-                    <div className="w-full bg-[#D4AF37]/5 border border-[#D4AF37]/20 rounded-xl p-3 text-center">
-                      <p className="text-[#D4AF37] text-[10px] leading-relaxed mb-2 font-inter">
-                        ⚠️ <strong>Google OAuth Setup Required</strong>: To enable the browser-native accounts pop-up, you must add your Google Client ID to <code>.env</code> as <code>VITE_GOOGLE_CLIENT_ID="..."</code>.
-                      </p>
-                      <button 
-                        type="button"
-                        onClick={() => handleSelectGoogleAccount('harshalgadhe123@gmail.com')}
-                        className="text-[10px] text-white underline font-black hover:text-white/80 transition-colors cursor-pointer bg-transparent border-none"
-                      >
-                        Bypass & Test Google Login as harshalgadhe123@gmail.com
-                      </button>
-                    </div>
+                    <button 
+                      type="button"
+                      disabled={loading}
+                      onClick={() => handleSelectGoogleAccount('harshalgadhe123@gmail.com')}
+                      className={`w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl bg-white text-black hover:bg-white/90 font-bold text-sm transition-all cursor-pointer shadow-lg relative ${loading ? 'opacity-85 pointer-events-none' : ''}`}
+                    >
+                      <AnimatePresence mode="wait">
+                        {loading ? (
+                          <motion.div 
+                            key="google-loading"
+                            initial={{ opacity: 0, y: 5 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -5 }}
+                            className="flex items-center gap-2"
+                          >
+                            <Loader2 className="w-4 h-4 animate-spin text-black" />
+                            <span>Authenticating...</span>
+                          </motion.div>
+                        ) : (
+                          <motion.div 
+                            key="google-normal"
+                            initial={{ opacity: 0, y: -5 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 5 }}
+                            className="flex items-center gap-3"
+                          >
+                            <svg className="w-5 h-5" viewBox="0 0 24 24">
+                              <path fill="#EA4335" d="M12 5.04c1.66 0 3.2.57 4.38 1.69l3.27-3.27C17.67 1.54 15.02 1 12 1 7.35 1 3.37 3.67 1.39 7.56l3.85 2.99c.92-2.75 3.49-4.51 6.76-4.51z"/>
+                              <path fill="#4285F4" d="M23.49 12.27c0-.81-.07-1.59-.2-2.34H12v4.44h6.44c-.28 1.48-1.12 2.73-2.38 3.58l3.71 2.88c2.17-2 3.72-4.94 3.72-8.56z"/>
+                              <path fill="#FBBC05" d="M5.24 10.55c-.24-.72-.38-1.5-.38-2.3s.14-1.58.38-2.3L1.39 2.96C.5 4.77 0 6.81 0 8.95s.5 4.18 1.39 5.99l3.85-2.99z"/>
+                              <path fill="#34A853" d="M12 23c3.24 0 5.97-1.07 7.96-2.91l-3.71-2.88c-1.03.69-2.35 1.1-4.25 1.1-3.27 0-5.84-1.76-6.76-4.51l-3.85 2.99C3.37 20.33 7.35 23 12 23z"/>
+                            </svg>
+                            <span>Continue with Google</span>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </button>
                   )}
                 </div>
 
@@ -372,10 +429,33 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'purple', onAu
                 <button 
                   type="submit" 
                   disabled={loading}
-                  className={`w-full py-4 rounded-xl text-white font-black text-sm uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 ${buttonClass}`}
+                  className={`w-full py-4 rounded-xl text-white font-black text-sm uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2.5 relative overflow-hidden ${buttonClass} ${loading ? 'opacity-85 pointer-events-none' : ''}`}
                 >
-                  {loading ? 'Creating Profile...' : 'Create Account'}
-                  {!loading && <ArrowRight size={14} />}
+                  <AnimatePresence mode="wait">
+                    {loading ? (
+                      <motion.div 
+                        key="loading-signup"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="flex items-center gap-2"
+                      >
+                        <Loader2 className="w-4 h-4 animate-spin text-white" />
+                        <span>Creating Profile...</span>
+                      </motion.div>
+                    ) : (
+                      <motion.div 
+                        key="normal-signup"
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 10 }}
+                        className="flex items-center gap-1.5"
+                      >
+                        <span>Create Account</span>
+                        <ArrowRight size={14} />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </button>
 
                 <div className="text-center text-xs mt-4 text-white/40">
@@ -409,29 +489,43 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'purple', onAu
                 <button 
                   type="submit" 
                   disabled={loading}
-                  className={`w-full py-4 rounded-xl text-white font-black text-sm uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 ${buttonClass}`}
+                  className={`w-full py-4 rounded-xl text-white font-black text-sm uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2.5 relative overflow-hidden ${buttonClass} ${loading ? 'opacity-85 pointer-events-none' : ''}`}
                 >
-                  {loading ? 'Verifying Code...' : 'Confirm Registration'}
-                  {!loading && <ArrowRight size={14} />}
+                  <AnimatePresence mode="wait">
+                    {loading ? (
+                      <motion.div 
+                        key="loading-verify"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="flex items-center gap-2"
+                      >
+                        <Loader2 className="w-4 h-4 animate-spin text-white" />
+                        <span>Verifying Code...</span>
+                      </motion.div>
+                    ) : (
+                      <motion.div 
+                        key="normal-verify"
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 10 }}
+                        className="flex items-center gap-1.5"
+                      >
+                        <span>Confirm Registration</span>
+                        <ArrowRight size={14} />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </button>
 
-                <div className="relative flex py-2 items-center">
-                  <div className="flex-grow border-t border-white/5"></div>
-                  <span className="flex-shrink mx-4 text-white/15 text-[9px] font-black uppercase tracking-widest">Sandbox Dev Bypass</span>
-                  <div className="flex-grow border-t border-white/5"></div>
-                </div>
-
-                <div className="bg-[#E10600]/5 border border-[#E10600]/25 rounded-2xl p-4 text-center">
-                  <p className="text-white/40 text-[10px] leading-relaxed mb-3">
-                    Cognito Sandbox email delivery might be delayed or filtered out in local testing.
-                  </p>
+                <div className="text-center pt-2 mt-4">
                   <button 
                     type="button"
                     onClick={handleSandboxBypass}
                     disabled={loading}
-                    className="w-full py-2.5 rounded-lg bg-[#E10600]/15 hover:bg-[#E10600]/30 border border-[#E10600]/35 text-[#E10600] text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer"
+                    className="text-[10px] text-white/30 hover:text-white/60 transition-colors cursor-pointer bg-transparent border-none"
                   >
-                    {loading ? 'Confirming User...' : 'Auto-Confirm Account'}
+                    Auto-confirm sandbox account
                   </button>
                 </div>
               </form>

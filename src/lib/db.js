@@ -131,15 +131,6 @@ export async function deleteCar(id) {
   if (!res.ok) throw new Error("Failed to delete casting");
 }
 
-export async function updateCarOrder(newCarsArray) {
-  const res = await fetch(`${API_BASE_URL}/products/reorder`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ order: newCarsArray.map(c => c.id) })
-  });
-  if (!res.ok) throw new Error("Failed to save order updates");
-}
-
 // Real-time Auctions endpoints
 export async function getAuctions() {
   try {
@@ -322,4 +313,29 @@ export function fileToBase64(file) {
     reader.onload = () => resolve(reader.result);
     reader.onerror = error => reject(error);
   });
+}
+
+// Admin Orders Management Endpoints
+export async function getAdminOrders() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/orders`, {
+      headers: getAuthHeaders()
+    });
+    if (!res.ok) throw new Error("Failed to fetch admin orders list");
+    const data = await res.json();
+    return data.orders || data;
+  } catch (err) {
+    console.error("Error fetching admin orders:", err);
+    return [];
+  }
+}
+
+export async function updateOrderStatus(id, status, trackingNumber) {
+  const res = await fetch(`${API_BASE_URL}/admin/orders/${id}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ status, trackingNumber })
+  });
+  if (!res.ok) throw new Error("Failed to update order status");
+  return await res.json();
 }
