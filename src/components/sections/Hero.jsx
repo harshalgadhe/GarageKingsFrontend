@@ -97,7 +97,7 @@ const Hero = forwardRef(function Hero({ heroImages = [] }, ref) {
             className="mt-6 text-base md:text-lg leading-relaxed text-[#A1A1AA] max-w-lg font-inter"
           >
             {user 
-              ? `Welcome back, Collector! View your garage collection, check your acquisition history, or secure upcoming drops.`
+              ? `Welcome back, ${user.displayName || 'Collector'}! View your garage collection, check your acquisition history, or secure upcoming drops.`
               : 'Discover rare Hot Wheels, Mini GT, Inno64 and collector-grade die-cast models curated for enthusiasts.'
             }
           </motion.p>

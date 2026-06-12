@@ -72,9 +72,16 @@ export async function signInCognito(email, password) {
 /**
  * Registers a new Customer user in AWS Cognito
  */
-export async function signUpCognito(email, password) {
+export async function signUpCognito(email, password, name) {
   try {
-    const response = await fetch(COGNITO_ENDPOINT, {
+    const userAttributes = [
+      { Name: 'email', Value: email.trim() }
+    ];
+    if (name) {
+      userAttributes.push({ Name: 'name', Value: name.trim() });
+    }
+
+    let response = await fetch(COGNITO_ENDPOINT, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-amz-json-1.1',
@@ -84,13 +91,33 @@ export async function signUpCognito(email, password) {
         ClientId: COGNITO_CLIENT_ID,
         Username: email.trim(),
         Password: password,
-        UserAttributes: [
-          { Name: 'email', Value: email.trim() }
-        ]
+        UserAttributes: userAttributes
       })
     });
 
-    const data = await response.json();
+    let data = await response.json();
+
+    // Catch cases where name attribute is not allowed by Cognito user pool policy and retry without it
+    if (!response.ok && name && (data.message?.toLowerCase().includes('attribute') || data.__type?.includes('InvalidParameterException'))) {
+      console.warn("Cognito signUp with name attribute failed, retrying with email only...", data);
+      response = await fetch(COGNITO_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-amz-json-1.1',
+          'X-Amz-Target': 'AWSCognitoIdentityProviderService.SignUp'
+        },
+        body: JSON.stringify({
+          ClientId: COGNITO_CLIENT_ID,
+          Username: email.trim(),
+          Password: password,
+          UserAttributes: [
+            { Name: 'email', Value: email.trim() }
+          ]
+        })
+      });
+      data = await response.json();
+    }
+
     if (!response.ok) {
       throw new Error(data.message || 'Registration failed.');
     }
@@ -158,10 +185,26 @@ export function getCurrentUser() {
     return null;
   }
 
+  // Generate a clean display name from name / given_name or email prefix
+  const rawName = payload.name || payload.given_name || payload.nickname;
+  let displayName = '';
+  if (rawName) {
+    displayName = rawName;
+  } else if (payload.email) {
+    const prefix = payload.email.split('@')[0];
+    displayName = prefix
+      .split(/[._-]/)
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  } else {
+    displayName = 'Collector';
+  }
+
   return {
     email: payload.email,
     userId: payload.sub,
     username: payload['cognito:username'] || payload.email,
+    displayName: displayName,
     roles: payload['cognito:groups'] || []
   };
 }

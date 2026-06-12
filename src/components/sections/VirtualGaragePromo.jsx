@@ -1,5 +1,6 @@
-import { forwardRef, useState } from 'react'
+import { forwardRef, useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import { getCurrentUser } from '../../lib/auth'
 
 const mockAchievements = [
   { label: 'Grail Hunter', icon: '🏆', desc: 'Own 3 or more RLC/STH castings' },
@@ -9,6 +10,11 @@ const mockAchievements = [
 
 const VirtualGaragePromo = forwardRef(function VirtualGaragePromo(_props, ref) {
   const [selectedAchievement, setSelectedAchievement] = useState(0)
+  const [user, setUser] = useState(null)
+
+  useEffect(() => {
+    setUser(getCurrentUser())
+  }, [])
 
   return (
     <section ref={ref} id="garage" className="py-28 md:py-36 relative overflow-hidden bg-[#050505] border-t border-[#2A2A2A]">
@@ -32,7 +38,9 @@ const VirtualGaragePromo = forwardRef(function VirtualGaragePromo(_props, ref) {
                     GK
                   </div>
                   <div className="text-left">
-                    <h4 className="text-sm font-black italic uppercase tracking-wider text-white font-grotesk">@grail_hunter99</h4>
+                    <h4 className="text-sm font-black italic uppercase tracking-wider text-white font-grotesk">
+                      {user ? `@${user.displayName.replace(/\s+/g, '_').toLowerCase()}` : '@grail_hunter99'}
+                    </h4>
                     <span className="text-[10px] font-bold text-[#A1A1AA] uppercase tracking-widest">Collector Rank: Gold V</span>
                   </div>
                 </div>

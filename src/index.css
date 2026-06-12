@@ -149,10 +149,17 @@ h1, h2, h3, h4, h5, h6 {
     color: #000000 !important;
     margin: 0 !important;
     padding: 0 !important;
+    height: auto !important;
   }
 
   /* Hide the entire React tree to isolate the Portal print container */
   #root {
+    display: none !important;
+  }
+
+  /* Hide ALL direct children of body except the receipt wrapper
+     This catches navigation portals, modal portals, etc. */
+  body > *:not(.printable-receipt-wrapper) {
     display: none !important;
   }
 
@@ -161,14 +168,16 @@ h1, h2, h3, h4, h5, h6 {
     display: block !important;
     position: relative !important;
     width: 210mm !important;
-    min-height: 297mm !important;
+    height: auto !important;         /* Let content determine height — never force a full page */
     margin: 0 auto !important;
-    padding: 1.6cm !important; /* Move margins into padding to preserve spacing */
+    padding: 1.2cm !important;
     box-shadow: none !important;
     border: none !important;
     background-color: #ffffff !important;
     color: #000000 !important;
     box-sizing: border-box !important;
+    page-break-inside: avoid !important; /* Don't split receipt mid-content */
+    break-inside: avoid !important;
   }
 
   /* Force background colors to print on browsers */
@@ -183,8 +192,8 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   @page {
-    margin: 0 !important; /* Set margin: 0 to programmatically remove default browser headers/footers */
     size: A4 portrait;
+    margin: 0; /* Suppress browser's default URL/page-number headers and footers */
   }
 }
 

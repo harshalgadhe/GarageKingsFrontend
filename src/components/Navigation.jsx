@@ -8,7 +8,7 @@ import AuthModal from './AuthModal'
 import { LogOut, User, X, Settings } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 
-const MotionLink = motion(Link)
+const MotionLink = motion.create(Link)
 
 const links = [
   { id: 'hero', label: 'Home' },
@@ -149,7 +149,7 @@ export default function Navigation({ activeSection }) {
                 type="button"
                 onClick={handleProfileClick}
                 className={`p-2.5 rounded-xl bg-white/5 border hover:border-[#E10600]/30 hover:bg-[#E10600]/5 hover:text-white transition-all cursor-pointer group ${user ? 'border-gk-yellow/40 text-gk-yellow' : 'border-white/5 text-white/80'}`}
-                title={user ? `Collector Menu (${user.email})` : "Collector Profile"}
+                title={user ? `Collector Menu (${user.displayName || user.email})` : "Collector Profile"}
               >
                 <svg className="w-4.5 h-4.5 group-hover:scale-105 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -169,7 +169,8 @@ export default function Navigation({ activeSection }) {
                     >
                       <div className="px-3 py-2 border-b border-white/5 mb-1.5">
                         <p className="text-[9px] uppercase tracking-widest text-white/30 font-black">Logged In As</p>
-                        <p className="text-xs font-bold text-white truncate" title={user.email}>{user.email}</p>
+                        <p className="text-xs font-bold text-white truncate" title={user.displayName || user.email}>{user.displayName || user.email}</p>
+                        <p className="text-[10px] text-white/50 truncate mt-0.5">{user.email}</p>
                       </div>
                       <Link 
                         to="/garage" 

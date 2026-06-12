@@ -13,6 +13,7 @@ export function CheckoutModal({ car, onClose, onOrderPlaced }) {
   const [phone, setPhone] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+  const user = getCurrentUser()
 
   const handleCheckout = async (e) => {
     e.preventDefault()
@@ -62,12 +63,12 @@ export function CheckoutModal({ car, onClose, onOrderPlaced }) {
           <div className="text-center py-8">
             <div className="text-5xl mb-4">🎉</div>
             <h3 className="text-2xl font-black text-white mb-2">Order Confirmed!</h3>
-            <p className="text-white/50 text-sm">Your order for {car.name} has been secured. Check your profile for details!</p>
+            <p className="text-white/50 text-sm">Your order for {car.name} has been secured, {user?.displayName || 'Collector'}. Check your profile for details!</p>
           </div>
         ) : (
           <form onSubmit={handleCheckout} className="space-y-4">
             <h3 className="text-xl font-black text-white mb-1">Secure Checkout</h3>
-            <p className="text-white/40 text-xs">Confirm your acquisition of this premium diecast grail.</p>
+            <p className="text-white/40 text-xs">Confirm your acquisition, {user?.displayName || 'Collector'}.</p>
 
             <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex gap-4 items-center">
               <img src={car.image || '/vault-1.png'} className="w-16 h-12 object-cover rounded-lg border border-white/10" />

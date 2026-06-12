@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Mail, Lock, ShieldAlert, CheckCircle2, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react'
+import { X, Mail, Lock, ShieldAlert, CheckCircle2, ArrowRight, ArrowLeft, Loader2, User } from 'lucide-react'
 import { signInCognito, signUpCognito, confirmSignUpCognito, signInWithGoogleProfile, autoConfirmUserBackend, parseJwt } from '../lib/auth'
 
 export default function AuthModal({ isOpen, onClose, themeColor = 'purple', onAuthSuccess }) {
@@ -8,6 +8,7 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'purple', onAu
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [fullName, setFullName] = useState('')
   const [verificationCode, setVerificationCode] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -16,45 +17,59 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'purple', onAu
   const [customGoogleEmail, setCustomGoogleEmail] = useState('')
 
   useEffect(() => {
-    if (isOpen && mode === 'login') {
-      const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-      // Only initialize native Google Sign-In if a valid custom client ID is set
-      if (!clientId || clientId.includes('dummy') || clientId === '818913587248-1jgrq7f5d4g3d8a1c9h8t2s1p0c0o0p0.apps.googleusercontent.com') {
-        return;
-      }
+    if (!isOpen || mode !== 'login') return;
 
-      const initGoogleOAuth = () => {
-        if (window.google && window.google.accounts) {
-          window.google.accounts.id.initialize({
-            client_id: clientId,
-            callback: (response) => {
-              if (response.credential) {
-                handleSelectGoogleAccount(response.credential);
-              }
-            }
-          });
-
-          const btnContainer = document.getElementById('google-signin-btn-container');
-          if (btnContainer) {
-            window.google.accounts.id.renderButton(
-              btnContainer,
-              { 
-                theme: 'filled_black', 
-                size: 'large', 
-                text: 'signin_with', 
-                width: '380',
-                shape: 'pill'
-              }
-            );
-          }
-        } else {
-          setTimeout(initGoogleOAuth, 150);
-        }
-      };
-
-      initGoogleOAuth();
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!clientId || clientId.includes('dummy') || clientId === '818913587248-1jgrq7f5d4g3d8a1c9h8t2s1p0c0o0p0.apps.googleusercontent.com') {
+      return;
     }
+
+    // Pre-initialize the token client so it's ready when the button is clicked.
+    // We intentionally do NOT call prompt() here — the user must click the button.
+    // Using initCodeClient with select_account ensures the account picker always appears.
+    const waitForGIS = () => {
+      if (window.google && window.google.accounts) {
+        // Disable One Tap auto-prompt entirely so it never silently signs in
+        window.google.accounts.id.disableAutoSelect();
+      } else {
+        setTimeout(waitForGIS, 150);
+      }
+    };
+    waitForGIS();
   }, [isOpen, mode]);
+
+  // Trigger Google account picker popup when user clicks our custom button
+  const triggerGoogleAccountPicker = () => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!clientId || !window.google?.accounts?.oauth2) return;
+
+    const tokenClient = window.google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: 'openid email profile',
+      prompt: 'select_account', // Always show account picker, never auto-pick
+      callback: async (tokenResponse) => {
+        if (tokenResponse.error) {
+          setError('Google sign-in was cancelled or failed.');
+          return;
+        }
+        // Fetch the user info using the access token to get the ID token equivalent
+        try {
+          const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+            headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
+          });
+          const userInfo = await userInfoRes.json();
+          if (!userInfo.email) throw new Error('Could not retrieve email from Google.');
+          // Pass email directly to our backend (sandbox bypass mode)
+          await handleSelectGoogleAccount(userInfo.email);
+        } catch (err) {
+          setError(err.message || 'Failed to retrieve Google account info.');
+          setLoading(false);
+        }
+      }
+    });
+    tokenClient.requestAccessToken();
+  };
+
 
   if (!isOpen) return null;
 
@@ -167,7 +182,7 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'purple', onAu
     
     setLoading(true);
     try {
-      await signUpCognito(email, password);
+      await signUpCognito(email, password, fullName);
       setSuccessMessage('Account registered! Verification code sent to email.');
       setTimeout(() => {
         setSuccessMessage('');
@@ -268,267 +283,214 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'purple', onAu
               </div>
             )}
 
-            {mode === 'login' && (
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
-                  <input 
-                    required 
-                    type="email" 
-                    value={email} 
-                    onChange={e => setEmail(e.target.value)} 
-                    placeholder="Email Address"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl pl-11 pr-4 py-3.5 text-white placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors text-sm" 
-                  />
-                </div>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
-                  <input 
-                    required 
-                    type="password" 
-                    value={password} 
-                    onChange={e => setPassword(e.target.value)} 
-                    placeholder="Password"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl pl-11 pr-4 py-3.5 text-white placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors text-sm" 
-                  />
-                </div>
-                
-                <button 
-                  type="submit" 
-                  disabled={loading}
-                  className={`w-full py-4 rounded-xl text-white font-black text-sm uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2.5 relative overflow-hidden ${buttonClass} ${loading ? 'opacity-85 pointer-events-none' : ''}`}
-                >
-                  <AnimatePresence mode="wait">
-                    {loading ? (
-                      <motion.div 
-                        key="loading-signin"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="flex items-center gap-2"
-                      >
-                        <Loader2 className="w-4 h-4 animate-spin text-white" />
-                        <span>Authenticating...</span>
-                      </motion.div>
-                    ) : (
-                      <motion.div 
-                        key="normal-signin"
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 10 }}
-                        className="flex items-center gap-1.5"
-                      >
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-16 space-y-5">
+                <Loader2 size={40} className={`animate-spin ${themeColor === 'orange' ? 'text-gk-orange' : 'text-purple-500'}`} />
+                <p className="text-white/60 text-sm font-medium animate-pulse text-center">
+                  {mode === 'login' 
+                    ? 'Accessing exclusive secure vault...' 
+                    : mode === 'signup' 
+                      ? 'Creating collector profile...' 
+                      : 'Verifying credentials...'}
+                </p>
+              </div>
+            ) : (
+              <>
+                {mode === 'login' && (
+                  <form onSubmit={handleLogin} className="space-y-4">
+                    <div className="relative">
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
+                      <input 
+                        required 
+                        type="email" 
+                        disabled={loading}
+                        value={email} 
+                        onChange={e => setEmail(e.target.value)} 
+                        placeholder="Email Address"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-11 pr-4 py-3.5 text-white placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors text-sm" 
+                      />
+                    </div>
+                    <div className="relative">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
+                      <input 
+                        required 
+                        type="password" 
+                        disabled={loading}
+                        value={password} 
+                        onChange={e => setPassword(e.target.value)} 
+                        placeholder="Password"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-11 pr-4 py-3.5 text-white placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors text-sm" 
+                      />
+                    </div>
+                    
+                    <button 
+                      type="submit" 
+                      className={`w-full py-4 rounded-xl text-white font-black text-sm uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2.5 relative overflow-hidden ${buttonClass}`}
+                    >
+                      <div className="flex items-center gap-1.5">
                         <span>Sign In</span>
                         <ArrowRight size={14} />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </button>
-
-                {/* Google Sign In option */}
-                <div className="relative flex py-3 items-center">
-                  <div className="flex-grow border-t border-white/5"></div>
-                  <span className="flex-shrink mx-4 text-white/20 text-[9px] font-bold uppercase tracking-widest">Or Continue With</span>
-                  <div className="flex-grow border-t border-white/5"></div>
-                </div>
-
-                {/* Real native browser Google OAuth Sign-in Button */}
-                <div className="w-full flex flex-col items-center gap-3 py-1">
-                  <div id="google-signin-btn-container" className="w-full flex justify-center"></div>
-                  
-                  {(!import.meta.env.VITE_GOOGLE_CLIENT_ID || import.meta.env.VITE_GOOGLE_CLIENT_ID.includes('dummy')) && (
-                    <button 
-                      type="button"
-                      disabled={loading}
-                      onClick={() => handleSelectGoogleAccount('harshalgadhe123@gmail.com')}
-                      className={`w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl bg-white text-black hover:bg-white/90 font-bold text-sm transition-all cursor-pointer shadow-lg relative ${loading ? 'opacity-85 pointer-events-none' : ''}`}
-                    >
-                      <AnimatePresence mode="wait">
-                        {loading ? (
-                          <motion.div 
-                            key="google-loading"
-                            initial={{ opacity: 0, y: 5 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -5 }}
-                            className="flex items-center gap-2"
-                          >
-                            <Loader2 className="w-4 h-4 animate-spin text-black" />
-                            <span>Authenticating...</span>
-                          </motion.div>
-                        ) : (
-                          <motion.div 
-                            key="google-normal"
-                            initial={{ opacity: 0, y: -5 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 5 }}
-                            className="flex items-center gap-3"
-                          >
-                            <svg className="w-5 h-5" viewBox="0 0 24 24">
-                              <path fill="#EA4335" d="M12 5.04c1.66 0 3.2.57 4.38 1.69l3.27-3.27C17.67 1.54 15.02 1 12 1 7.35 1 3.37 3.67 1.39 7.56l3.85 2.99c.92-2.75 3.49-4.51 6.76-4.51z"/>
-                              <path fill="#4285F4" d="M23.49 12.27c0-.81-.07-1.59-.2-2.34H12v4.44h6.44c-.28 1.48-1.12 2.73-2.38 3.58l3.71 2.88c2.17-2 3.72-4.94 3.72-8.56z"/>
-                              <path fill="#FBBC05" d="M5.24 10.55c-.24-.72-.38-1.5-.38-2.3s.14-1.58.38-2.3L1.39 2.96C.5 4.77 0 6.81 0 8.95s.5 4.18 1.39 5.99l3.85-2.99z"/>
-                              <path fill="#34A853" d="M12 23c3.24 0 5.97-1.07 7.96-2.91l-3.71-2.88c-1.03.69-2.35 1.1-4.25 1.1-3.27 0-5.84-1.76-6.76-4.51l-3.85 2.99C3.37 20.33 7.35 23 12 23z"/>
-                            </svg>
-                            <span>Continue with Google</span>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+                      </div>
                     </button>
-                  )}
-                </div>
 
-                <div className="text-center text-xs mt-4 text-white/40">
-                  New collector?{' '}
-                  <button 
-                    type="button" 
-                    onClick={() => setMode('signup')} 
-                    className="text-white font-bold hover:underline cursor-pointer"
-                  >
-                    Register Here
-                  </button>
-                </div>
-              </form>
-            )}
+                    {/* Google Sign In option */}
+                    <div className="relative flex py-3 items-center">
+                      <div className="flex-grow border-t border-white/5"></div>
+                      <span className="flex-shrink mx-4 text-white/20 text-[9px] font-bold uppercase tracking-widest">Or Continue With</span>
+                      <div className="flex-grow border-t border-white/5"></div>
+                    </div>
 
-            {mode === 'signup' && (
-              <form onSubmit={handleSignUp} className="space-y-4">
-                <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
-                  <input 
-                    required 
-                    type="email" 
-                    value={email} 
-                    onChange={e => setEmail(e.target.value)} 
-                    placeholder="Email Address"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl pl-11 pr-4 py-3.5 text-white placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors text-sm" 
-                  />
-                </div>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
-                  <input 
-                    required 
-                    type="password" 
-                    value={password} 
-                    onChange={e => setPassword(e.target.value)} 
-                    placeholder="Password (Min 8 Characters)"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl pl-11 pr-4 py-3.5 text-white placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors text-sm" 
-                  />
-                </div>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
-                  <input 
-                    required 
-                    type="password" 
-                    value={confirmPassword} 
-                    onChange={e => setConfirmPassword(e.target.value)} 
-                    placeholder="Confirm Password"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl pl-11 pr-4 py-3.5 text-white placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors text-sm" 
-                  />
-                </div>
-                
-                <button 
-                  type="submit" 
-                  disabled={loading}
-                  className={`w-full py-4 rounded-xl text-white font-black text-sm uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2.5 relative overflow-hidden ${buttonClass} ${loading ? 'opacity-85 pointer-events-none' : ''}`}
-                >
-                  <AnimatePresence mode="wait">
-                    {loading ? (
-                      <motion.div 
-                        key="loading-signup"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="flex items-center gap-2"
+                    {/* Google Sign In — always shows account picker popup */}
+                    <div className="w-full py-1">
+                      <button
+                        type="button"
+                        disabled={loading}
+                        onClick={() => {
+                          const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+                          const isSandbox = !clientId || clientId.includes('dummy');
+                          if (isSandbox) {
+                            handleSelectGoogleAccount('harshalgadhe123@gmail.com');
+                          } else {
+                            triggerGoogleAccountPicker();
+                          }
+                        }}
+                        className="w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl bg-white text-black hover:bg-white/90 font-bold text-sm transition-all cursor-pointer shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
                       >
-                        <Loader2 className="w-4 h-4 animate-spin text-white" />
-                        <span>Creating Profile...</span>
-                      </motion.div>
-                    ) : (
-                      <motion.div 
-                        key="normal-signup"
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 10 }}
-                        className="flex items-center gap-1.5"
+                        <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
+                          <path fill="#EA4335" d="M12 5.04c1.66 0 3.2.57 4.38 1.69l3.27-3.27C17.67 1.54 15.02 1 12 1 7.35 1 3.37 3.67 1.39 7.56l3.85 2.99c.92-2.75 3.49-4.51 6.76-4.51z"/>
+                          <path fill="#4285F4" d="M23.49 12.27c0-.81-.07-1.59-.2-2.34H12v4.44h6.44c-.28 1.48-1.12 2.73-2.38 3.58l3.71 2.88c2.17-2 3.72-4.94 3.72-8.56z"/>
+                          <path fill="#FBBC05" d="M5.24 10.55c-.24-.72-.38-1.5-.38-2.3s.14-1.58.38-2.3L1.39 2.96C.5 4.77 0 6.81 0 8.95s.5 4.18 1.39 5.99l3.85-2.99z"/>
+                          <path fill="#34A853" d="M12 23c3.24 0 5.97-1.07 7.96-2.91l-3.71-2.88c-1.03.69-2.35 1.1-4.25 1.1-3.27 0-5.84-1.76-6.76-4.51l-3.85 2.99C3.37 20.33 7.35 23 12 23z"/>
+                        </svg>
+                        <span>Continue with Google</span>
+                      </button>
+                    </div>
+
+                    <div className="text-center text-xs mt-4 text-white/40">
+                      New collector?{' '}
+                      <button 
+                        type="button" 
+                        onClick={() => setMode('signup')} 
+                        className="text-white font-bold hover:underline cursor-pointer"
                       >
+                        Register Here
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {mode === 'signup' && (
+                  <form onSubmit={handleSignUp} className="space-y-4">
+                    <div className="relative">
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
+                      <input 
+                        required 
+                        type="text" 
+                        disabled={loading}
+                        value={fullName} 
+                        onChange={e => setFullName(e.target.value)} 
+                        placeholder="Full Name"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-11 pr-4 py-3.5 text-white placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors text-sm" 
+                      />
+                    </div>
+                    <div className="relative">
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
+                      <input 
+                        required 
+                        type="email" 
+                        disabled={loading}
+                        value={email} 
+                        onChange={e => setEmail(e.target.value)} 
+                        placeholder="Email Address"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-11 pr-4 py-3.5 text-white placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors text-sm" 
+                      />
+                    </div>
+                    <div className="relative">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
+                      <input 
+                        required 
+                        type="password" 
+                        disabled={loading}
+                        value={password} 
+                        onChange={e => setPassword(e.target.value)} 
+                        placeholder="Password (Min 8 Characters)"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-11 pr-4 py-3.5 text-white placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors text-sm" 
+                      />
+                    </div>
+                    <div className="relative">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
+                      <input 
+                        required 
+                        type="password" 
+                        disabled={loading}
+                        value={confirmPassword} 
+                        onChange={e => setConfirmPassword(e.target.value)} 
+                        placeholder="Confirm Password"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-11 pr-4 py-3.5 text-white placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors text-sm" 
+                      />
+                    </div>
+                    
+                    <button 
+                      type="submit" 
+                      className={`w-full py-4 rounded-xl text-white font-black text-sm uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2.5 relative overflow-hidden ${buttonClass}`}
+                    >
+                      <div className="flex items-center gap-1.5">
                         <span>Create Account</span>
                         <ArrowRight size={14} />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </button>
+                      </div>
+                    </button>
 
-                <div className="text-center text-xs mt-4 text-white/40">
-                  Already registered?{' '}
-                  <button 
-                    type="button" 
-                    onClick={() => setMode('login')} 
-                    className="text-white font-bold hover:underline cursor-pointer"
-                  >
-                    Log In
-                  </button>
-                </div>
-              </form>
-            )}
+                    <div className="text-center text-xs mt-4 text-white/40">
+                      Already registered?{' '}
+                      <button 
+                        type="button" 
+                        onClick={() => setMode('login')} 
+                        className="text-white font-bold hover:underline cursor-pointer"
+                      >
+                        Log In
+                      </button>
+                    </div>
+                  </form>
+                )}
 
-            {mode === 'verify' && (
-              <form onSubmit={handleVerify} className="space-y-4">
-                <p className="text-xs text-[#E10600] font-black uppercase tracking-wider mb-2 font-grotesk">Check Your Inbox</p>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
-                  <input 
-                    required 
-                    type="text" 
-                    value={verificationCode} 
-                    onChange={e => setVerificationCode(e.target.value)} 
-                    placeholder="6-Digit Verification Code"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl pl-11 pr-4 py-3.5 text-white placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors text-sm font-mono text-center tracking-widest" 
-                  />
-                </div>
-                
-                <button 
-                  type="submit" 
-                  disabled={loading}
-                  className={`w-full py-4 rounded-xl text-white font-black text-sm uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2.5 relative overflow-hidden ${buttonClass} ${loading ? 'opacity-85 pointer-events-none' : ''}`}
-                >
-                  <AnimatePresence mode="wait">
-                    {loading ? (
-                      <motion.div 
-                        key="loading-verify"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="flex items-center gap-2"
-                      >
-                        <Loader2 className="w-4 h-4 animate-spin text-white" />
-                        <span>Verifying Code...</span>
-                      </motion.div>
-                    ) : (
-                      <motion.div 
-                        key="normal-verify"
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 10 }}
-                        className="flex items-center gap-1.5"
-                      >
+                {mode === 'verify' && (
+                  <form onSubmit={handleVerify} className="space-y-4">
+                    <p className="text-xs text-[#E10600] font-black uppercase tracking-wider mb-2 font-grotesk">Check Your Inbox</p>
+                    <div className="relative">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
+                      <input 
+                        required 
+                        type="text" 
+                        disabled={loading}
+                        value={verificationCode} 
+                        onChange={e => setVerificationCode(e.target.value)} 
+                        placeholder="6-Digit Verification Code"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-11 pr-4 py-3.5 text-white placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors text-sm font-mono text-center tracking-widest" 
+                      />
+                    </div>
+                    
+                    <button 
+                      type="submit" 
+                      className={`w-full py-4 rounded-xl text-white font-black text-sm uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2.5 relative overflow-hidden ${buttonClass}`}
+                    >
+                      <div className="flex items-center gap-1.5">
                         <span>Confirm Registration</span>
                         <ArrowRight size={14} />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </button>
+                      </div>
+                    </button>
 
-                <div className="text-center pt-2 mt-4">
-                  <button 
-                    type="button"
-                    onClick={handleSandboxBypass}
-                    disabled={loading}
-                    className="text-[10px] text-white/30 hover:text-white/60 transition-colors cursor-pointer bg-transparent border-none"
-                  >
-                    Auto-confirm sandbox account
-                  </button>
-                </div>
-              </form>
+                    <div className="text-center pt-2 mt-4">
+                      <button 
+                        type="button"
+                        onClick={handleSandboxBypass}
+                        className="text-[10px] text-white/30 hover:text-white/60 transition-colors cursor-pointer bg-transparent border-none"
+                      >
+                        Auto-confirm sandbox account
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </>
             )}
           </>
         )}

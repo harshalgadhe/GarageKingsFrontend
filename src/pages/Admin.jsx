@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Trash2, Edit2, ChevronUp, ChevronDown, Save, X, Image as ImageIcon, Settings, Eye, EyeOff, LogOut, Mail, Lock, ShieldAlert, CheckCircle2, User } from 'lucide-react'
-import { getCars, addCar, updateCar, deleteCar, uploadImageToStorage, getGlobalSettings, updateGlobalSettings, getAdminOrders, updateOrderStatus } from '../lib/db'
+import { Plus, Trash2, Edit2, ChevronUp, ChevronDown, Save, X, Image as ImageIcon, Settings, Eye, EyeOff, LogOut, Mail, Lock, ShieldAlert, CheckCircle2, User, Search } from 'lucide-react'
+import { getCars, addCar, updateCar, deleteCar, uploadImageToStorage, getGlobalSettings, updateGlobalSettings, getAdminOrders, updateOrderStatus, getReceipts, addReceipt, deleteReceipt, getCustomers, addCustomer } from '../lib/db'
 import { Link } from 'react-router-dom'
 import { signOutCognito, getCurrentUser } from '../lib/auth'
 import Navigation from '../components/Navigation'
@@ -45,10 +45,144 @@ export default function Admin() {
   const [adminTab, setAdminTab] = useState('inventory')
   const [orders, setOrders] = useState([])
   const [tempTracking, setTempTracking] = useState({})
+  const [user, setUser] = useState(null)
+
+  // Billing Receipts states
+  const [receipts, setReceipts] = useState([])
+  const [customers, setCustomers] = useState([])
+  const [receiptsLoading, setReceiptsLoading] = useState(false)
+  const [isAddingReceipt, setIsAddingReceipt] = useState(false)
+  const [selectedReceipt, setSelectedReceipt] = useState(null)
+  const [receiptSearch, setReceiptSearch] = useState('')
+  const [orderSearch, setOrderSearch] = useState('')
+
+  // Manual Receipt Form States
+  const [receiptNum, setReceiptNum] = useState('')
+  const [custMode, setCustMode] = useState('select') // 'select' | 'new'
+  const [selCustId, setSelCustId] = useState('')
+  const [newCustName, setNewCustName] = useState('')
+  const [newCustPhone, setNewCustPhone] = useState('')
+  const [newCustInsta, setNewCustInsta] = useState('')
+  const [newCustAddr, setNewCustAddr] = useState('')
+  const [rcFormat, setRcFormat] = useState('standard')
+  const [rcTaxPercent, setRcTaxPercent] = useState(0)
+  const [rcShipping, setRcShipping] = useState(0)
+  const [rcAdvance, setRcAdvance] = useState(0)
+  const [rcFooter, setRcFooter] = useState('Thank you for your purchase from Garage Kings!')
+  const [rcItems, setRcItems] = useState([{ description: '', qty: 1, amount: 0 }])
+
+  const handleAddRcItem = () => {
+    setRcItems(prev => [...prev, { description: '', qty: 1, amount: 0 }]);
+  }
+
+  const handleUpdateRcItem = (idx, field, value) => {
+    setRcItems(prev => prev.map((item, i) => i === idx ? { ...item, [field]: value } : item));
+  }
+
+  const handleRemoveRcItem = (idx) => {
+    setRcItems(prev => prev.filter((_, i) => i !== idx));
+  }
+
+  const handleSelectCarForReceiptItem = (idx, carId) => {
+    const car = cars.find(c => c.id === carId);
+    if (car) {
+      handleUpdateRcItem(idx, 'description', car.name);
+      handleUpdateRcItem(idx, 'amount', Number(car.price || 0));
+    }
+  }
+
+  const handleOpenReceiptModal = () => {
+    setReceiptNum(`GK-RC-${Date.now().toString().slice(-6)}`);
+    setCustMode('select');
+    setSelCustId(customers.length > 0 ? customers[0].id : '');
+    setNewCustName('');
+    setNewCustPhone('');
+    setNewCustInsta('');
+    setNewCustAddr('');
+    setRcFormat('standard');
+    setRcTaxPercent(0);
+    setRcShipping(0);
+    setRcAdvance(0);
+    setRcFooter('Thank you for your purchase from Garage Kings!');
+    setRcItems([{ description: '', qty: 1, amount: 0 }]);
+    setIsAddingReceipt(true);
+  }
+
+  const calculateLiveTotal = () => {
+    const subtotal = rcItems.reduce((sum, item) => sum + (Number(item.amount) * Number(item.qty)), 0);
+    const tax = subtotal * (Number(rcTaxPercent) / 100);
+    const total = subtotal + tax + Number(rcShipping);
+    const balance = Math.max(0, total - Number(rcAdvance));
+    return { subtotal, tax, shipping: Number(rcShipping) || 0, total, balance };
+  }
+
+  const handleSaveReceipt = async (e) => {
+    e.preventDefault();
+    if (rcItems.length === 0 || rcItems.some(i => !i.description || i.amount < 0)) {
+      alert("Please add at least one item with valid description and price.");
+      return;
+    }
+    
+    setReceiptsLoading(true);
+    try {
+      let finalCustomerId = selCustId;
+      let customerName = '';
+      let customerPhone = '';
+      let customerInstagram = '';
+      let customerAddress = '';
+
+      if (custMode === 'new') {
+        finalCustomerId = 'dummy';
+        customerName = newCustName.trim();
+        customerPhone = newCustPhone.trim();
+        customerInstagram = newCustInsta.trim();
+        customerAddress = newCustAddr.trim();
+      }
+      
+      if (custMode === 'select' && !finalCustomerId) {
+        throw new Error("No customer selected.");
+      }
+      
+      await addReceipt({
+        receiptNumber: receiptNum.trim(),
+        customerId: finalCustomerId,
+        formatType: rcFormat,
+        taxPercent: Number(rcTaxPercent),
+        shippingCharges: Number(rcShipping),
+        advancePaid: Number(rcAdvance),
+        footerNote: rcFooter.trim(),
+        items: rcItems,
+        customerName,
+        customerPhone,
+        customerInstagram,
+        customerAddress
+      });
+      
+      alert("Receipt generated successfully!");
+      setIsAddingReceipt(false);
+      loadData();
+    } catch (err) {
+      alert("Failed to generate receipt: " + err.message);
+    } finally {
+      setReceiptsLoading(false);
+    }
+  }
+
+  const handleDeleteReceipt = async (id) => {
+    if (!confirm("Are you sure you want to delete this receipt record? This will not revert inventory changes.")) return;
+    try {
+      await deleteReceipt(id);
+      setReceipts(prev => prev.filter(r => r.id !== id));
+      alert("Receipt record deleted successfully.");
+    } catch (err) {
+      alert("Failed to delete receipt: " + err.message);
+    }
+  }
 
   useEffect(() => {
     // Listen to AWS Cognito active session
     const activeSession = getCurrentUser()
+    setUser(activeSession)
     if (activeSession) {
       setIsAuthenticated(true)
       const userIsAdmin = activeSession.roles.includes('admin')
@@ -101,14 +235,18 @@ export default function Admin() {
 
   const loadData = async () => {
     try {
-      const [carData, settingsData, ordersData] = await Promise.all([
+      const [carData, settingsData, ordersData, receiptsData, customersData] = await Promise.all([
         getCars(),
         getGlobalSettings(),
-        getAdminOrders()
+        getAdminOrders(),
+        getReceipts().catch(err => { console.error("Error fetching receipts:", err); return []; }),
+        getCustomers().catch(err => { console.error("Error fetching customers:", err); return []; })
       ])
       setCars(carData)
       setGlobalSettings(settingsData)
       setOrders(ordersData || [])
+      setReceipts(receiptsData || [])
+      setCustomers(customersData || [])
       setTempAdminPath(settingsData?.adminPath || '9f7a4b2c-8d1e-45a9-b3f6-c1d2e8a7b9f0')
       const todayStr = new Date().toISOString().split('T')[0]
       setTempDropDate(settingsData?.dropDate || todayStr)
@@ -273,6 +411,38 @@ export default function Admin() {
     return Object.values(map).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
   }, [orders])
 
+  const filteredOrders = useMemo(() => {
+    const query = orderSearch.toLowerCase().trim();
+    if (!query) return groupedOrders;
+    return groupedOrders.filter(order => {
+      return (
+        (order.id && order.id.toLowerCase().includes(query)) ||
+        (order.customerEmail && order.customerEmail.toLowerCase().includes(query)) ||
+        (order.status && order.status.toLowerCase().includes(query)) ||
+        (order.shippingAddress && order.shippingAddress.toLowerCase().includes(query)) ||
+        (order.trackingNumber && order.trackingNumber.toLowerCase().includes(query)) ||
+        order.items.some(item => 
+          (item.productName && item.productName.toLowerCase().includes(query)) ||
+          (item.productBrand && item.productBrand.toLowerCase().includes(query))
+        )
+      );
+    });
+  }, [groupedOrders, orderSearch]);
+
+  const filteredReceipts = useMemo(() => {
+    const query = receiptSearch.toLowerCase().trim();
+    if (!query) return receipts;
+    return receipts.filter(r => {
+      return (
+        (r.receipt_number && r.receipt_number.toLowerCase().includes(query)) ||
+        (r.customer_name && r.customer_name.toLowerCase().includes(query)) ||
+        (r.customer_phone && r.customer_phone.toLowerCase().includes(query)) ||
+        (r.customer_instagram && r.customer_instagram.toLowerCase().includes(query)) ||
+        (r.format_type && r.format_type.toLowerCase().includes(query))
+      );
+    });
+  }, [receipts, receiptSearch]);
+
   if (isAuthLoading) {
     return (
       <div className="min-h-[100svh] bg-[#050505] flex flex-col items-center justify-center gap-6">
@@ -362,8 +532,12 @@ export default function Admin() {
         <div className="max-w-5xl mx-auto">
           <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-12">
             <div>
-              <h1 className="text-3xl md:text-5xl font-black tracking-tight text-white font-grotesk uppercase italic">Your Garage</h1>
-              <p className="text-white/40 text-xs mt-2 font-medium">Manage your collection and order history.</p>
+              <h1 className="text-3xl md:text-5xl font-black tracking-tight text-white font-grotesk uppercase italic">
+                {user?.displayName ? `${user.displayName}'s Garage` : 'Your Garage'}
+              </h1>
+              <p className="text-white/40 text-xs mt-2 font-medium">
+                {user ? `Logged in as ${user.email}` : 'Manage your collection and order history.'}
+              </p>
             </div>
             <div className="flex flex-wrap gap-4 items-center">
               {isAdmin && (
@@ -499,12 +673,12 @@ export default function Admin() {
 
         {/* Tab Switcher */}
         <div className="flex gap-2 mb-8 border-b border-white/8 pb-0">
-          {['inventory', 'orders'].map(t => (
+          {['inventory', 'orders', 'receipts'].map(t => (
             <button key={t} onClick={() => setAdminTab(t)}
               className={`px-5 py-3 text-sm font-black uppercase tracking-wider rounded-t-xl transition-colors cursor-pointer ${
                 adminTab === t ? 'bg-white/8 border border-white/10 border-b-0 text-gk-yellow' : 'text-white/30 hover:text-white/60'
               }`}>
-              {t === 'inventory' ? 'Inventory' : '📦 Orders Manager'}
+              {t === 'inventory' ? 'Inventory' : t === 'orders' ? '📦 Orders Manager' : '🧾 Receipts'}
             </button>
           ))}
         </div>
@@ -771,6 +945,21 @@ export default function Admin() {
               <p className="text-xs text-white/50 mt-1">Review orders and update delivery status/tracking codes.</p>
             </div>
 
+            {!isLoading && groupedOrders.length > 0 && (
+              <div className="mb-6 max-w-md relative">
+                <input 
+                  type="text" 
+                  value={orderSearch} 
+                  onChange={e => setOrderSearch(e.target.value)} 
+                  placeholder="Search by order ID, customer email, product name, status..." 
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 pl-10 text-white placeholder-white/30 focus:outline-none focus:border-gk-yellow transition-colors text-sm"
+                />
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30">
+                  <Search size={16} />
+                </span>
+              </div>
+            )}
+
             {isLoading ? (
               <div className="py-12 text-center text-white/50">Loading orders...</div>
             ) : groupedOrders.length === 0 ? (
@@ -778,9 +967,14 @@ export default function Admin() {
                 <div className="text-4xl mb-4">📦</div>
                 <p className="font-bold text-sm">No customer orders placed yet</p>
               </div>
+            ) : filteredOrders.length === 0 ? (
+              <div className="py-12 text-center text-white/40 border border-dashed border-white/10 rounded-2xl">
+                <p className="font-bold text-sm">No matching orders found</p>
+                <p className="text-xs text-white/30 mt-1">Try refining your search terms.</p>
+              </div>
             ) : (
               <div className="space-y-6">
-                {groupedOrders.map(order => {
+                {filteredOrders.map(order => {
                   const currentTracking = tempTracking[order.id] !== undefined ? tempTracking[order.id] : (order.trackingNumber || '');
                   return (
                     <div key={order.id} className="p-5 md:p-6 rounded-2xl bg-black/40 border border-white/5 hover:border-gk-orange/20 transition-all flex flex-col gap-4">
@@ -864,7 +1058,655 @@ export default function Admin() {
             )}
           </div>
         )}
+
+        {adminTab === 'receipts' && (
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 md:p-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+              <div>
+                <h3 className="text-xl font-bold text-white uppercase tracking-tight italic font-grotesk">Receipts Directory</h3>
+                <p className="text-xs text-white/50 mt-1">Generate manual customer receipts, download PDF copies, and audit offline sales.</p>
+              </div>
+              {!isAddingReceipt && (
+                <button 
+                  onClick={handleOpenReceiptModal}
+                  className="px-6 py-2.5 rounded-full bg-gk-yellow text-black text-sm font-bold flex items-center gap-2 hover:bg-yellow-400 transition-colors cursor-pointer"
+                >
+                  <Plus size={16} /> New Manual Receipt
+                </button>
+              )}
+            </div>
+
+            {/* Inline Receipts Form (Add / Edit) */}
+            <AnimatePresence>
+              {isAddingReceipt && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden mb-8">
+                  <form onSubmit={handleSaveReceipt} className="space-y-6 text-left bg-white/5 border border-white/10 rounded-2xl p-6 md:p-8 mb-8 relative">
+                    <button type="button" onClick={() => setIsAddingReceipt(false)} className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/5 text-white/40 hover:text-white transition-colors cursor-pointer">
+                      <X size={16} />
+                    </button>
+
+                    <div>
+                      <h3 className="text-xl font-black text-white uppercase tracking-wider italic font-grotesk">Create New Receipt</h3>
+                      <p className="text-xs text-white/40 mt-1">Create an invoice record. This will deduct selected castings from inventory.</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                      {/* Left Side: Form Controls - 7 cols on large screens */}
+                      <div className="lg:col-span-7 space-y-5">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold text-white/55 uppercase tracking-wider">Receipt Number *</label>
+                            <input required type="text" value={receiptNum} onChange={e => setReceiptNum(e.target.value)}
+                              className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-gk-yellow text-sm font-mono font-bold" />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold text-white/55 uppercase tracking-wider">Receipt Format</label>
+                            <select value={rcFormat} onChange={e => setRcFormat(e.target.value)}
+                              className="w-full bg-[#111116] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-gk-yellow text-sm cursor-pointer outline-none">
+                              <option value="standard" className="bg-[#111116] text-white">Standard (A4 Layout)</option>
+                              <option value="thermal" className="bg-[#111116] text-white font-sans">Thermal (80mm POS Slip)</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Customer Details section */}
+                        <div className="p-4 rounded-xl bg-black/20 border border-white/5 space-y-4">
+                          <div className="flex justify-between items-center pb-2 border-b border-white/5">
+                            <span className="text-[11px] font-black uppercase text-gk-yellow tracking-wider">Customer Details</span>
+                            <div className="flex gap-2">
+                              <button type="button" onClick={() => setCustMode('select')}
+                                className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${custMode === 'select' ? 'bg-gk-yellow text-black' : 'text-white/40 hover:text-white'}`}>
+                                Select CRM
+                              </button>
+                              <button type="button" onClick={() => setCustMode('new')}
+                                className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${custMode === 'new' ? 'bg-gk-yellow text-black' : 'text-white/40 hover:text-white'}`}>
+                                + New Customer
+                              </button>
+                            </div>
+                          </div>
+
+                          {custMode === 'select' ? (
+                            <div className="space-y-1.5">
+                              <label className="text-[10px] font-bold text-white/45 uppercase tracking-wider">Choose Customer</label>
+                              {customers.length === 0 ? (
+                                <div className="text-xs text-white/40 py-2">No customers in CRM yet. Please select "+ New Customer".</div>
+                              ) : (
+                                <select value={selCustId} onChange={e => setSelCustId(e.target.value)}
+                                  className="w-full bg-[#111116] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-gk-yellow text-sm cursor-pointer outline-none">
+                                  {customers.map(c => (
+                                    <option key={c.id} value={c.id} className="bg-[#111116] text-white">
+                                      {c.full_name} ({c.phone})
+                                    </option>
+                                  ))}
+                                </select>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="space-y-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <input required={custMode === 'new'} type="text" value={newCustName} onChange={e => setNewCustName(e.target.value)} placeholder="Full Name"
+                                  className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-gk-yellow text-sm" />
+                                <input required={custMode === 'new'} type="text" value={newCustPhone} onChange={e => setNewCustPhone(e.target.value)} placeholder="Phone Number"
+                                  className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-gk-yellow text-sm" />
+                                <input type="text" value={newCustInsta} onChange={e => setNewCustInsta(e.target.value)} placeholder="Instagram Handle"
+                                  className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-gk-yellow text-sm" />
+                              </div>
+                              <textarea value={newCustAddr} onChange={e => setNewCustAddr(e.target.value)} placeholder="Full Shipping / Billing Address" rows="2"
+                                className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-gk-yellow text-sm resize-none" />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Line Items section */}
+                        <div className="bg-black/20 p-4 border border-white/5 rounded-xl space-y-4">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[11px] font-black uppercase text-gk-yellow tracking-wider">Line Items</span>
+                            <button type="button" onClick={handleAddRcItem}
+                              className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-[10px] font-bold text-white hover:bg-white/10 transition-colors flex items-center gap-1 cursor-pointer"
+                            >
+                              <Plus size={10} /> Add Item
+                            </button>
+                          </div>
+
+                          <div className="space-y-3.5 pr-1">
+                            {rcItems.map((item, idx) => (
+                              <div key={idx} className="flex flex-col sm:flex-row gap-3 items-center p-3 rounded-xl bg-black/40 border border-white/5 relative group">
+                                <div className="w-full sm:w-[50%] space-y-1.5 text-left">
+                                  <select onChange={e => handleSelectCarForReceiptItem(idx, e.target.value)}
+                                    className="w-full bg-[#111116] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white/80 focus:outline-none cursor-pointer outline-none">
+                                    <option value="" className="bg-[#111116] text-white">-- Autofill Casting --</option>
+                                    {cars.map(c => (
+                                      <option key={c.id} value={c.id} className="bg-[#111116] text-white">{c.brand} - {c.name} (₹{c.price})</option>
+                                    ))}
+                                  </select>
+                                  <input required type="text" value={item.description} onChange={e => handleUpdateRcItem(idx, 'description', e.target.value)} placeholder="Description / Model Name"
+                                    className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-gk-yellow" />
+                                </div>
+                                
+                                <div className="w-full sm:w-[20%] space-y-1">
+                                  <label className="text-[9px] uppercase font-bold text-white/40 block sm:hidden">Qty</label>
+                                  <input required type="number" min="1" value={item.qty} onChange={e => handleUpdateRcItem(idx, 'qty', parseInt(e.target.value, 10) || 1)} placeholder="Qty"
+                                    className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-xs text-white text-center focus:outline-none focus:border-gk-yellow" />
+                                </div>
+                                
+                                <div className="w-full sm:w-[30%] space-y-1">
+                                  <label className="text-[9px] uppercase font-bold text-white/40 block sm:hidden">Price (₹)</label>
+                                  <input required type="number" min="0" value={item.amount} onChange={e => handleUpdateRcItem(idx, 'amount', Number(e.target.value) || 0)} placeholder="Price"
+                                    className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-xs text-white text-center focus:outline-none focus:border-gk-yellow" />
+                                </div>
+
+                                <button type="button" onClick={() => handleRemoveRcItem(idx)} disabled={rcItems.length === 1}
+                                  className="p-2 rounded-lg text-red-400 hover:bg-red-500/10 disabled:opacity-30 cursor-pointer sm:self-end">
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Financial calculations */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-black/20 p-4 border border-white/5 rounded-xl">
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-bold text-white/45 uppercase tracking-wider">Tax (%)</label>
+                            <input type="number" min="0" max="100" value={rcTaxPercent} onChange={e => setRcTaxPercent(Number(e.target.value) || 0)}
+                              className="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-gk-yellow text-xs" />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-bold text-white/45 uppercase tracking-wider">Shipping (₹)</label>
+                            <input type="number" min="0" value={rcShipping} onChange={e => setRcShipping(Number(e.target.value) || 0)}
+                              className="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-gk-yellow text-xs" />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-bold text-white/45 uppercase tracking-wider">Advance Paid (₹)</label>
+                            <input type="number" min="0" value={rcAdvance} onChange={e => setRcAdvance(Number(e.target.value) || 0)}
+                              className="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-gk-yellow text-xs" />
+                          </div>
+                        </div>
+
+                        <div className="bg-black/20 p-4 border border-white/5 rounded-xl">
+                          <label className="text-[9px] font-bold text-white/45 uppercase tracking-wider">Footer Note</label>
+                          <textarea rows={2} value={rcFooter} onChange={e => setRcFooter(e.target.value)}
+                            className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-gk-yellow text-xs" />
+                        </div>
+
+                        <div className="flex justify-end gap-3 pt-3">
+                          <button type="button" onClick={() => setIsAddingReceipt(false)} className="px-6 py-3 rounded-lg border border-white/10 hover:bg-white/5 text-sm font-semibold transition-colors cursor-pointer">Cancel</button>
+                          <button type="submit" disabled={receiptsLoading} className="px-8 py-3 bg-gk-yellow text-black hover:bg-yellow-400 rounded-lg font-bold flex items-center gap-2 transition-colors cursor-pointer">
+                            <Save size={18} /> {receiptsLoading ? 'Generating...' : 'Save Receipt'}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Right Side: LIVE PREVIEW CONTAINER - 5 cols on large screens */}
+                      <div className="lg:col-span-5 space-y-4">
+                        <h3 className="text-xs font-black uppercase text-white/50 tracking-wider text-left">Live Preview</h3>
+                        
+                        {/* High-fidelity Receipt Preview */}
+                        <div className="bg-white text-black p-6 rounded-xl shadow-2xl overflow-hidden font-sans text-xs flex flex-col justify-between relative" style={{ minHeight: '560px', color: '#000000', backgroundColor: '#ffffff' }}>
+                          {/* Faint Premium Brand Watermark */}
+                          <div className="absolute pointer-events-none select-none z-0 text-center" style={{
+                            top: '50%',
+                            left: '50%',
+                            transform: 'translate(-50%, -50%) rotate(-20deg)',
+                            fontSize: '36px',
+                            fontWeight: '900',
+                            letterSpacing: '0.25em',
+                            background: 'linear-gradient(135deg, rgba(43, 149, 201, 0.12) 0%, rgba(67, 56, 202, 0.09) 50%, rgba(99, 102, 241, 0.06) 100%)',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                            color: 'rgba(43, 149, 201, 0.08)',
+                            width: '90%',
+                            textAlign: 'center',
+                            lineHeight: '1.2',
+                            fontFamily: '"Outfit", "Montserrat", "Inter", system-ui, sans-serif',
+                            textTransform: 'uppercase',
+                            wordBreak: 'break-word'
+                          }}>
+                            Garage Kings
+                          </div>
+
+                          <div className="relative z-10 flex flex-col justify-between h-full w-full">
+                            <div>
+                              {/* Header */}
+                              <div className="flex justify-between items-start gap-4 mb-8 text-left">
+                                <div>
+                                  <h1 className="text-xl font-black leading-none tracking-tight">Garage Kings India</h1>
+                                  <p className="text-gray-600 text-[10px] mt-1.5">Delhi, India</p>
+                                </div>
+                                <div className="text-right">
+                                  <h2 className="text-xl font-black text-gray-800 tracking-tight leading-none mb-1">Receipt</h2>
+                                  <p className="text-[9px] text-gray-650 font-semibold mt-1">Receipt # &nbsp;{receiptNum || 'RTXXXXX'}</p>
+                                  <p className="text-[8px] text-gray-500 font-medium mt-1">Date &nbsp;{new Date().toLocaleString('en-IN')}</p>
+                                </div>
+                              </div>
+
+                              {/* "To" Section */}
+                              <div className="mb-6 text-left">
+                                <div className="bg-[#2b95c9] text-white px-3 py-1 font-bold text-[10px] tracking-wider mb-2.5 rounded-sm">To</div>
+                                <div className="px-1 space-y-0.5 text-gray-800 text-[10px] leading-relaxed">
+                                  {custMode === 'select' && selCustId ? (
+                                    (() => {
+                                      const c = customers.find(cust => cust.id === selCustId);
+                                      return c ? (
+                                        <>
+                                          <div className="font-bold text-black text-[11px]">{c.full_name || c.fullName}</div>
+                                          {c.phone && <div className="font-semibold">{c.phone}</div>}
+                                          {c.instagram && <div className="font-semibold">Instagram: @{c.instagram.replace(/^@/, '')}</div>}
+                                          {c.address && <div className="whitespace-pre-line text-gray-650 mt-0.5">{c.address}</div>}
+                                        </>
+                                      ) : <div className="text-gray-400 italic">No customer selected.</div>;
+                                    })()
+                                  ) : newCustName ? (
+                                    <>
+                                      <div className="font-bold text-black text-[11px]">{newCustName}</div>
+                                      {newCustPhone && <div className="font-semibold">{newCustPhone}</div>}
+                                      {newCustInsta && <div className="font-semibold">Instagram: @{newCustInsta.replace(/^@/, '')}</div>}
+                                      {newCustAddr && <div className="whitespace-pre-line text-gray-650 mt-0.5">{newCustAddr}</div>}
+                                    </>
+                                  ) : (
+                                    <div className="text-gray-400 italic">No customer details set.</div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Table Section */}
+                              <div className="mb-6 text-left">
+                                <div className="bg-[#2b95c9] text-white grid grid-cols-12 gap-2 px-3 py-1.5 font-bold text-[9px] tracking-wider rounded-sm">
+                                  <div className="col-span-2 text-center">Qty</div>
+                                  <div className="col-span-7">Description</div>
+                                  <div className="col-span-3 text-right">Amount</div>
+                                </div>
+                                
+                                <div className="divide-y divide-gray-150 px-1">
+                                  {rcItems.map((it, idx) => (
+                                    <div key={idx} className="grid grid-cols-12 gap-2 py-2.5 text-[10px] items-center">
+                                      <div className="col-span-2 text-center text-gray-650">{it.qty}</div>
+                                      <div className="col-span-7 font-medium text-gray-800 truncate">{it.description || <span className="text-gray-350 italic">Description...</span>}</div>
+                                      <div className="col-span-3 text-right font-mono font-semibold text-gray-900">₹{(Number(it.qty) * (Number(it.amount) || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+                                    </div>
+                                  ))}
+                                  
+                                  {/* Shipping row */}
+                                  {Number(rcShipping) > 0 && (
+                                    <div className="grid grid-cols-12 gap-2 py-2.5 text-[10px]">
+                                      <div className="col-span-2 text-center text-gray-650">1</div>
+                                      <div className="col-span-7 font-medium text-gray-800">Shipping Charges</div>
+                                      <div className="col-span-3 text-right font-mono font-semibold text-gray-900">₹{Number(rcShipping).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Summary and Footer */}
+                            <div className="text-right">
+                              <div className="border-t border-gray-300 pt-3 space-y-1.5 flex flex-col items-end">
+                                <div className="flex justify-between items-center text-[10px] text-gray-600 w-64">
+                                  <span>Including Tax ({rcTaxPercent}%)</span>
+                                  <span className="font-mono font-semibold">₹{calculateLiveTotal().tax.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-sm font-black text-black pt-1 w-64 border-t border-gray-200">
+                                  <span>Total Paid</span>
+                                  <span className="font-mono font-black text-base">₹{calculateLiveTotal().total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                                </div>
+                                {Number(calculateLiveTotal().balance) > 0 && (
+                                  <div className="flex justify-between items-center text-[10px] text-red-650 font-bold pt-1.5 border-t border-dashed border-gray-300 mt-1.5 w-64">
+                                    <span>Balance Due before Delivery</span>
+                                    <span className="font-mono font-bold text-red-700">₹{calculateLiveTotal().balance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                                  </div>
+                                )}
+                              </div>
+
+                              {rcFooter && (
+                                <div className="mt-8 text-center text-[9px] text-gray-800 font-medium leading-normal px-2 border-t border-gray-150 pt-2 italic">
+                                  {rcFooter}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </form>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {!receiptsLoading && receipts.length > 0 && (
+              <div className="mb-6 max-w-md relative">
+                <input 
+                  type="text" 
+                  value={receiptSearch} 
+                  onChange={e => setReceiptSearch(e.target.value)} 
+                  placeholder="Search by receipt #, customer name, phone, or instagram..." 
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 pl-10 text-white placeholder-white/30 focus:outline-none focus:border-gk-yellow transition-colors text-sm"
+                />
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30">
+                  <Search size={16} />
+                </span>
+              </div>
+            )}
+
+            {receiptsLoading ? (
+              <div className="py-12 text-center text-white/50 animate-pulse">Loading receipts...</div>
+
+            ) : receipts.length === 0 ? (
+              <div className="py-12 text-center text-white/40 border border-dashed border-white/10 rounded-2xl">
+                <div className="text-4xl mb-4">🧾</div>
+                <p className="font-bold text-sm">No billing receipts generated yet</p>
+                <p className="text-xs text-white/30 mt-1">Manual point-of-sale invoices and direct orders will appear here.</p>
+              </div>
+            ) : filteredReceipts.length === 0 ? (
+              <div className="py-12 text-center text-white/40 border border-dashed border-white/10 rounded-2xl">
+                <p className="font-bold text-sm">No matching receipts found</p>
+                <p className="text-xs text-white/30 mt-1">Try refining your search terms.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-white/10 text-white/45 text-[10px] uppercase font-bold tracking-wider">
+                      <th className="py-3 px-4">Receipt #</th>
+                      <th className="py-3 px-4">Date</th>
+                      <th className="py-3 px-4">Customer</th>
+                      <th className="py-3 px-4">Total Amount</th>
+                      <th className="py-3 px-4">Balance Due</th>
+                      <th className="py-3 px-4">Format</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5 text-sm text-white/80">
+                    {filteredReceipts.map(r => (
+                      <tr key={r.id} className="hover:bg-white/[0.02] transition-colors">
+                        <td className="py-4 px-4 font-mono font-bold text-white">{r.receipt_number}</td>
+                        <td className="py-4 px-4 text-xs text-white/60">
+                          {new Date(r.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="font-bold text-white">{r.customer_name}</div>
+                          <div className="text-[10px] text-white/45">{r.customer_phone}</div>
+                        </td>
+                        <td className="py-4 px-4 font-mono font-bold text-emerald-400">₹{Number(r.total_amount).toLocaleString()}</td>
+                        <td className="py-4 px-4 font-mono text-xs text-orange-400">₹{Number(r.pending_balance).toLocaleString()}</td>
+                        <td className="py-4 px-4">
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
+                            r.format_type === 'thermal' ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                          }`}>
+                            {r.format_type}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() => setSelectedReceipt(r)}
+                              className="px-3.5 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs font-bold hover:bg-white/10 hover:text-white transition-all cursor-pointer"
+                            >
+                              Print / View
+                            </button>
+                            <button
+                              onClick={() => handleDeleteReceipt(r.id)}
+                              className="p-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-all cursor-pointer"
+                              title="Delete Record"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+
+
+      {/* 🖨 Printable Receipt Viewer Modal */}
+      <AnimatePresence>
+        {selectedReceipt && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md"
+            onClick={() => setSelectedReceipt(null)}>
+            <motion.div initial={{ scale: 0.95, y: 15 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 15 }}
+              className="w-full max-w-2xl bg-[#0a0a0d] border border-white/10 rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.8)] relative flex flex-col" style={{ maxHeight: '95svh' }}
+              onClick={e => e.stopPropagation()}>
+              {/* Sticky Header */}
+              <div className="flex justify-between items-center px-6 sm:px-8 pt-6 sm:pt-8 pb-4 border-b border-white/10 flex-shrink-0">
+                <div>
+                  <h3 className="text-lg font-black text-white uppercase tracking-wider italic font-grotesk">Receipt Viewer</h3>
+                  <p className="text-xs text-white/40 mt-1 font-mono">Reference: {selectedReceipt.receipt_number}</p>
+                </div>
+                <button onClick={() => setSelectedReceipt(null)} className="text-white/50 hover:text-white cursor-pointer">
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Scrollable Receipt Card */}
+              <div className="overflow-y-auto flex-1 px-6 sm:px-8 py-5">
+              <div className="bg-white text-black p-8 rounded-xl shadow-inner font-sans text-xs flex flex-col justify-between relative overflow-hidden text-left" style={{ minHeight: '520px', color: '#000000', backgroundColor: '#ffffff' }}>
+                {/* Faint Premium Brand Watermark */}
+                <div className="absolute pointer-events-none select-none z-0 text-center" style={{
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%) rotate(-20deg)',
+                  fontSize: '48px',
+                  fontWeight: '900',
+                  letterSpacing: '0.25em',
+                  background: 'linear-gradient(135deg, rgba(43, 149, 201, 0.12) 0%, rgba(67, 56, 202, 0.09) 50%, rgba(99, 102, 241, 0.06) 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  color: 'rgba(43, 149, 201, 0.08)',
+                  width: '90%',
+                  textAlign: 'center',
+                  lineHeight: '1.2',
+                  fontFamily: '"Outfit", "Montserrat", "Inter", system-ui, sans-serif',
+                  textTransform: 'uppercase',
+                  wordBreak: 'break-word'
+                }}>
+                  Garage Kings
+                </div>
+
+                <div className="relative z-10 flex flex-col justify-between h-full w-full">
+                  <div>
+                    {/* Header */}
+                    <div className="flex justify-between items-start gap-4 mb-8">
+                      <div>
+                        <h1 className="text-2xl font-black leading-none tracking-tight">Garage Kings India</h1>
+                        <p className="text-gray-600 text-xs mt-2">Delhi, India</p>
+                      </div>
+                      <div className="text-right">
+                        <h2 className="text-2xl font-black text-gray-800 tracking-tight leading-none mb-1">Receipt</h2>
+                        <p className="text-xs text-gray-600 font-semibold mt-1.5">Receipt # &nbsp;{selectedReceipt.receipt_number}</p>
+                        <p className="text-[10px] text-gray-500 font-medium mt-1">Date &nbsp;{new Date(selectedReceipt.created_at).toLocaleString('en-IN')}</p>
+                      </div>
+                    </div>
+
+                    {/* "To" Section */}
+                    <div className="mb-6">
+                      <div className="bg-[#2b95c9] text-white px-3 py-1 font-bold text-[10px] tracking-wider mb-2.5 rounded-sm">To</div>
+                      <div className="px-1 space-y-0.5 text-gray-800 text-[10px] leading-relaxed">
+                        <div className="font-bold text-black text-sm">{selectedReceipt.customer_name}</div>
+                        {selectedReceipt.customer_phone && <div className="font-semibold">{selectedReceipt.customer_phone}</div>}
+                        {selectedReceipt.customer_instagram && <div className="font-semibold">Instagram: @{selectedReceipt.customer_instagram.replace(/^@/, '')}</div>}
+                        {selectedReceipt.customer_address && <div className="whitespace-pre-line text-gray-600 mt-1 leading-normal">{selectedReceipt.customer_address}</div>}
+                      </div>
+                    </div>
+
+                    {/* Table Section */}
+                    <div className="mb-6">
+                      <div className="bg-[#2b95c9] text-white grid grid-cols-12 gap-2 px-3 py-1.5 font-bold text-[10px] tracking-wider rounded-sm">
+                        <div className="col-span-2 text-center">Qty</div>
+                        <div className="col-span-7">Description</div>
+                        <div className="col-span-3 text-right">Amount</div>
+                      </div>
+                      
+                      <div className="divide-y divide-gray-150 px-1">
+                        {selectedReceipt.items?.map((it, idx) => (
+                          <div key={idx} className="grid grid-cols-12 gap-2 py-2 text-[10px] items-center">
+                            <div className="col-span-2 text-center text-gray-600">{it.qty}</div>
+                            <div className="col-span-7 font-medium text-gray-800 truncate">{it.description}</div>
+                            <div className="col-span-3 text-right font-mono font-semibold text-gray-900">₹{Number(it.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 space-y-2 border-t border-gray-150 text-right flex flex-col items-end">
+                    <div className="flex justify-between items-center text-[10px] text-gray-600 w-64">
+                      <span>Including Tax ({selectedReceipt.tax_percent}%)</span>
+                      <span className="font-mono font-semibold">₹{Number(selectedReceipt.tax_amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs font-black text-black pt-1.5 w-64 border-t border-gray-200">
+                      <span>Total Paid</span>
+                      <span className="font-mono font-black text-sm">₹{Number(selectedReceipt.total_amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </div>
+                    {selectedReceipt.format_type === 'prebooking' && selectedReceipt.pending_balance && Number(selectedReceipt.pending_balance) > 0 && (
+                      <div className="flex justify-between items-center text-[10px] text-red-600 font-bold pt-1.5 w-64 border-t border-dashed border-gray-200">
+                        <span>Balance Due before Delivery</span>
+                        <span className="font-mono font-bold">₹{Number(selectedReceipt.pending_balance).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Footer refund policy statement */}
+                  {selectedReceipt.footer_note && (
+                    <div className="text-center text-[10px] text-gray-800 font-medium leading-normal px-4 border-t border-gray-150 pt-4 mt-6">
+                      {selectedReceipt.footer_note}
+                    </div>
+                  )}
+                </div>
+              </div> {/* end white receipt card */}
+              </div> {/* end scrollable wrapper */}
+
+              {/* Sticky Footer Buttons */}
+              <div className="flex justify-end gap-3 px-6 sm:px-8 py-4 border-t border-white/10 flex-shrink-0">
+                <button onClick={() => setSelectedReceipt(null)}
+                  className="px-6 py-2.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-white font-semibold transition-colors text-sm cursor-pointer">
+                  Close
+                </button>
+                {selectedReceipt.pdf_url ? (
+                  <a href={selectedReceipt.pdf_url} download
+                    className="px-6 py-2.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white font-bold flex items-center gap-2 transition-colors text-sm cursor-pointer">
+                    <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                      <polyline points="7 10 12 15 17 10"/>
+                      <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    Download PDF
+                  </a>
+                ) : (
+                  <button onClick={() => window.print()}
+                    className="px-6 py-2.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white font-bold flex items-center gap-2 transition-colors text-sm cursor-pointer">
+                    <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="6 9 6 2 18 2 18 9"/>
+                      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                      <rect x="6" y="14" width="12" height="8"/>
+                    </svg>
+                    Print / Save PDF
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 🖨 Portal Print Container - Styled to match the modal receipt preview exactly */}
+      {selectedReceipt && createPortal(
+        <div className="printable-receipt-wrapper hidden print:block" style={{ fontFamily: '"Outfit", "Inter", system-ui, sans-serif', position: 'relative' }}>
+          {/* Watermark */}
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%) rotate(-20deg)',
+            fontSize: '64px',
+            fontWeight: '900',
+            letterSpacing: '0.25em',
+            color: 'rgba(43, 149, 201, 0.07)',
+            width: '90%',
+            textAlign: 'center',
+            lineHeight: '1.2',
+            textTransform: 'uppercase',
+            wordBreak: 'break-word',
+            pointerEvents: 'none',
+            userSelect: 'none',
+            zIndex: 0
+          }}>Garage Kings</div>
+
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px' }}>
+              <div>
+                <h1 style={{ fontSize: '24px', fontWeight: '900', letterSpacing: '-0.03em', margin: 0 }}>Garage Kings India</h1>
+                <p style={{ fontSize: '11px', color: '#6b7280', marginTop: '6px' }}>Delhi, India</p>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <h2 style={{ fontSize: '24px', fontWeight: '900', color: '#1f2937', margin: 0 }}>Receipt</h2>
+                <p style={{ fontSize: '11px', color: '#4b5563', fontWeight: '600', marginTop: '6px' }}>Receipt #&nbsp;{selectedReceipt.receipt_number}</p>
+                <p style={{ fontSize: '10px', color: '#6b7280', fontWeight: '500', marginTop: '4px' }}>Date&nbsp;{new Date(selectedReceipt.created_at).toLocaleString('en-IN')}</p>
+              </div>
+            </div>
+
+            {/* To Section */}
+            <div style={{ marginBottom: '24px' }}>
+              <div className="print-bg-blue print-text-white" style={{ padding: '4px 12px', fontWeight: '700', fontSize: '10px', letterSpacing: '0.1em', marginBottom: '10px', borderRadius: '2px' }}>To</div>
+              <div style={{ paddingLeft: '4px' }}>
+                <div style={{ fontWeight: '700', fontSize: '14px', color: '#000', marginBottom: '2px' }}>{selectedReceipt.customer_name}</div>
+                {selectedReceipt.customer_phone && <div style={{ fontWeight: '600', fontSize: '11px', color: '#374151' }}>{selectedReceipt.customer_phone}</div>}
+                {selectedReceipt.customer_instagram && <div style={{ fontWeight: '600', fontSize: '11px', color: '#374151' }}>Instagram: @{selectedReceipt.customer_instagram.replace(/^@/, '')}</div>}
+                {selectedReceipt.customer_address && <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px', whiteSpace: 'pre-line' }}>{selectedReceipt.customer_address}</div>}
+              </div>
+            </div>
+
+            {/* Items Table */}
+            <div style={{ marginBottom: '24px' }}>
+              <div className="print-bg-blue print-text-white" style={{ display: 'grid', gridTemplateColumns: '1fr 5fr 3fr', gap: '8px', padding: '6px 12px', fontWeight: '700', fontSize: '10px', letterSpacing: '0.1em', borderRadius: '2px' }}>
+                <div style={{ textAlign: 'center' }}>Qty</div>
+                <div>Description</div>
+                <div style={{ textAlign: 'right' }}>Amount</div>
+              </div>
+              {selectedReceipt.items?.map((it, idx) => (
+                <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 5fr 3fr', gap: '8px', padding: '8px 4px', borderBottom: '1px solid #f3f4f6', fontSize: '11px', alignItems: 'center' }}>
+                  <div style={{ textAlign: 'center', color: '#6b7280' }}>{it.qty}</div>
+                  <div style={{ fontWeight: '500', color: '#1f2937' }}>{it.description}</div>
+                  <div style={{ textAlign: 'right', fontWeight: '600', fontFamily: 'monospace', color: '#111827' }}>₹{Number(it.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Totals */}
+            <div style={{ marginLeft: 'auto', width: '256px', borderTop: '1px solid #e5e7eb', paddingTop: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#6b7280', marginBottom: '6px' }}>
+                <span>Including Tax ({selectedReceipt.tax_percent}%)</span>
+                <span style={{ fontFamily: 'monospace', fontWeight: '600' }}>₹{Number(selectedReceipt.tax_amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: '900', color: '#000', borderTop: '1px solid #e5e7eb', paddingTop: '6px', marginBottom: '6px' }}>
+                <span>Total Paid</span>
+                <span style={{ fontFamily: 'monospace' }}>₹{Number(selectedReceipt.total_amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+              {selectedReceipt.format_type === 'prebooking' && selectedReceipt.pending_balance && Number(selectedReceipt.pending_balance) > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', fontWeight: '700', color: '#dc2626', borderTop: '1px dashed #e5e7eb', paddingTop: '6px' }}>
+                  <span>Balance Due before Delivery</span>
+                  <span style={{ fontFamily: 'monospace' }}>₹{Number(selectedReceipt.pending_balance).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            {selectedReceipt.footer_note && (
+              <div style={{ textAlign: 'center', fontSize: '10px', color: '#1f2937', fontWeight: '500', borderTop: '1px solid #f3f4f6', paddingTop: '16px', marginTop: '24px', lineHeight: '1.6' }}>
+                {selectedReceipt.footer_note}
+              </div>
+            )}
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   )
 }
