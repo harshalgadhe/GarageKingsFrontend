@@ -14,7 +14,10 @@ function getAuthHeaders() {
   const token = localStorage.getItem('gk_cognito_id_token') || localStorage.getItem('gk_cognito_access_token');
   return {
     'Content-Type': 'application/json',
-    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    ...(token ? { 
+      'Authorization': `Bearer ${token}`,
+      'X-Authorization': `Bearer ${token}`
+    } : {})
   };
 }
 
@@ -279,30 +282,82 @@ export async function addCustomer(customer) {
 
 /**
  * Image upload operations
- * Uses ImgBB API for zero-cost image hosting during the Free Tier phase.
+ * Converts client-side images to WebP format for high compression,
+ * then uploads to AWS S3 via NestJS API.
  */
 export async function uploadImageToStorage(file) {
   if (!file) return null;
 
-  const imgbbKey = import.meta.env.VITE_IMGBB_API_KEY;
-  if (imgbbKey) {
-    const formData = new FormData();
-    formData.append('image', file);
-    
-    const response = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbKey}`, {
-      method: 'POST',
-      body: formData
-    });
-    
-    const data = await response.json();
-    if (data.success) {
-      return data.data.url;
-    } else {
-      throw new Error(data.error?.message || "ImgBB upload failed");
+  // 1. Convert client-side image to WebP format for fast loads
+  let webpFile = file;
+  if (file.type !== 'image/webp') {
+    try {
+      webpFile = await convertToWebP(file);
+    } catch (e) {
+      console.warn("WebP client-side conversion failed, falling back to raw upload:", e);
     }
   }
 
-  throw new Error("VITE_IMGBB_API_KEY is not configured in local environment.");
+  // 2. Upload to our backend's S3 endpoint
+  const formData = new FormData();
+  formData.append('file', webpFile);
+  formData.append('folder', 'products');
+
+  const token = localStorage.getItem('gk_cognito_id_token') || localStorage.getItem('gk_cognito_access_token');
+  const headers = token ? { 
+    'Authorization': `Bearer ${token}`,
+    'X-Authorization': `Bearer ${token}`
+  } : {};
+
+  const response = await fetch(`${API_BASE_URL}/images/upload`, {
+    method: 'POST',
+    headers: headers,
+    body: formData
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Archival S3 upload failed: ${errorText || response.statusText}`);
+  }
+
+  const data = await response.json();
+  if (data.success && data.url) {
+    return data.url;
+  } else {
+    throw new Error(data.message || "Archival S3 upload failed");
+  }
+}
+
+// Helper to convert any image file to WebP client-side
+function convertToWebP(file, quality = 0.8) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target.result;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const webpFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".webp", {
+              type: "image/webp",
+              lastModified: Date.now()
+            });
+            resolve(webpFile);
+          } else {
+            reject(new Error("Canvas conversion to WebP failed"));
+          }
+        }, "image/webp", quality);
+      };
+      img.onerror = (err) => reject(err);
+    };
+    reader.onerror = (err) => reject(err);
+  });
 }
 
 // Fallback helper converting file to Base64 (used locally if needed)
