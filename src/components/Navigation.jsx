@@ -12,10 +12,10 @@ const MotionLink = motion.create(Link)
 
 const links = [
   { id: 'hero', label: 'Home' },
+  { id: 'showcase', label: 'Showcase' },
   { id: 'vault', label: 'Shop' },
   { id: 'lanes', label: 'Brands' },
   { id: 'drop', label: 'Drops' },
-  { id: 'garage', label: 'Garage' },
 ]
 
 export default function Navigation({ activeSection }) {
@@ -88,12 +88,12 @@ export default function Navigation({ activeSection }) {
   return (
     <>
       <motion.header
-        className="fixed top-0 right-0 left-0 z-[70] bg-gradient-to-b from-[#050505]/95 via-[#050505]/50 to-transparent pt-2 pb-8 pointer-events-none"
+        className="fixed top-0 right-0 left-0 z-[70] bg-[#09090b]/85 backdrop-blur-md border-b border-white/5 py-1 pointer-events-none"
         initial={{ y: -64, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+        transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
       >
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4 md:px-12 pointer-events-auto">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-2 md:px-12 pointer-events-auto">
           {/* Logo Brand */}
           <button
             type="button"
