@@ -247,7 +247,7 @@ export async function signInWithGoogleProfile(googleIdToken) {
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ idToken: googleIdToken })
+      body: JSON.stringify({ email: googleIdToken, idToken: googleIdToken })
     });
     
     const data = await response.json();
