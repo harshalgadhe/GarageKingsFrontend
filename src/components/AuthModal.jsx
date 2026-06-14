@@ -73,9 +73,9 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'purple', onAu
 
   if (!isOpen) return null;
 
-  const accentClass = themeColor === 'orange' ? 'text-gk-orange border-gk-orange bg-gk-orange/10' : 'text-purple-400 border-purple-500/40 bg-purple-500/10';
+  const accentClass = themeColor === 'orange' ? 'text-gk-orange border-gk-orange/20 bg-gk-orange/10' : 'text-purple-400 border-purple-500/40 bg-purple-500/10';
   const buttonClass = themeColor === 'orange' 
-    ? 'bg-gk-orange hover:bg-orange-500 hover:shadow-[0_0_30px_rgba(225,6,0,0.5)]' 
+    ? 'bg-gk-orange hover:bg-[#C7FDFF] hover:shadow-[0_0_30px_rgba(165,243,252,0.45)] text-zinc-950 font-bold' 
     : 'bg-purple-600 hover:bg-purple-500 hover:shadow-[0_0_30px_rgba(168,85,247,0.5)]';
 
   const handleGoogleSignIn = () => {

@@ -9,9 +9,9 @@
   --color-gk-border: rgba(255, 255, 255, 0.05); /* Sleek premium border */
   --color-gk-accent: #ffffff; /* Replaces red with white */
   --color-gk-accent-hover: #e4e4e7; /* Accent hover */
-  --color-gk-yellow: #D4C4AE; /* Replaces yellow with Champagne Bronze */
-  --color-gk-orange: #D4C4AE; /* Replaces orange with Champagne Bronze */
-  --color-gk-gold: #D4C4AE; /* Replaces gold with Champagne Bronze */
+  --color-gk-yellow: #A5F3FC; /* Replaces yellow with premium Ice Blue */
+  --color-gk-orange: #A5F3FC; /* Replaces orange with premium Ice Blue */
+  --color-gk-gold: #A5F3FC; /* Replaces gold with premium Ice Blue */
   --color-gk-silver: #E4E4E7; /* Metallic Silver */
   --color-gk-surface-2: #121316;
   --font-grotesk: 'Space Grotesk', system-ui, sans-serif;
@@ -127,8 +127,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .gk-btn-primary:hover {
-  background: #E8DCC4;
-  box-shadow: 0 0 32px rgba(212, 196, 174, 0.35);
+  background: #C7FDFF;
+  box-shadow: 0 0 32px rgba(165, 243, 252, 0.45);
   transform: translateY(-1px);
 }
 
