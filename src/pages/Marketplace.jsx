@@ -6,7 +6,6 @@ import { useNavigate } from 'react-router-dom'
 import { Search, ShoppingCart, Trash2, ShoppingBag, X } from 'lucide-react'
 import ReserveModal from '../components/checkout/ReserveModal'
 import Footer from '../components/Footer'
-import FloatingSupport from '../components/FloatingSupport'
 
 export default function Marketplace() {
   const [cars, setCars] = useState([])
@@ -402,7 +401,6 @@ export default function Marketplace() {
         )}
       </AnimatePresence>
       <Footer />
-      <FloatingSupport />
     </div>
   )
 }

@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ArrowUpRight, Check, ShoppingBag, CreditCard, RefreshCw, AlertCircle, FileText, Compass } from 'lucide-react';
 import Navigation from '../components/Navigation';
 import Footer from '../components/Footer';
-import FloatingSupport from '../components/FloatingSupport';
 
 function FAQAccordionItem({ question, answer, children }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -284,7 +283,6 @@ export default function Help() {
       </main>
 
       <Footer />
-      <FloatingSupport />
     </div>
   );
 }

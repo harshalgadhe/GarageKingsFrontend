@@ -4,7 +4,6 @@ import { getCurrentUser, signOutCognito } from '../lib/auth';
 import { getCustomerOrders, getCustomerProfile, updateCustomerProfile } from '../lib/db';
 import Navigation from '../components/Navigation';
 import Footer from '../components/Footer';
-import FloatingSupport from '../components/FloatingSupport';
 import { User, FileText, Clock, Settings, LogOut, Package, ExternalLink, Calendar, MapPin, AlertCircle, Shield } from 'lucide-react';
 
 export default function Account() {
@@ -154,7 +153,6 @@ export default function Account() {
         </div>
 
         <Footer />
-        <FloatingSupport />
       </div>
     );
   }
@@ -439,7 +437,6 @@ export default function Account() {
       )}
 
       <Footer />
-      <FloatingSupport />
     </div>
   );
 }
