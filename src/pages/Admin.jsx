@@ -55,7 +55,9 @@ export default function Admin() {
   const [settlementForm, setSettlementForm] = useState({ from: 'Harshal', to: 'Anutosh', amount: '', notes: '', date: new Date().toISOString().split('T')[0] });
 
   const navigate = useNavigate();
-  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1';
+  const API_BASE_URL = import.meta.env.PROD 
+    ? '/api/v1' 
+    : (import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1');
 
   useEffect(() => {
     async function checkSetupAndLoad() {

@@ -3,7 +3,9 @@
 // Optimized for secure local session cookies
 // ============================================================================
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1';
+const API_BASE_URL = import.meta.env.PROD 
+  ? '/api/v1' 
+  : (import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1');
 
 // Mocked configuration checker for backwards-compatibility checks in legacy page loads
 export const isFirebaseConfigured = true;
