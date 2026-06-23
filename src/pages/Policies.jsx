@@ -123,8 +123,8 @@ export default function Policies() {
                 <section className="space-y-2">
                   <h3 className="text-white font-bold uppercase tracking-wider text-xs md:text-sm">6. User Accounts</h3>
                   <p>
-                    You are responsible for maintaining the confidentiality of your account credentials (via Cognito secure federations). Any actions taken under your account are your sole responsibility.
-                  </p>
+                  You are responsible for maintaining the confidentiality of your account credentials. Any actions taken under your account are your sole responsibility.
+                </p>
                 </section>
               </div>
             </div>
@@ -161,14 +161,14 @@ export default function Policies() {
                     <li>Verifying UPI payments against screenshots.</li>
                     <li>Addressing order fulfillments and tracking coordinate shipments.</li>
                     <li>Handling support requests via Instagram and WhatsApp.</li>
-                    <li>Securing user sessions via AWS Cognito.</li>
+                    <li>Securing and maintaining your active account sessions.</li>
                   </ul>
                 </section>
 
                 <section className="space-y-2">
                   <h3 className="text-white font-bold uppercase tracking-wider text-xs md:text-sm">3. Data Sharing & Hosting</h3>
                   <p>
-                    We value your privacy. We do not sell or lease your database files to any advertising networks. Your data is stored securely using cloud resources hosted on Amazon Web Services (AWS Cognito, RDS PostgreSQL, S3) located in the Mumbai region.
+                    We value your privacy. We do not sell or lease your database files to any advertising networks. Your data is stored securely using industry-standard encrypted cloud servers and databases.
                   </p>
                 </section>
 
