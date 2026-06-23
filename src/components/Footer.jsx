@@ -63,8 +63,8 @@ export default function Footer() {
           <span className="text-[10px] font-bold font-mono uppercase tracking-wider text-zinc-500 mb-1">Company</span>
           <a href="/#releases" className="text-xs hover:text-white transition-colors py-0.5">About</a>
           <a href="/#releases" className="text-xs hover:text-white transition-colors py-0.5">Contact</a>
-          <span className="text-xs text-zinc-600 cursor-default py-0.5">Privacy Policy (future)</span>
-          <span className="text-xs text-zinc-600 cursor-default py-0.5">Terms (future)</span>
+          <Link to="/policies" className="text-xs hover:text-white transition-colors py-0.5">Privacy Policy</Link>
+          <Link to="/policies" className="text-xs hover:text-white transition-colors py-0.5">Terms of Service</Link>
         </div>
 
       </div>
