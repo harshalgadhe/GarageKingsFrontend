@@ -5,8 +5,9 @@ import { BRAND } from '../data/content'
 import { scrollToSection, useLenis } from '../providers/SmoothScroll'
 import { getCurrentUser, signOutCognito } from '../lib/auth'
 import AuthModal from './AuthModal'
-import { LogOut, User, X, Settings } from 'lucide-react'
+import { LogOut, User, X, Settings, Trash2, ShoppingBag, ShoppingCart } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
+import ReserveModal from './checkout/ReserveModal'
 
 const MotionLink = motion.create(Link)
 
@@ -26,10 +27,39 @@ export default function Navigation({ activeSection }) {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false)
+  const [cart, setCart] = useState([])
+  const [checkoutCart, setCheckoutCart] = useState(null)
 
   useEffect(() => {
     setUser(getCurrentUser())
   }, [])
+
+  // Sync cart state with localStorage across components
+  useEffect(() => {
+    const loadCart = (e) => {
+      const saved = localStorage.getItem('gk_cart');
+      setCart(saved ? JSON.parse(saved) : []);
+      if (e?.detail?.open) {
+        setIsCartOpen(true);
+      }
+    };
+    loadCart();
+    window.addEventListener('gk_cart_updated', loadCart);
+    return () => window.removeEventListener('gk_cart_updated', loadCart);
+  }, []);
+
+  const removeFromCart = (id) => {
+    const saved = localStorage.getItem('gk_cart');
+    const currentCart = saved ? JSON.parse(saved) : [];
+    const newCart = currentCart.filter(item => item.id !== id);
+    localStorage.setItem('gk_cart', JSON.stringify(newCart));
+    window.dispatchEvent(new Event('gk_cart_updated'));
+  };
+
+  const clearCart = () => {
+    localStorage.removeItem('gk_cart');
+    window.dispatchEvent(new Event('gk_cart_updated'));
+  };
 
   const handleSearchClick = () => {
     navigate('/marketplace?focus=true');
@@ -142,7 +172,7 @@ export default function Navigation({ activeSection }) {
           </nav>
 
           {/* Header Quick Actions Icons */}
-          <div className="hidden md:flex items-center gap-3 relative z-[80]">
+          <div className="flex items-center gap-2 sm:gap-3 relative z-[80]">
             <div className="relative">
               <button 
                 type="button"
@@ -205,18 +235,21 @@ export default function Navigation({ activeSection }) {
               </AnimatePresence>
             </div>
             
-            {user && (
-              <button 
-                type="button"
-                onClick={() => setIsCartOpen(true)}
-                className="p-2.5 rounded-xl bg-white/5 border border-white/5 hover:border-[var(--color-gk-orange)]/30 hover:bg-[var(--color-gk-orange)]/5 text-white/80 hover:text-white transition-all cursor-pointer group relative"
-                title="Your Cart"
-              >
-                <svg className="w-4.5 h-4.5 group-hover:scale-105 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                </svg>
-              </button>
-            )}
+            <button 
+              type="button"
+              onClick={() => setIsCartOpen(true)}
+              className="p-2.5 rounded-xl bg-white/5 border border-white/5 hover:border-[var(--color-gk-orange)]/30 hover:bg-[var(--color-gk-orange)]/5 text-white/80 hover:text-white transition-all cursor-pointer group relative"
+              title="Your Vault Queue"
+            >
+              <svg className="w-4.5 h-4.5 group-hover:scale-105 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+              </svg>
+              {cart.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-[#ff5500] text-black text-[9px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center border border-black animate-pulse">
+                  {cart.length}
+                </span>
+              )}
+            </button>
           </div>
 
           {/* Mobile Menu Button */}
@@ -412,49 +445,111 @@ export default function Navigation({ activeSection }) {
               onClick={e => e.stopPropagation()}
             >
               {/* Header */}
-              <div>
-                <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center justify-between pb-6 border-b border-white/5 flex-shrink-0">
+                <div className="flex items-center gap-2">
+                  <ShoppingBag className="text-[#ff5500] w-5 h-5" />
                   <h3 className="text-xl font-black italic tracking-wider uppercase text-white font-grotesk">Your Vault Queue</h3>
-                  <button 
-                    onClick={() => setIsCartOpen(false)} 
-                    className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 text-white/40 hover:text-white transition-colors cursor-pointer"
-                  >
-                    <X size={16} />
-                  </button>
+                  <span className="text-[10px] bg-white/5 px-2 py-0.5 rounded font-mono text-white/50">{cart.length} items</span>
                 </div>
-
-                {/* Empty State */}
-                <div className="flex flex-col items-center text-center py-20">
-                  <div className="w-16 h-16 rounded-full bg-white/[0.02] border border-white/10 flex items-center justify-center mb-6">
-                    <svg className="w-6 h-6 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                    </svg>
-                  </div>
-                  <h4 className="text-base font-bold text-white mb-2 uppercase tracking-wide">Acquisition Queue Empty</h4>
-                  <p className="text-xs text-white/40 max-w-xs leading-relaxed font-medium">
-                    You currently have no castings reserved in your cart. Active drops can be secured instantly via direct checkout on the marketplace.
-                  </p>
-                </div>
-              </div>
-
-              {/* Actions Footer */}
-              <div className="pt-6 border-t border-white/5 space-y-3">
-                <Link 
-                  to="/marketplace" 
-                  onClick={() => setIsCartOpen(false)}
-                  className="w-full py-4 rounded-xl bg-[var(--color-gk-orange)] hover:bg-gk-orange/90 hover:shadow-[0_0_30px_rgba(225,91,44,0.3)] text-center text-white font-black text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  Explore Marketplace
-                </Link>
                 <button 
-                  onClick={() => setIsCartOpen(false)}
-                  className="w-full py-3 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 text-white/60 hover:text-white text-xs font-bold uppercase tracking-wider transition-all cursor-pointer"
+                  onClick={() => setIsCartOpen(false)} 
+                  className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 text-white/40 hover:text-white border border-white/5 transition-colors cursor-pointer"
                 >
-                  Continue Browsing
+                  <X size={16} />
                 </button>
               </div>
+
+              {/* Drawer Body (Scrollable items) */}
+              <div className="flex-1 overflow-y-auto py-6 space-y-4 min-h-0" data-lenis-prevent>
+                {cart.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-center space-y-4 py-12">
+                    <div className="w-16 h-16 rounded-full bg-white/[0.02] border border-white/10 flex items-center justify-center mb-4">
+                      <ShoppingCart className="w-6 h-6 text-white/30" />
+                    </div>
+                    <h4 className="text-base font-bold text-white uppercase tracking-wide">Queue is empty</h4>
+                    <p className="text-xs text-white/40 max-w-xs leading-relaxed font-medium">
+                      You currently have no castings reserved in your cart. Active drops can be secured instantly via direct checkout on the marketplace.
+                    </p>
+                  </div>
+                ) : (
+                  cart.map(item => (
+                    <div key={item.id} className="flex gap-4 p-3 bg-white/[0.02] border border-white/5 rounded-xl hover:border-white/10 transition-colors">
+                      <div className="w-16 h-16 rounded-lg bg-black/20 overflow-hidden flex-shrink-0 border border-white/5">
+                        <img src={item.image || '/vault-1.png'} alt={item.name} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="flex-1 min-w-0 flex flex-col justify-between">
+                        <div>
+                          <div className="text-[8px] font-black uppercase tracking-widest text-[#ff5500] truncate">{item.brand}</div>
+                          <h4 className="text-xs font-bold text-white truncate mt-0.5">{item.name}</h4>
+                        </div>
+                        <div className="flex justify-between items-center mt-2">
+                          <span className="font-mono text-xs text-white/80 font-bold">₹{item.price}</span>
+                          <button
+                            onClick={() => removeFromCart(item.id)}
+                            className="text-[#888888] hover:text-red-400 p-1 transition-colors cursor-pointer"
+                            title="Remove item"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Drawer Footer */}
+              {cart.length > 0 ? (
+                <div className="pt-6 border-t border-white/5 bg-black/40 space-y-4 flex-shrink-0">
+                  <div className="flex justify-between items-end">
+                    <span className="text-xs font-bold text-[#888888] uppercase tracking-widest">Order Total</span>
+                    <span className="font-mono text-xl text-[#ff5500] font-black">
+                      ₹{cart.reduce((sum, item) => sum + Number(item.price || 0), 0)}
+                    </span>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setCheckoutCart(cart);
+                      setIsCartOpen(false);
+                    }}
+                    className="w-full bg-[#ff5500] hover:bg-[#ff6611] active:bg-[#e64d00] text-black font-black text-sm py-4 rounded-xl transition-all duration-200 uppercase tracking-widest hover:shadow-[0_0_30px_rgba(255,85,0,0.3)] cursor-pointer"
+                  >
+                    Proceed to Aggregate Pay
+                  </button>
+                </div>
+              ) : (
+                <div className="pt-6 border-t border-white/5 space-y-3 flex-shrink-0">
+                  <Link 
+                    to="/marketplace" 
+                    onClick={() => setIsCartOpen(false)}
+                    className="w-full py-4 rounded-xl bg-[var(--color-gk-orange)] hover:bg-gk-orange/90 hover:shadow-[0_0_30px_rgba(225,91,44,0.3)] text-center text-white font-black text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    Explore Marketplace
+                  </Link>
+                  <button 
+                    onClick={() => setIsCartOpen(false)}
+                    className="w-full py-3 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 text-white/60 hover:text-white text-xs font-bold uppercase tracking-wider transition-all cursor-pointer"
+                  >
+                    Continue Browsing
+                  </button>
+                </div>
+              )}
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Aggregate Checkout Modal */}
+      <AnimatePresence>
+        {checkoutCart && (
+          <ReserveModal 
+            cartItems={checkoutCart} 
+            onClose={() => {
+              setCheckoutCart(null);
+              clearCart();
+            }} 
+          />
         )}
       </AnimatePresence>
     </>

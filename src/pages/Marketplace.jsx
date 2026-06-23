@@ -21,14 +21,13 @@ export default function Marketplace() {
     const saved = localStorage.getItem('gk_cart');
     return saved ? JSON.parse(saved) : [];
   });
-  const [isCartOpen, setIsCartOpen] = useState(false);
-  const [checkoutCart, setCheckoutCart] = useState(null);
 
   const navigate = useNavigate()
 
-  const saveCart = (newCart) => {
+  const saveCart = (newCart, openDrawer = false) => {
     setCart(newCart);
     localStorage.setItem('gk_cart', JSON.stringify(newCart));
+    window.dispatchEvent(new CustomEvent('gk_cart_updated', { detail: { open: openDrawer } }));
   };
 
   const addToCart = (car) => {
@@ -37,22 +36,30 @@ export default function Marketplace() {
       return;
     }
     const newCart = [...cart, car];
-    saveCart(newCart);
-    setIsCartOpen(true); // Open drawer automatically
+    saveCart(newCart, true);
   };
 
   const removeFromCart = (carId) => {
     const newCart = cart.filter(item => item.id !== carId);
-    saveCart(newCart);
+    saveCart(newCart, false);
   };
 
   const clearCart = () => {
-    saveCart([]);
+    saveCart([], false);
   };
 
   const handleBuyClick = (car) => {
     setCheckoutCar(car);
-  }
+  };
+
+  useEffect(() => {
+    const syncCart = () => {
+      const saved = localStorage.getItem('gk_cart');
+      setCart(saved ? JSON.parse(saved) : []);
+    };
+    window.addEventListener('gk_cart_updated', syncCart);
+    return () => window.removeEventListener('gk_cart_updated', syncCart);
+  }, []);
 
   useEffect(() => {
     async function load() {
@@ -273,131 +280,10 @@ export default function Marketplace() {
           </div>
         )}
       </div>
-      {/* Floating Cart Button */}
-      {cart.length > 0 && !isCartOpen && (
-        <button
-          onClick={() => setIsCartOpen(true)}
-          className="fixed bottom-24 right-6 z-40 bg-black/85 backdrop-blur-md border border-[#ff5500]/30 hover:border-[#ff5500]/50 text-white p-4 rounded-full shadow-[0_0_30px_rgba(255,85,0,0.2)] hover:shadow-[0_0_30px_rgba(255,85,0,0.45)] transition-all duration-300 flex items-center justify-center cursor-pointer group"
-        >
-          <ShoppingCart className="w-5 h-5 group-hover:scale-105 transition-transform" />
-          <span className="absolute -top-1 -right-1 bg-[#ff5500] text-black text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center border border-black animate-pulse">
-            {cart.length}
-          </span>
-        </button>
-      )}
-
-      {/* Cart Drawer */}
-      <AnimatePresence>
-        {isCartOpen && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsCartOpen(false)}
-              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm"
-            />
-
-            {/* Sliding Panel */}
-            <motion.div
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'tween', ease: 'easeInOut', duration: 0.3 }}
-              className="fixed top-0 right-0 h-full w-full max-w-md bg-[#0c0c0c] border-l border-white/5 z-50 shadow-[0_0_50px_rgba(0,0,0,0.8)] flex flex-col"
-            >
-              {/* Top orange bar */}
-              <div className="h-[2px] bg-[#ff5500]" />
-
-              {/* Drawer Header */}
-              <div className="p-6 border-b border-white/5 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <ShoppingBag className="text-[#ff5500] w-5 h-5" />
-                  <h2 className="text-lg font-black uppercase tracking-wider text-white">Your Cart</h2>
-                  <span className="text-[10px] bg-white/5 px-2 py-0.5 rounded font-mono text-white/50">{cart.length} items</span>
-                </div>
-                <button
-                  onClick={() => setIsCartOpen(false)}
-                  className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-white/60 hover:text-white flex items-center justify-center text-xs transition-colors border border-white/5 cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Drawer Body (Scrollable items) */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-4" data-lenis-prevent>
-                {cart.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
-                    <ShoppingCart className="w-12 h-12 text-white/10" />
-                    <p className="text-sm text-white/40 uppercase tracking-widest font-bold">Cart is empty</p>
-                  </div>
-                ) : (
-                  cart.map(item => (
-                    <div key={item.id} className="flex gap-4 p-3 bg-white/[0.02] border border-white/5 rounded-xl hover:border-white/10 transition-colors">
-                      <div className="w-16 h-16 rounded-lg bg-black/20 overflow-hidden flex-shrink-0 border border-white/5">
-                        <img src={item.image || '/vault-1.png'} alt={item.name} className="w-full h-full object-cover" />
-                      </div>
-                      <div className="flex-1 min-w-0 flex flex-col justify-between">
-                        <div>
-                          <div className="text-[8px] font-black uppercase tracking-widest text-[#ff5500] truncate">{item.brand}</div>
-                          <h4 className="text-xs font-bold text-white truncate mt-0.5">{item.name}</h4>
-                        </div>
-                        <div className="flex justify-between items-center mt-2">
-                          <span className="font-mono text-xs text-white/80 font-bold">₹{item.price}</span>
-                          <button
-                            onClick={() => removeFromCart(item.id)}
-                            className="text-[#888888] hover:text-red-400 p-1 transition-colors cursor-pointer"
-                            title="Remove item"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              {/* Drawer Footer */}
-              {cart.length > 0 && (
-                <div className="p-6 border-t border-white/5 bg-black/40 space-y-4">
-                  <div className="flex justify-between items-end">
-                    <span className="text-xs font-bold text-[#888888] uppercase tracking-widest">Order Total</span>
-                    <span className="font-mono text-xl text-[#ff5500] font-black">
-                      ₹{cart.reduce((sum, item) => sum + Number(item.price || 0), 0)}
-                    </span>
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      setCheckoutCart(cart);
-                      setIsCartOpen(false);
-                    }}
-                    className="w-full bg-[#ff5500] hover:bg-[#ff6611] active:bg-[#e64d00] text-black font-black text-xs py-4 rounded-xl transition-all duration-200 uppercase tracking-widest hover:shadow-[0_0_30px_rgba(255,85,0,0.3)] cursor-pointer"
-                  >
-                    Proceed to Aggregate Pay
-                  </button>
-                </div>
-              )}
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-
       {/* Checkout Modals */}
       <AnimatePresence>
         {checkoutCar && (
           <ReserveModal product={checkoutCar} onClose={() => setCheckoutCar(null)} />
-        )}
-        {checkoutCart && (
-          <ReserveModal
-            cartItems={checkoutCart}
-            onClose={() => {
-              setCheckoutCart(null);
-              clearCart(); // Clear cart after checkout
-            }}
-          />
         )}
       </AnimatePresence>
       <Footer />
