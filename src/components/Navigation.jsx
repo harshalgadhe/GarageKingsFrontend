@@ -78,14 +78,14 @@ export default function Navigation({ activeSection }) {
     window.location.href = '/account'
   }
 
-  // Lock body scroll when mobile menu is open
+  // Lock body scroll when mobile menu or cart drawer is open
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen || isCartOpen) {
       document.body.style.overflow = 'hidden'
     } else {
       document.body.style.overflow = 'unset'
     }
-  }, [isOpen])
+  }, [isOpen, isCartOpen])
 
   // Hash Scroll Effect for single-page cross-navigation
   useEffect(() => {
