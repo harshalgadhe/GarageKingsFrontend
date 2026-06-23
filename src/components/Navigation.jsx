@@ -12,10 +12,9 @@ const MotionLink = motion.create(Link)
 
 const links = [
   { id: 'hero', label: 'Home' },
-  { id: 'showcase', label: 'Showcase' },
-  { id: 'vault', label: 'Shop' },
-  { id: 'lanes', label: 'Brands' },
-  { id: 'drop', label: 'Drops' },
+  { id: 'gallery', label: 'Collections' },
+  { id: 'archive', label: 'Drops' },
+  { id: 'releases', label: 'Next Drop' },
 ]
 
 export default function Navigation({ activeSection }) {
@@ -88,7 +87,7 @@ export default function Navigation({ activeSection }) {
   return (
     <>
       <motion.header
-        className="fixed top-0 right-0 left-0 z-[70] bg-[#09090b]/85 backdrop-blur-md border-b border-white/5 py-1 pointer-events-none"
+        className="fixed top-0 right-0 left-0 z-[70] bg-[#090909]/85 backdrop-blur-md border-b border-white/5 py-1 pointer-events-none"
         initial={{ y: -64, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
@@ -103,7 +102,7 @@ export default function Navigation({ activeSection }) {
             <img
               src="/brand-logo.png"
               alt={BRAND.name}
-              className="h-10 w-10 md:h-12 md:w-12 rounded-full object-cover ring-1 ring-gk-yellow/30 shadow-[0_0_15px_rgba(255,179,0,0.2)]"
+              className="h-10 w-10 md:h-12 md:w-12 rounded-full object-cover ring-1 ring-gk-yellow/30 shadow-[0_0_15px_rgba(216,198,163,0.15)]"
             />
             <span className="text-left">
               <span className="block text-[8px] md:text-[9px] font-black uppercase tracking-[0.25em] text-gk-yellow">
@@ -123,7 +122,7 @@ export default function Navigation({ activeSection }) {
                     onClick={() => handleNavClick(link.id)}
                     className={`whitespace-nowrap text-xs font-black uppercase tracking-[0.15em] transition-colors duration-300 py-1.5 px-0.5 border-b-2 ${
                       activeTab === link.id || activeSection === link.id
-                        ? 'text-[#E10600] border-[#E10600]'
+                        ? 'text-[var(--color-gk-orange)] border-[var(--color-gk-orange)]'
                         : 'text-white/70 border-transparent hover:text-white'
                     }`}
                   >
@@ -148,7 +147,7 @@ export default function Navigation({ activeSection }) {
               <button 
                 type="button"
                 onClick={handleProfileClick}
-                className={`p-2.5 rounded-xl bg-white/5 border hover:border-[#E10600]/30 hover:bg-[#E10600]/5 hover:text-white transition-all cursor-pointer group ${user ? 'border-gk-yellow/40 text-gk-yellow' : 'border-white/5 text-white/80'}`}
+                className={`p-2.5 rounded-xl bg-white/5 border hover:border-[var(--color-gk-orange)]/30 hover:bg-[var(--color-gk-orange)]/5 hover:text-white transition-all cursor-pointer group ${user ? 'border-gk-yellow/40 text-gk-yellow' : 'border-white/5 text-white/80'}`}
                 title={user ? `Collector Menu (${user.displayName || user.email})` : "Collector Profile"}
               >
                 <svg className="w-4.5 h-4.5 group-hover:scale-105 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
@@ -173,16 +172,16 @@ export default function Navigation({ activeSection }) {
                         <p className="text-[10px] text-white/50 truncate mt-0.5">{user.email}</p>
                       </div>
                       <Link 
-                        to="/garage" 
+                        to="/account" 
                         onClick={() => setIsProfileDropdownOpen(false)}
                         className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold text-white/70 hover:text-white hover:bg-white/5 transition-all"
                       >
                         <User size={14} className="text-gk-yellow" />
-                        <span>My Garage / Profile</span>
+                        <span>My Account</span>
                       </Link>
-                      {user.roles?.includes('admin') && (
+                      {(user.roles?.includes('admin') || user.roles?.includes('owner')) && (
                         <Link 
-                          to="/garage?admin=true" 
+                          to="/admin" 
                           onClick={() => setIsProfileDropdownOpen(false)}
                           className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold text-white/70 hover:text-white hover:bg-white/5 transition-all"
                         >
@@ -210,7 +209,7 @@ export default function Navigation({ activeSection }) {
               <button 
                 type="button"
                 onClick={() => setIsCartOpen(true)}
-                className="p-2.5 rounded-xl bg-white/5 border border-white/5 hover:border-[#E10600]/30 hover:bg-[#E10600]/5 text-white/80 hover:text-white transition-all cursor-pointer group relative"
+                className="p-2.5 rounded-xl bg-white/5 border border-white/5 hover:border-[var(--color-gk-orange)]/30 hover:bg-[var(--color-gk-orange)]/5 text-white/80 hover:text-white transition-all cursor-pointer group relative"
                 title="Your Cart"
               >
                 <svg className="w-4.5 h-4.5 group-hover:scale-105 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
@@ -257,7 +256,7 @@ export default function Navigation({ activeSection }) {
                   className="group relative flex items-center justify-center w-full"
                 >
                   <span className={`text-3xl font-black tracking-tighter uppercase transition-colors duration-300 ${
-                    activeSection === link.id ? 'text-[#E10600]' : 'text-white/40 group-hover:text-white'
+                    activeSection === link.id ? 'text-[var(--color-gk-orange)]' : 'text-white/40 group-hover:text-white'
                   }`}>
                     {link.label}
                   </span>
@@ -279,7 +278,7 @@ export default function Navigation({ activeSection }) {
               {user ? (
                 <>
                   <MotionLink
-                    to="/garage"
+                    to="/account"
                     onClick={() => setIsOpen(false)}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -287,12 +286,12 @@ export default function Navigation({ activeSection }) {
                     transition={{ duration: 0.4, delay: (links.length + 1) * 0.04 + 0.1, ease: [0.22, 1, 0.36, 1] }}
                     className="flex items-center gap-2 text-3xl font-black uppercase tracking-tighter text-gk-yellow hover:text-yellow-400 transition-colors"
                   >
-                    Your Profile
+                    My Account
                   </MotionLink>
                   
-                  {user.roles?.includes('admin') && (
+                  {(user.roles?.includes('admin') || user.roles?.includes('owner')) && (
                     <MotionLink
-                      to="/garage?admin=true"
+                      to="/admin"
                       onClick={() => setIsOpen(false)}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -338,7 +337,7 @@ export default function Navigation({ activeSection }) {
           <button 
             onClick={() => handleNavClick('hero')} 
             className={`flex flex-col items-center gap-1 flex-1 py-1 transition-colors cursor-pointer ${
-              activeTab === 'hero' ? 'text-[#E10600]' : 'hover:text-white'
+              activeTab === 'hero' ? 'text-[var(--color-gk-orange)]' : 'hover:text-white'
             }`}
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
@@ -350,7 +349,7 @@ export default function Navigation({ activeSection }) {
           <button 
             onClick={() => handleNavClick('vault')} 
             className={`flex flex-col items-center gap-1 flex-1 py-1 transition-colors cursor-pointer ${
-              activeTab === 'vault' ? 'text-[#E10600]' : 'hover:text-white'
+              activeTab === 'vault' ? 'text-[var(--color-gk-orange)]' : 'hover:text-white'
             }`}
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
@@ -360,33 +359,21 @@ export default function Navigation({ activeSection }) {
           </button>
 
           <button 
-            onClick={() => handleNavClick('garage')} 
-            className={`flex flex-col items-center gap-1 flex-1 py-1 transition-colors cursor-pointer ${
-              activeTab === 'garage' ? 'text-[#E10600]' : 'hover:text-white'
-            }`}
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-            </svg>
-            <span className="text-[9px] font-bold uppercase tracking-wider">Garage</span>
-          </button>
-
-          <button 
             onClick={() => {
               if (user) {
-                navigate('/garage');
+                navigate('/account');
               } else {
                 setIsAuthModalOpen(true);
               }
             }}
             className={`flex flex-col items-center gap-1 flex-1 py-1 transition-colors cursor-pointer ${
-              user ? 'text-gk-yellow' : 'hover:text-white'
+              activeTab === 'account' ? 'text-[var(--color-gk-orange)]' : 'hover:text-white'
             }`}
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
-            <span className="text-[9px] font-bold uppercase tracking-wider">Profile</span>
+            <span className="text-[9px] font-bold uppercase tracking-wider">Account</span>
           </button>
         </div>,
         document.body
@@ -455,7 +442,7 @@ export default function Navigation({ activeSection }) {
                 <Link 
                   to="/marketplace" 
                   onClick={() => setIsCartOpen(false)}
-                  className="w-full py-4 rounded-xl bg-[#E10600] hover:bg-red-600 hover:shadow-[0_0_30px_rgba(225,6,0,0.4)] text-center text-white font-black text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full py-4 rounded-xl bg-[var(--color-gk-orange)] hover:bg-gk-orange/90 hover:shadow-[0_0_30px_rgba(225,91,44,0.3)] text-center text-white font-black text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
                   Explore Marketplace
                 </Link>

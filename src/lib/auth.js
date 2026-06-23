@@ -1,16 +1,149 @@
 // ============================================================================
-// GARAGEKINGS AWS COGNITO REST CLIENT MODULE (ZERO-DEPENDENCY)
-// Optimized for lightning-fast frontend authentication on Vercel
-// Hits Cognito Identity Provider API directly via standardized REST payloads
+// GARAGEKINGS LOCAL COOKIE-BASED AUTH REST CLIENT MODULE
+// Optimized for secure local session authentication and owner setups
 // ============================================================================
 
-const COGNITO_REGION = 'ap-south-1';
-const COGNITO_CLIENT_ID = '6f55rbspec5p04tdd83l7c2uc0';
-const COGNITO_ENDPOINT = `https://cognito-idp.${COGNITO_REGION}.amazonaws.com/`;
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1';
 
 /**
- * Parses JWT token strings cleanly without requiring massive external libraries
+ * Initiates local email/password login
  */
+export async function signInCognito(email, password) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include',
+      body: JSON.stringify({ email: email.trim(), password })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Authentication failed. Please verify credentials.');
+    }
+
+    const { user } = data;
+    localStorage.setItem('gk_user', JSON.stringify({
+      email: user.email,
+      userId: user.id,
+      username: user.email,
+      displayName: user.email.split('@')[0],
+      role: user.role,
+      roles: [user.role.toLowerCase()]
+    }));
+
+    return user;
+  } catch (error) {
+    console.error("Local signIn failed:", error);
+    throw error;
+  }
+}
+
+/**
+ * Clears local cookies and logs out the user
+ */
+export async function signOutCognito() {
+  try {
+    await fetch(`${API_BASE_URL}/auth/logout`, {
+      method: 'POST',
+      credentials: 'include'
+    });
+  } catch (e) {
+    console.warn("Logout request failed, cleaning up local storage anyway:", e);
+  }
+  localStorage.removeItem('gk_user');
+}
+
+/**
+ * Fetches the currently authenticated user session details
+ */
+export function getCurrentUser() {
+  const userStr = localStorage.getItem('gk_user');
+  if (!userStr) return null;
+  try {
+    return JSON.parse(userStr);
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Checks if first-startup setup has been run
+ */
+export async function getSetupStatus() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/setup/status`, {
+      credentials: 'include'
+    });
+    if (!res.ok) throw new Error("Failed to check setup status");
+    return await res.json();
+  } catch (e) {
+    console.error("Failed to query setup status:", e);
+    return { isSetupRequired: false };
+  }
+}
+
+/**
+ * Configures the first-time Owner account
+ */
+export async function setupOwner(email, password) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/setup/owner`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || "Failed to configure Owner account.");
+    }
+    return data;
+  } catch (e) {
+    console.error("Owner setup failed:", e);
+    throw e;
+  }
+}
+
+// Cognito federated google login backward compatibility implementation
+export async function signInWithGoogleProfile(googleIdToken) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/google-login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include',
+      body: JSON.stringify({ idToken: googleIdToken })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Google authentication sync failed.');
+    }
+
+    return await signInCognito(data.email, data.temporaryPassword);
+  } catch (error) {
+    console.error("Google authentication failed:", error);
+    throw error;
+  }
+}
+
+// Auto confirm backward compatibility stub
+export async function autoConfirmUserBackend(email) {
+  return { success: true };
+}
+
+export async function signUpCognito(email, password, name) {
+  return { success: true };
+}
+
+export async function confirmSignUpCognito(email, code) {
+  return { success: true };
+}
+
 export function parseJwt(token) {
   if (!token) return null;
   try {
@@ -29,238 +162,3 @@ export function parseJwt(token) {
   }
 }
 
-/**
- * Initiates User/Password authentication with AWS Cognito User Pool
- */
-export async function signInCognito(email, password) {
-  try {
-    const response = await fetch(COGNITO_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-amz-json-1.1',
-        'X-Amz-Target': 'AWSCognitoIdentityProviderService.InitiateAuth'
-      },
-      body: JSON.stringify({
-        AuthFlow: 'USER_PASSWORD_AUTH',
-        ClientId: COGNITO_CLIENT_ID,
-        AuthParameters: {
-          USERNAME: email.trim(),
-          PASSWORD: password
-        }
-      })
-    });
-
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.message || 'Authentication failed. Please verify credentials.');
-    }
-
-    const { IdToken, AccessToken, RefreshToken } = data.AuthenticationResult;
-
-    // Cache tokens securely in local storage
-    localStorage.setItem('gk_cognito_id_token', IdToken);
-    localStorage.setItem('gk_cognito_access_token', AccessToken);
-    localStorage.setItem('gk_cognito_refresh_token', RefreshToken);
-
-    return parseJwt(IdToken);
-  } catch (error) {
-    console.error("Cognito signIn failed:", error);
-    throw error;
-  }
-}
-
-/**
- * Registers a new Customer user in AWS Cognito
- */
-export async function signUpCognito(email, password, name) {
-  try {
-    const userAttributes = [
-      { Name: 'email', Value: email.trim() }
-    ];
-    if (name) {
-      userAttributes.push({ Name: 'name', Value: name.trim() });
-    }
-
-    let response = await fetch(COGNITO_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-amz-json-1.1',
-        'X-Amz-Target': 'AWSCognitoIdentityProviderService.SignUp'
-      },
-      body: JSON.stringify({
-        ClientId: COGNITO_CLIENT_ID,
-        Username: email.trim(),
-        Password: password,
-        UserAttributes: userAttributes
-      })
-    });
-
-    let data = await response.json();
-
-    // Catch cases where name attribute is not allowed by Cognito user pool policy and retry without it
-    if (!response.ok && name && (data.message?.toLowerCase().includes('attribute') || data.__type?.includes('InvalidParameterException'))) {
-      console.warn("Cognito signUp with name attribute failed, retrying with email only...", data);
-      response = await fetch(COGNITO_ENDPOINT, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-amz-json-1.1',
-          'X-Amz-Target': 'AWSCognitoIdentityProviderService.SignUp'
-        },
-        body: JSON.stringify({
-          ClientId: COGNITO_CLIENT_ID,
-          Username: email.trim(),
-          Password: password,
-          UserAttributes: [
-            { Name: 'email', Value: email.trim() }
-          ]
-        })
-      });
-      data = await response.json();
-    }
-
-    if (!response.ok) {
-      throw new Error(data.message || 'Registration failed.');
-    }
-
-    return data;
-  } catch (error) {
-    console.error("Cognito signUp failed:", error);
-    throw error;
-  }
-}
-
-/**
- * Submits the email verification OTP code to confirm Cognito registration
- */
-export async function confirmSignUpCognito(email, code) {
-  try {
-    const response = await fetch(COGNITO_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-amz-json-1.1',
-        'X-Amz-Target': 'AWSCognitoIdentityProviderService.ConfirmSignUp'
-      },
-      body: JSON.stringify({
-        ClientId: COGNITO_CLIENT_ID,
-        Username: email.trim(),
-        ConfirmationCode: code.trim()
-      })
-    });
-
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.message || 'Verification failed. Please check the code.');
-    }
-
-    return data;
-  } catch (error) {
-    console.error("Cognito confirmSignUp failed:", error);
-    throw error;
-  }
-}
-
-/**
- * Clears cached tokens to log out the user
- */
-export function signOutCognito() {
-  localStorage.removeItem('gk_cognito_id_token');
-  localStorage.removeItem('gk_cognito_access_token');
-  localStorage.removeItem('gk_cognito_refresh_token');
-}
-
-/**
- * Fetches the currently authenticated user session details
- */
-export function getCurrentUser() {
-  const token = localStorage.getItem('gk_cognito_id_token');
-  if (!token) return null;
-  
-  const payload = parseJwt(token);
-  if (!payload) return null;
-
-  // Check expiration (exp is in epoch seconds)
-  const isExpired = payload.exp * 1000 < Date.now();
-  if (isExpired) {
-    signOutCognito();
-    return null;
-  }
-
-  // Generate a clean display name from name / given_name or email prefix
-  const rawName = payload.name || payload.given_name || payload.nickname;
-  let displayName = '';
-  if (rawName) {
-    displayName = rawName;
-  } else if (payload.email) {
-    const prefix = payload.email.split('@')[0];
-    displayName = prefix
-      .split(/[._-]/)
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-  } else {
-    displayName = 'Collector';
-  }
-
-  return {
-    email: payload.email,
-    userId: payload.sub,
-    username: payload['cognito:username'] || payload.email,
-    displayName: displayName,
-    roles: payload['cognito:groups'] || []
-  };
-}
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1';
-
-/**
- * Hits the NestJS backend to automatically verify and confirm standard sandboxed Cognito accounts
- */
-export async function autoConfirmUserBackend(email) {
-  try {
-    const response = await fetch(`${API_BASE_URL}/auth/auto-confirm`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ email: email.trim() })
-    });
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.message || 'Auto-confirmation gateway request failed.');
-    }
-    return data;
-  } catch (error) {
-    console.error("Backend autoConfirmUser failed:", error);
-    throw error;
-  }
-}
-
-/**
- * Direct Google Social Sign-In option: Syncs account with Cognito administratively on backend,
- * and logs user in using Cognito federated flow.
- * Instantly fetches a REAL, VALID Cognito JWT ID Token without requiring third-party OAuth redirect panels!
- */
-export async function signInWithGoogleProfile(googleIdToken) {
-  try {
-    console.log(`[GoogleProfileAuth] Verifying and syncing Google ID token via backend...`);
-    const response = await fetch(`${API_BASE_URL}/auth/google-login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ email: googleIdToken, idToken: googleIdToken })
-    });
-    
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.message || 'Backend Google login federated sync failed.');
-    }
-    
-    const resolvedEmail = data.email || googleIdToken;
-    const resolvedPassword = data.temporaryPassword || 'GoogleSecureProd2026!';
-    console.log(`[GoogleProfileAuth] Sync completed. Finalizing standard Cognito sign-in for ${resolvedEmail}...`);
-    return await signInCognito(resolvedEmail, resolvedPassword);
-  } catch (error) {
-    console.error("Google social sign-in failed:", error);
-    throw error;
-  }
-}

@@ -1,187 +1,265 @@
-import { useState, useEffect, useRef, forwardRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { vaultProducts } from '../../data/content'
+"use client"
+
+import { useEffect, useState, forwardRef } from 'react'
+import { motion, useReducedMotion } from 'framer-motion'
+import { getCars } from '../../lib/db'
+
+const INSTAGRAM_URL = "https://www.instagram.com/garagekingsindia/"
+
+const WEEK_DROPS = [
+  {
+    id: 's15-drift',
+    name: 'Nissan Skyline H/T 2000GT-X',
+    brand: 'Mini GT',
+    scale: '1:64',
+    finish: 'Granite Silver Chase',
+    price: '₹8,999',
+    image: '/vault-8.png',
+    bgTone: 'bg-zinc-950/40',
+    colorGlow: 'rgba(216,198,163,0.06)',
+    description: "New arrival added this week. Sourced in original factory condition with standard packaging."
+  },
+  {
+    id: 'camaro-1969',
+    name: "'69 Ford Mustang Boss 302",
+    brand: 'Hot Wheels Premium',
+    scale: '1:64',
+    finish: 'Grabber Yellow',
+    price: '₹5,500',
+    image: '/vault-6.png',
+    bgTone: 'bg-zinc-950/20',
+    colorGlow: 'rgba(225,91,44,0.04)'
+  },
+  {
+    id: 'bronco-offroad',
+    name: "'83 Chevy Silverado",
+    brand: 'Hot Wheels Premium',
+    scale: '1:64',
+    finish: 'Spectraflame Red',
+    price: '₹1,299',
+    image: '/vault-5.png',
+    bgTone: 'bg-zinc-950/30',
+    colorGlow: 'rgba(239,68,68,0.03)'
+  },
+  {
+    id: 'exotic-supercar',
+    name: 'Silver Supercar',
+    brand: 'Inno64',
+    scale: '1:64',
+    finish: 'Liquid Metal Silver',
+    price: '₹1,899',
+    image: '/vault-3.png',
+    bgTone: 'bg-zinc-950/20',
+    colorGlow: 'rgba(161,161,161,0.03)'
+  }
+]
 
 const TechnicalArchive = forwardRef(function TechnicalArchive(props, ref) {
-  const [searchQuery, setSearchQuery] = useState('')
-  const [activeBrand, setActiveBrand] = useState('All')
-  const [hoveredProduct, setHoveredProduct] = useState(null)
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
-  const [isHoverable, setIsHoverable] = useState(false)
-
-  const tableRef = useRef(null)
+  const reduce = useReducedMotion()
+  const [drops, setDrops] = useState(WEEK_DROPS)
 
   useEffect(() => {
-    // Enable tooltip only for devices with a mouse/trackpad pointer
-    setIsHoverable(window.matchMedia('(pointer: fine)').matches)
+    getCars()
+      .then(cars => {
+        if (cars && cars.length > 0) {
+          const filtered = cars.filter(car => 
+            car.tags && (car.tags.includes('drop') || car.tags.includes('weekly-drop'))
+          )
+          if (filtered.length > 0) {
+            const GLOWS = [
+              'rgba(216,198,163,0.06)',
+              'rgba(225,91,44,0.04)',
+              'rgba(239,68,68,0.03)',
+              'rgba(161,161,161,0.03)'
+            ]
+            const mapped = filtered.map((car, idx) => {
+              const rawPrice = parseFloat(car.price)
+              const formattedPrice = !isNaN(rawPrice) 
+                ? `₹${rawPrice.toLocaleString('en-IN')}` 
+                : (car.price || 'Price on request')
+
+              return {
+                id: car.id,
+                name: car.name,
+                brand: car.brand,
+                scale: car.scale || '1:64',
+                finish: car.finish || car.grade || car.lane || 'Standard Finish',
+                price: formattedPrice,
+                image: car.image || '/vault-1.png',
+                bgTone: 'bg-zinc-950/30',
+                colorGlow: GLOWS[idx % GLOWS.length],
+                description: car.description || "New arrival added this week. Sourced in original factory condition."
+              }
+            })
+            setDrops(mapped)
+          }
+        }
+      })
+      .catch(err => {
+        console.error("Error fetching drop products from backend:", err)
+      })
   }, [])
 
-  const handleMouseMove = (e) => {
-    setMousePos({ x: e.clientX, y: e.clientY })
-  }
-
-  // Filter products based on search query and active brand tab
-  const filteredProducts = vaultProducts.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          item.lane.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesBrand = activeBrand === 'All' || 
-                         (activeBrand === 'MINI GT' && item.image.includes('vault-1')) ||
-                         (activeBrand === 'INNO64' && item.image.includes('vault-4')) ||
-                         (activeBrand === 'HOT WHEELS RLC' && (item.image.includes('vault-2') || item.image.includes('vault-5'))) ||
-                         (activeBrand === 'OTHERS' && (!item.image.includes('vault-1') && !item.image.includes('vault-4') && !item.image.includes('vault-2') && !item.image.includes('vault-5')))
-    
-    return matchesSearch && matchesBrand
-  })
-
-  const getCastingBrandName = (item) => {
-    if (item.image.includes('vault-1') || item.image.includes('vault-8')) return 'MINI GT'
-    if (item.image.includes('vault-4')) return 'INNO64'
-    if (item.image.includes('vault-2') || item.image.includes('vault-5')) return 'HOT WHEELS RLC'
-    return 'HOT WHEELS PREMIUM'
-  }
-
-  const getCastingRarity = (item) => {
-    if (item.image.includes('vault-1') || item.image.includes('vault-8')) return 'Chase'
-    if (item.image.includes('vault-2')) return 'Grail STH'
-    return 'Limited'
+  const handleOrder = () => {
+    window.open(INSTAGRAM_URL, '_blank')
   }
 
   return (
-    <section
-      ref={ref}
-      id="archive"
-      className="relative min-h-[100dvh] w-full py-28 md:py-36 px-6 md:px-12 lg:px-16 bg-transparent border-t border-zinc-800"
-    >
-      <div className="max-w-7xl mx-auto w-full h-full flex flex-col justify-start">
-        
-        {/* Header Block */}
-        <div className="w-full flex flex-col md:flex-row md:items-end justify-between gap-6 mb-16">
-          <div className="text-left">
-            <span className="text-[10px] font-mono uppercase tracking-[0.25em] text-zinc-500 mb-2 block">
-              SPREAD 03 // DATA ARCHIVE
-            </span>
-            <h2 className="text-4xl sm:text-5xl md:text-6xl font-black italic tracking-tighter text-white uppercase font-grotesk leading-none pb-2">
-              Casting <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-400 to-white/30">Index</span>
-            </h2>
-          </div>
+    <div ref={ref} id="archive" className="w-full bg-gk-black">
+      
+      {/* SECTION 3: THIS WEEK'S DROP */}
+      <section className="relative w-full py-24 md:py-32 px-6 md:px-12 lg:px-16 border-t border-zinc-900 overflow-hidden bg-gk-black">
+        <div className="max-w-7xl mx-auto w-full">
           
-          {/* Real-time search query box */}
-          <div className="w-full max-w-sm">
-            <input
-              type="text"
-              placeholder="Search castings..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-zinc-900/50 border border-zinc-800 focus:border-white/20 rounded-xl px-4 py-3 text-xs text-white placeholder-zinc-600 focus:outline-none transition-colors font-mono"
-            />
+          {/* Header row */}
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-16 border-b border-zinc-900 pb-8 text-left w-full">
+            <div>
+              <span className="text-[10px] font-medium uppercase tracking-[0.25em] text-gk-orange mb-3 block font-inter">
+                NEW DIECASTS AVAILABLE
+              </span>
+              <h2 className="text-4xl sm:text-5xl md:text-6.5xl font-bold tracking-normal text-[#F7F7F7] uppercase leading-none font-grotesk">
+                THIS WEEK'S<br />
+                <span className="text-gk-gold">DROP</span>
+              </h2>
+            </div>
+            
+            <div className="text-left md:text-right">
+              <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 block">
+                NEW ARRIVALS
+              </span>
+            </div>
           </div>
-        </div>
 
-        {/* Brand filters tabs */}
-        <div className="flex flex-wrap gap-2.5 mb-8 border-b border-zinc-800 pb-6">
-          {['All', 'HOT WHEELS RLC', 'MINI GT', 'INNO64', 'OTHERS'].map((brand) => (
-            <button
-              key={brand}
-              onClick={() => setActiveBrand(brand)}
-              className={`px-4 py-2 rounded-lg text-[10px] font-mono uppercase tracking-widest border transition-all cursor-pointer ${
-                activeBrand === brand 
-                  ? 'bg-white border-white text-zinc-950 font-bold' 
-                  : 'border-zinc-800 text-zinc-500 hover:border-zinc-600 hover:text-zinc-300'
-              }`}
-            >
-              {brand}
-            </button>
-          ))}
-        </div>
+          {/* Magazine Grid Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+            
+            {/* Left Column: Large Dominating Featured Drop */}
+            {drops[0] && (
+              <motion.div
+                initial={reduce ? false : { opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.1 }}
+                transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+                className="lg:col-span-7 col-span-12 p-2 relative overflow-hidden group text-left w-full"
+              >
+                {/* Big Image Container with spotlight glow */}
+                <div className={`relative w-full aspect-[4/3] rounded-2xl border border-white/[0.02] bg-[#111111] p-8 flex items-center justify-center overflow-hidden mb-6 shadow-[0_20px_45px_-10px_rgba(0,0,0,0.9)]`}>
+                  <div 
+                    className="absolute inset-0 opacity-70 group-hover:opacity-100 transition-opacity duration-[1200ms] pointer-events-none" 
+                    style={{ background: `radial-gradient(circle at center, ${drops[0].colorGlow} 0%, transparent 65%)` }}
+                  />
+                  <motion.img
+                    src={drops[0].image}
+                    alt={drops[0].name}
+                    className="max-h-[90%] max-w-[90%] object-contain filter drop-shadow-[0_25px_40px_rgba(0,0,0,0.9)] select-none pointer-events-none scale-102 group-hover:scale-105 group-hover:-translate-y-2 transition-transform duration-[1200ms] ease-out"
+                  />
+                </div>
 
-        {/* The Casting database Table */}
-        <div className="w-full overflow-x-auto" ref={tableRef} onMouseMove={handleMouseMove}>
-          <table className="w-full border-collapse text-left min-w-[700px]">
-            <thead>
-              <tr className="border-b border-zinc-800 text-[10px] font-mono uppercase tracking-widest text-zinc-500">
-                <th className="py-4 font-normal">Casting Model</th>
-                <th className="py-4 font-normal">Brand</th>
-                <th className="py-4 font-normal">Rarity Deck</th>
-                <th className="py-4 font-normal">Package Grade</th>
-                <th className="py-4 font-normal text-right">Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredProducts.map((item) => (
-                <tr
-                  key={item.id}
-                  onMouseEnter={() => setHoveredProduct(item)}
-                  onMouseLeave={() => setHoveredProduct(null)}
-                  onClick={() => alert(`Opening purchase queue for ${item.name}`)}
-                  className="border-b border-zinc-900 hover:bg-white/[0.015] hover:border-zinc-800 transition-colors cursor-pointer group text-xs text-zinc-300"
-                >
-                  <td className="py-5 font-black uppercase text-white font-grotesk tracking-wide group-hover:text-gk-bronze transition-colors">
-                    {item.name}
-                  </td>
-                  <td className="py-5 font-mono text-zinc-400">
-                    {getCastingBrandName(item)}
-                  </td>
-                  <td className="py-5">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-mono uppercase ${
-                      getCastingRarity(item) === 'Grail STH' 
-                        ? 'bg-gk-bronze/10 text-gk-bronze border border-gk-bronze/20'
-                        : 'bg-zinc-800/30 text-zinc-400 border border-zinc-700/20'
-                    }`}>
-                      {getCastingRarity(item)}
+                {/* Typography info */}
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 text-left pb-4 mb-4">
+                  <div>
+                    <h3 className="text-3xl sm:text-4xl font-bold tracking-normal text-[#F7F7F7] uppercase font-grotesk leading-tight">
+                      {drops[0].name}
+                    </h3>
+                    <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-400 block mt-1.5">
+                      {drops[0].brand} • {drops[0].scale} • {drops[0].finish}
                     </span>
-                  </td>
-                  <td className="py-5 text-zinc-500 italic">
-                    {item.grade}
-                  </td>
-                  <td className="py-5 font-sora font-semibold text-right text-white">
-                    {item.price}
-                  </td>
-                </tr>
-              ))}
+                  </div>
+                  <div className="md:text-right shrink-0">
+                    <span className="text-2xl font-bold text-gk-gold font-mono tracking-tight">{drops[0].price}</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-col md:flex-row gap-6 justify-between items-start md:items-center pt-4 border-t border-zinc-900/60">
+                  <div className="text-left font-inter text-xs text-zinc-500 max-w-[40ch]">
+                    {drops[0].description}
+                  </div>
+                  <div className="flex flex-wrap gap-3 w-full md:w-auto shrink-0">
+                    <button
+                      onClick={() => window.open("https://www.instagram.com/garagekingsindia/", '_blank')}
+                      className="px-6 py-3.5 rounded-xl bg-gk-orange hover:bg-orange-500 text-black font-black uppercase tracking-wider text-xs transition-all duration-300 cursor-pointer shadow-lg flex items-center gap-2"
+                    >
+                      Instagram DM
+                    </button>
+                    <button
+                      onClick={() => window.open("https://chat.whatsapp.com/EX1NbXHU63ZCQ4qhFVCubb", '_blank')}
+                      className="px-6 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase tracking-wider text-xs transition-all duration-300 cursor-pointer shadow-lg flex items-center gap-2"
+                    >
+                      WhatsApp Community
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Right Column: 3 Supporting Drops (Borderless list format) */}
+            <div className="lg:col-span-5 col-span-12 flex flex-col gap-8 w-full">
+              <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-zinc-500 font-inter text-left border-b border-zinc-900 pb-2 block">
+                SUPPORTING MODELS
+              </span>
               
-              {filteredProducts.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="py-20 text-center text-zinc-600 font-mono text-xs uppercase tracking-widest">
-                    No castings match search criteria.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+              {drops.slice(1).map((item, idx) => (
+                <motion.div
+                  key={item.id}
+                  initial={reduce ? false : { opacity: 0, x: 25 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.7, delay: idx * 0.1, ease: [0.22, 1, 0.36, 1] }}
+                  className="flex gap-6 items-center justify-between group transition-all duration-700 text-left bg-transparent border-none py-1"
+                >
+                  {/* Small Image */}
+                  <div className="relative w-20 aspect-square rounded-xl border border-white/[0.02] bg-[#111111] p-2 flex items-center justify-center overflow-hidden shrink-0 shadow-md">
+                    <div 
+                      className="absolute inset-0 opacity-50 group-hover:opacity-85 transition-opacity duration-700 pointer-events-none" 
+                      style={{ background: `radial-gradient(circle at center, ${item.colorGlow} 0%, transparent 70%)` }}
+                    />
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      className="max-h-[90%] max-w-[90%] object-contain filter drop-shadow-[0_8px_12px_rgba(0,0,0,0.8)] select-none pointer-events-none group-hover:scale-104 group-hover:-translate-y-1 transition-transform duration-700 ease-out"
+                    />
+                  </div>
+
+                  {/* Info details */}
+                  <div className="flex-1 min-w-0 pr-2">
+                    <h4 className="text-lg font-bold tracking-normal text-[#F7F7F7] uppercase font-grotesk leading-tight truncate block">
+                      {item.name}
+                    </h4>
+                    <span className="text-[9px] font-mono uppercase tracking-widest text-zinc-500 block mt-1">
+                      {item.brand} • {item.scale} • {item.finish}
+                    </span>
+                  </div>
+
+                  {/* Price & Action */}
+                  <div className="text-right shrink-0 flex flex-col items-end gap-1.5 pl-2">
+                    <span className="text-sm font-bold text-gk-gold font-mono tracking-tight">{item.price}</span>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => window.open("https://www.instagram.com/garagekingsindia/", '_blank')}
+                        className="px-2 py-1.5 rounded-lg border border-zinc-800 hover:border-zinc-500 text-[#F7F7F7] font-bold uppercase tracking-wider text-[8px] transition-all duration-300 hover:bg-white/[0.01] cursor-pointer"
+                        title="Order via Instagram DM"
+                      >
+                        Instagram
+                      </button>
+                      <button
+                        onClick={() => window.open("https://chat.whatsapp.com/EX1NbXHU63ZCQ4qhFVCubb", '_blank')}
+                        className="px-2 py-1.5 rounded-lg border border-emerald-800/60 hover:border-emerald-500 text-emerald-400 font-bold uppercase tracking-wider text-[8px] transition-all duration-300 hover:bg-emerald-500/5 cursor-pointer"
+                        title="Join WhatsApp"
+                      >
+                        WhatsApp
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+          </div>
+
         </div>
+      </section>
 
-        {/* Dynamic Cursor-following Hover Image Tooltip */}
-        <AnimatePresence>
-          {hoveredProduct && (
-            <motion.div
-              style={{
-                position: 'fixed',
-                left: mousePos.x + 24,
-                top: mousePos.y + 24,
-                pointerEvents: 'none',
-                zIndex: 100,
-              }}
-              initial={{ opacity: 0, scale: 0.9, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 10 }}
-              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className="w-52 h-36 rounded-2xl border border-zinc-800 bg-zinc-950/95 backdrop-blur-xl p-4 flex flex-col items-center justify-center shadow-[0_25px_50px_rgba(0,0,0,0.95)]"
-            >
-              <div className="absolute top-2 left-3 text-[7px] font-mono text-zinc-500 uppercase tracking-widest">
-                Condition Preview
-              </div>
-              <img
-                src={hoveredProduct.image}
-                alt={hoveredProduct.name}
-                className="max-h-[85%] max-w-[85%] object-contain filter drop-shadow-[0_12px_20px_rgba(0,0,0,0.75)]"
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-      </div>
-    </section>
+    </div>
   )
 })
 

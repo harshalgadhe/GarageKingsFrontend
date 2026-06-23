@@ -13,16 +13,13 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'purple', onAu
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
-  const [isGoogleSelectOpen, setIsGoogleSelectOpen] = useState(false)
-  const [customGoogleEmail, setCustomGoogleEmail] = useState('')
+
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  const isGoogleAvailable = clientId && !clientId.includes('dummy') && clientId !== '818913587248-1jgrq7f5d4g3d8a1c9h8t2s1p0c0o0p0.apps.googleusercontent.com';
 
   useEffect(() => {
     if (!isOpen || mode !== 'login') return;
-
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    if (!clientId || clientId.includes('dummy') || clientId === '818913587248-1jgrq7f5d4g3d8a1c9h8t2s1p0c0o0p0.apps.googleusercontent.com') {
-      return;
-    }
+    if (!isGoogleAvailable) return;
 
     // Pre-initialize the token client so it's ready when the button is clicked.
     // We intentionally do NOT call prompt() here — the user must click the button.
@@ -52,17 +49,25 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'purple', onAu
           setError('Google sign-in was cancelled or failed.');
           return;
         }
-        // Fetch the user info using the access token to get the ID token equivalent
         try {
-          const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-            headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
-          });
-          const userInfo = await userInfoRes.json();
-          if (!userInfo.email) throw new Error('Could not retrieve email from Google.');
-          // Pass email directly to our backend (sandbox bypass mode)
-          await handleSelectGoogleAccount(userInfo.email);
+          setLoading(true);
+          setError('');
+
+          // Complete Google authentication on backend by passing access token directly
+          const user = await signInWithGoogleProfile(tokenResponse.access_token);
+          setSuccessMessage(`Signed in as Google User: ${user.email || 'Verified user'}!`);
+          if (onAuthSuccess) {
+            setTimeout(() => {
+              onAuthSuccess(user);
+              onClose();
+            }, 1500);
+          } else {
+            setTimeout(() => {
+              window.location.reload();
+            }, 1500);
+          }
         } catch (err) {
-          setError(err.message || 'Failed to retrieve Google account info.');
+          setError(err.message || 'Google Authentication failed.');
           setLoading(false);
         }
       }
@@ -77,45 +82,6 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'purple', onAu
   const buttonClass = themeColor === 'orange' 
     ? 'bg-gk-orange hover:bg-[#C7FDFF] hover:shadow-[0_0_30px_rgba(165,243,252,0.45)] text-zinc-950 font-bold' 
     : 'bg-purple-600 hover:bg-purple-500 hover:shadow-[0_0_30px_rgba(168,85,247,0.5)]';
-
-  const handleGoogleSignIn = () => {
-    setError('');
-    setIsGoogleSelectOpen(true);
-  };
-
-  const handleSelectGoogleAccount = async (tokenOrEmail) => {
-    setIsGoogleSelectOpen(false);
-    setLoading(true);
-    setError('');
-    try {
-      const user = await signInWithGoogleProfile(tokenOrEmail);
-      let displayEmail = tokenOrEmail;
-      if (tokenOrEmail.includes('.')) {
-        try {
-          const payload = parseJwt(tokenOrEmail);
-          if (payload && payload.email) {
-            displayEmail = payload.email;
-          }
-        } catch (e) {
-          console.error("Failed to parse Google ID Token for display:", e);
-        }
-      }
-      setSuccessMessage(`Signed in as Google User: ${displayEmail}!`);
-      if (onAuthSuccess) {
-        setTimeout(() => {
-          onAuthSuccess(user);
-          onClose();
-        }, 1500);
-      } else {
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
-      }
-    } catch (err) {
-      setError(err.message || 'Google Profile Authentication failed.');
-      setLoading(false);
-    }
-  };
 
   const handleSandboxBypass = async () => {
     if (!email) {
@@ -344,25 +310,27 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'purple', onAu
                     <div className="w-full py-1">
                       <button
                         type="button"
-                        disabled={loading}
+                        disabled={!isGoogleAvailable || loading}
                         onClick={() => {
-                          const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-                          const isSandbox = !clientId || clientId.includes('dummy');
-                          if (isSandbox) {
-                            handleSelectGoogleAccount('harshalgadhe123@gmail.com');
-                          } else {
+                          if (isGoogleAvailable) {
                             triggerGoogleAccountPicker();
                           }
                         }}
-                        className="w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl bg-white text-black hover:bg-white/90 font-bold text-sm transition-all cursor-pointer shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
+                        className="w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl bg-white text-black hover:bg-white/90 font-bold text-sm transition-all cursor-pointer shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500 disabled:border disabled:border-white/5"
                       >
-                        <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
-                          <path fill="#EA4335" d="M12 5.04c1.66 0 3.2.57 4.38 1.69l3.27-3.27C17.67 1.54 15.02 1 12 1 7.35 1 3.37 3.67 1.39 7.56l3.85 2.99c.92-2.75 3.49-4.51 6.76-4.51z"/>
-                          <path fill="#4285F4" d="M23.49 12.27c0-.81-.07-1.59-.2-2.34H12v4.44h6.44c-.28 1.48-1.12 2.73-2.38 3.58l3.71 2.88c2.17-2 3.72-4.94 3.72-8.56z"/>
-                          <path fill="#FBBC05" d="M5.24 10.55c-.24-.72-.38-1.5-.38-2.3s.14-1.58.38-2.3L1.39 2.96C.5 4.77 0 6.81 0 8.95s.5 4.18 1.39 5.99l3.85-2.99z"/>
-                          <path fill="#34A853" d="M12 23c3.24 0 5.97-1.07 7.96-2.91l-3.71-2.88c-1.03.69-2.35 1.1-4.25 1.1-3.27 0-5.84-1.76-6.76-4.51l-3.85 2.99C3.37 20.33 7.35 23 12 23z"/>
-                        </svg>
-                        <span>Continue with Google</span>
+                        {isGoogleAvailable && (
+                          <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
+                            <path fill="#EA4335" d="M12 5.04c1.66 0 3.2.57 4.38 1.69l3.27-3.27C17.67 1.54 15.02 1 12 1 7.35 1 3.37 3.67 1.39 7.56l3.85 2.99c.92-2.75 3.49-4.51 6.76-4.51z"/>
+                            <path fill="#4285F4" d="M23.49 12.27c0-.81-.07-1.59-.2-2.34H12v4.44h6.44c-.28 1.48-1.12 2.73-2.38 3.58l3.71 2.88c2.17-2 3.72-4.94 3.72-8.56z"/>
+                            <path fill="#FBBC05" d="M5.24 10.55c-.24-.72-.38-1.5-.38-2.3s.14-1.58.38-2.3L1.39 2.96C.5 4.77 0 6.81 0 8.95s.5 4.18 1.39 5.99l3.85-2.99z"/>
+                            <path fill="#34A853" d="M12 23c3.24 0 5.97-1.07 7.96-2.91l-3.71-2.88c-1.03.69-2.35 1.1-4.25 1.1-3.27 0-5.84-1.76-6.76-4.51l-3.85 2.99C3.37 20.33 7.35 23 12 23z"/>
+                          </svg>
+                        )}
+                        <span>
+                          {isGoogleAvailable 
+                            ? "Continue with Google" 
+                            : "Google Sign-In is unavailable in this environment."}
+                        </span>
                       </button>
                     </div>
 

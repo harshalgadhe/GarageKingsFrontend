@@ -1,101 +1,12 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getCars, isFirebaseConfigured, getGlobalSettings } from '../lib/db'
-import { getCurrentUser } from '../lib/auth'
-import AuthModal from '../components/AuthModal'
 import Navigation from '../components/Navigation'
 import { useNavigate } from 'react-router-dom'
-import { Search, X } from 'lucide-react'
-import { BRAND } from '../data/content'
-
-export function CheckoutModal({ car, onClose, onOrderPlaced }) {
-  const [address, setAddress] = useState('')
-  const [phone, setPhone] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [success, setSuccess] = useState(false)
-  const user = getCurrentUser()
-
-  const handleCheckout = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-    try {
-      const token = localStorage.getItem('gk_cognito_id_token') || localStorage.getItem('gk_cognito_access_token');
-      // In Serverless Postgres transition, post checkout directly to express app endpoint
-      const response = await fetch('/api/v1/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({
-          productId: car.id,
-          qty: 1,
-          priceAtPurchase: Number(car.price || 0),
-          shippingAddress: `${address.trim()} | Phone: ${phone.trim()}`
-        })
-      });
-
-      if (!response.ok) throw new Error('Order placement failed. Check endpoint connection.');
-      setSuccess(true)
-      setTimeout(() => {
-        if (onOrderPlaced) onOrderPlaced()
-        onClose()
-      }, 2000)
-    } catch (err) {
-      alert(err.message)
-      setLoading(false)
-    }
-  }
-
-  return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md"
-      onClick={onClose}>
-      <motion.div initial={{ scale: 0.95, y: 15 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 15 }}
-        className="w-full max-w-md bg-[#0a0a0d] border border-gk-orange/30 rounded-3xl p-6 sm:p-8 shadow-[0_20px_60px_rgba(225,6,0,0.15)] relative"
-        onClick={e => e.stopPropagation()}>
-        
-        <button onClick={onClose} className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/5 text-white/40 hover:text-white transition-colors cursor-pointer">
-          <X size={16} />
-        </button>
-
-        {success ? (
-          <div className="text-center py-8">
-            <div className="text-5xl mb-4">🎉</div>
-            <h3 className="text-2xl font-black text-white mb-2">Order Confirmed!</h3>
-            <p className="text-white/50 text-sm">Your order for {car.name} has been secured, {user?.displayName || 'Collector'}. Check your profile for details!</p>
-          </div>
-        ) : (
-          <form onSubmit={handleCheckout} className="space-y-4">
-            <h3 className="text-xl font-black text-white mb-1">Secure Checkout</h3>
-            <p className="text-white/40 text-xs">Confirm your acquisition, {user?.displayName || 'Collector'}.</p>
-
-            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex gap-4 items-center">
-              <img src={car.image || '/vault-1.png'} className="w-16 h-12 object-cover rounded-lg border border-white/10" />
-              <div className="text-left">
-                <h4 className="text-sm font-bold text-white leading-tight">{car.name}</h4>
-                <p className="text-[10px] font-black uppercase text-gk-orange tracking-wider mt-0.5">{car.brand}</p>
-                <div className="font-mono text-sm text-white/80 mt-1">₹{(car.price || 0).toLocaleString()}</div>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <input required type="text" value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone Number"
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-gk-orange transition-colors text-sm" />
-              <textarea required rows="3" value={address} onChange={e => setAddress(e.target.value)} placeholder="Full Shipping Address"
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-gk-orange transition-colors text-sm resize-none" />
-            </div>
-
-            <button type="submit" disabled={loading}
-              className="w-full py-4 rounded-xl bg-gk-orange hover:bg-orange-500 disabled:opacity-50 text-white font-black text-sm uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2">
-              {loading ? 'Processing Order...' : 'Confirm Order'}
-            </button>
-          </form>
-        )}
-      </motion.div>
-    </motion.div>
-  )
-}
+import { Search } from 'lucide-react'
+import ReserveModal from '../components/checkout/ReserveModal'
+import Footer from '../components/Footer'
+import FloatingSupport from '../components/FloatingSupport'
 
 export default function Marketplace() {
   const [cars, setCars] = useState([])
@@ -104,18 +15,11 @@ export default function Marketplace() {
   const [error, setError] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [activeFilter, setActiveFilter] = useState('All')
-  const [authModalOpen, setAuthModalOpen] = useState(false)
   const [checkoutCar, setCheckoutCar] = useState(null)
-  const [user, setUser] = useState(getCurrentUser())
   const navigate = useNavigate()
 
   const handleBuyClick = (car) => {
-    const activeSession = getCurrentUser()
-    if (!activeSession) {
-      setAuthModalOpen(true)
-      return
-    }
-    setCheckoutCar(car)
+    setCheckoutCar(car);
   }
 
   useEffect(() => {
@@ -330,9 +234,10 @@ export default function Marketplace() {
         )}
       </div>
       <AnimatePresence>
-        {authModalOpen && <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} themeColor="orange" onAuthSuccess={(u) => { setUser(u); setAuthModalOpen(false); }} />}
-        {checkoutCar && <CheckoutModal car={checkoutCar} onClose={() => setCheckoutCar(null)} onOrderPlaced={() => alert('Acquisition secured successfully!')} />}
+        {checkoutCar && <ReserveModal product={checkoutCar} onClose={() => setCheckoutCar(null)} />}
       </AnimatePresence>
+      <Footer />
+      <FloatingSupport />
     </div>
   )
 }

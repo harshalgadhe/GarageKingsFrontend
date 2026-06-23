@@ -1,22 +1,22 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=Sora:wght@400;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..900;1,400..900&family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 @import 'tailwindcss';
 
 @theme {
-  --color-gk-black: #050507; /* Obsidian black background */
-  --color-gk-surface: #0c0d10; /* Secondary surface */
-  --color-gk-card: #121316; /* Card surface */
-  --color-gk-border: rgba(255, 255, 255, 0.05); /* Sleek premium border */
-  --color-gk-accent: #ffffff; /* Replaces red with white */
-  --color-gk-accent-hover: #e4e4e7; /* Accent hover */
-  --color-gk-yellow: #A5F3FC; /* Replaces yellow with premium Ice Blue */
-  --color-gk-orange: #A5F3FC; /* Replaces orange with premium Ice Blue */
-  --color-gk-gold: #A5F3FC; /* Replaces gold with premium Ice Blue */
-  --color-gk-silver: #E4E4E7; /* Metallic Silver */
-  --color-gk-surface-2: #121316;
-  --font-grotesk: 'Space Grotesk', system-ui, sans-serif;
-  --font-inter: 'Inter', system-ui, sans-serif;
-  --font-sora: 'Sora', system-ui, sans-serif;
+  --color-gk-black: #090909; /* Premium luxury dark backdrop */
+  --color-gk-surface: #111111; /* Secondary surface */
+  --color-gk-surface-2: #151515; /* Elevated surface */
+  --color-gk-card: #151515; /* Card container backdrop */
+  --color-gk-border: rgba(255, 255, 255, 0.04); /* Sleek hairline borders */
+  --color-gk-accent: #E15B2C; /* Metallic Warm Orange */
+  --color-gk-accent-hover: #F7F7F7; /* High-contrast white */
+  --color-gk-yellow: #D8C6A3; /* Champagne Gold Highlight */
+  --color-gk-orange: #E15B2C; /* Warm Metallic Orange Highlight */
+  --color-gk-gold: #D8C6A3; /* Champagne Gold Highlight */
+  --color-gk-silver: #A1A1A1; /* Muted Secondary Text */
+  --font-grotesk: 'Neue Haas Grotesk Display', 'Instrument Sans', sans-serif; /* Neue Haas Grotesk Display for all headers */
+  --font-inter: 'Inter', sans-serif;
+  --font-bebas: 'Neue Haas Grotesk Display', 'Instrument Sans', sans-serif;
 }
 
 * {
@@ -58,7 +58,7 @@ html, body {
 body {
   margin: 0;
   font-family: var(--font-inter);
-  background-color: #09090b;
+  background-color: var(--color-gk-black);
   color: #f5f5f5;
   overflow-x: clip;
   -webkit-font-smoothing: antialiased;
@@ -206,4 +206,38 @@ h1, h2, h3, h4, h5, h6 {
 .lookbook-outline-text {
   color: transparent;
   -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.08);
+}
+
+.gk-noise {
+  position: relative;
+}
+
+.gk-noise::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.015;
+  pointer-events: none;
+  z-index: 5;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+.gk-metal-highlight {
+  position: relative;
+}
+
+.gk-metal-highlight::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border: 1px solid transparent;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(225, 91, 44, 0.12) 0%, transparent 50%, rgba(216, 198, 163, 0.08) 100%) border-box;
+  mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: destination-out;
+  mask-composite: exclude;
 }

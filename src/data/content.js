@@ -18,11 +18,11 @@ export const vaultProducts = [
     image: '/vault-1.png',
   },
   {
-    id: 'rlc-muscle',
-    name: 'RLC Purple Muscle',
+    id: 'gtr-liberty-content',
+    name: 'Nissan GT-R Liberty Walk',
     lane: 'The Grail Room',
     grade: 'Blister Mint',
-    price: '₹12,500',
+    price: '₹1,500',
     image: '/vault-2.png',
   },
   {

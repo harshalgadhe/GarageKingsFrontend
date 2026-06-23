@@ -1,23 +1,75 @@
 // ============================================================================
-// GARAGEKINGS CLIENT REST API GATEWAY MODULE (PURE AWS ARCHITECTURE)
-// Refactored off direct Firebase Firestore calls to target NestJS REST APIs
-// Optimized for Vercel/CloudFront deployments and Cognito security guards
+// GARAGEKINGS CLIENT REST API GATEWAY MODULE (LOCAL AUTH TRANSITION)
+// Optimized for secure local session cookies
 // ============================================================================
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1';
 
 // Mocked configuration checker for backwards-compatibility checks in legacy page loads
 export const isFirebaseConfigured = true;
 
-// Helper to extract the Cognito ID/Access token from secure localStorage
+// Automatically inject credentials: 'include' globally to transmit HttpOnly cookies
+// and automatically refresh expired JWT sessions on 401 responses
+const originalFetch = window.fetch;
+let isRefreshing = false;
+let refreshSubscribers = [];
+
+function subscribeTokenRefresh(cb) {
+  refreshSubscribers.push(cb);
+}
+
+function onRefreshed() {
+  refreshSubscribers.forEach(cb => cb());
+  refreshSubscribers = [];
+}
+
+window.fetch = async function (url, options = {}) {
+  options.credentials = 'include';
+  try {
+    const response = await originalFetch(url, options);
+    
+    // If unauthorized (401), attempt to silently refresh access token via HTTP HttpOnly refresh cookie
+    if (response.status === 401) {
+      const urlStr = typeof url === 'string' ? url : (url.url || '');
+      if (!urlStr.includes('/auth/login') && !urlStr.includes('/auth/refresh') && !urlStr.includes('/setup/status')) {
+        if (!isRefreshing) {
+          isRefreshing = true;
+          try {
+            const refreshRes = await originalFetch(`${API_BASE_URL}/auth/refresh`, {
+              method: 'POST',
+              credentials: 'include'
+            });
+            if (refreshRes.ok) {
+              isRefreshing = false;
+              onRefreshed();
+            } else {
+              isRefreshing = false;
+              localStorage.removeItem('gk_user');
+              return response;
+            }
+          } catch (err) {
+            isRefreshing = false;
+            return response;
+          }
+        }
+        
+        // Wait for token refresh operation to complete, then repeat original request
+        return new Promise((resolve) => {
+          subscribeTokenRefresh(async () => {
+            resolve(await originalFetch(url, options));
+          });
+        });
+      }
+    }
+    return response;
+  } catch (err) {
+    throw err;
+  }
+};
+
 function getAuthHeaders() {
-  const token = localStorage.getItem('gk_cognito_id_token') || localStorage.getItem('gk_cognito_access_token');
   return {
-    'Content-Type': 'application/json',
-    ...(token ? { 
-      'Authorization': `Bearer ${token}`,
-      'X-Authorization': `Bearer ${token}`
-    } : {})
+    'Content-Type': 'application/json'
   };
 }
 
@@ -394,3 +446,40 @@ export async function updateOrderStatus(id, status, trackingNumber) {
   if (!res.ok) throw new Error("Failed to update order status");
   return await res.json();
 }
+
+export async function getCustomerOrders() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/orders/my`, {
+      headers: getAuthHeaders()
+    });
+    if (!res.ok) throw new Error("Failed to fetch customer orders history");
+    return await res.json();
+  } catch (err) {
+    console.error("Error fetching customer orders:", err);
+    return [];
+  }
+}
+
+export async function getCustomerProfile() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/profile/my`, {
+      headers: getAuthHeaders()
+    });
+    if (!res.ok) throw new Error("Failed to fetch customer profile");
+    return await res.json();
+  } catch (err) {
+    console.error("Error fetching customer profile:", err);
+    return null;
+  }
+}
+
+export async function updateCustomerProfile(profile) {
+  const res = await fetch(`${API_BASE_URL}/profile/my`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(profile)
+  });
+  if (!res.ok) throw new Error("Failed to update customer profile");
+  return await res.json();
+}
+
