@@ -82,8 +82,7 @@ export default function Account() {
 
   const handleLogout = async () => {
     await signOutCognito();
-    navigate('/');
-    window.location.reload();
+    window.location.href = '/account';
   };
 
   // Group items by Order ID

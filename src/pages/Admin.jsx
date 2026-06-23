@@ -131,8 +131,7 @@ export default function Admin() {
 
   const handleLogout = async () => {
     await signOutCognito();
-    navigate('/');
-    window.location.reload();
+    window.location.href = '/account';
   };
 
   // Image Upload Handler (converts to WebP client-side via db.js helper)

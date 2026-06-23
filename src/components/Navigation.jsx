@@ -43,9 +43,9 @@ export default function Navigation({ activeSection }) {
     }
   }
 
-  const handleLogout = () => {
-    signOutCognito()
-    window.location.reload()
+  const handleLogout = async () => {
+    await signOutCognito()
+    window.location.href = '/account'
   }
 
   // Lock body scroll when mobile menu is open

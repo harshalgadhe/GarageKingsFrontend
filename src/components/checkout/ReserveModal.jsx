@@ -11,7 +11,7 @@ const generateUUID = () => {
   });
 };
 
-export default function ReserveModal({ product, onClose }) {
+export default function ReserveModal({ product, cartItems, onClose }) {
   const [step, setStep] = useState(1); // 1 = Details, 2 = Payment, 3 = Complete
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -30,6 +30,11 @@ export default function ReserveModal({ product, onClose }) {
   });
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1';
+
+  const isCart = !!cartItems;
+  const totalPrice = isCart 
+    ? cartItems.reduce((sum, item) => sum + Number(item.price || 0), 0)
+    : Number(product?.price || 0);
 
   // Generate unique idempotency key once per modal mount and lock/unlock body scroll
   useEffect(() => {
@@ -70,20 +75,31 @@ export default function ReserveModal({ product, onClose }) {
     setError('');
 
     try {
-      const response = await fetch(`${API_BASE_URL}/products/reserve`, {
+      const endpoint = isCart ? `${API_BASE_URL}/products/reserve-cart` : `${API_BASE_URL}/products/reserve`;
+      const body = isCart ? {
+        items: cartItems.map(item => ({ productId: item.id, price: item.price })),
+        name,
+        email,
+        phone,
+        address,
+        instagram: '',
+        idempotencyKey
+      } : {
+        productId: product.id,
+        name,
+        email,
+        phone,
+        address,
+        price: product.price,
+        idempotencyKey
+      };
+
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          productId: product.id,
-          name,
-          email,
-          phone,
-          address,
-          price: product.price,
-          idempotencyKey
-        })
+        body: JSON.stringify(body)
       });
 
       const data = await response.json();
@@ -122,7 +138,7 @@ export default function ReserveModal({ product, onClose }) {
               Secure Checkout
             </span>
             <h2 className="text-base font-extrabold text-white mt-2 uppercase tracking-wide truncate max-w-[280px]">
-              Reserve: {product.brand} {product.name}
+              {isCart ? `Reserve Cart (${cartItems.length} items)` : `Reserve: ${product?.brand} ${product?.name}`}
             </h2>
           </div>
           <button 
@@ -140,6 +156,24 @@ export default function ReserveModal({ product, onClose }) {
               {error && (
                 <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-xs text-red-400 font-semibold tracking-wide uppercase">
                   {error}
+                </div>
+              )}
+
+              {isCart && (
+                <div className="bg-[#141414] border border-white/5 rounded-xl p-4 space-y-2">
+                  <div className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">Items in Cart</div>
+                  <div className="max-h-[120px] overflow-y-auto space-y-1.5 pr-2">
+                    {cartItems.map(item => (
+                      <div key={item.id} className="flex justify-between items-center text-xs">
+                        <span className="text-white truncate max-w-[200px]">{item.brand} {item.name}</span>
+                        <span className="font-mono text-white/60">₹{item.price}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="border-t border-white/5 pt-2 flex justify-between items-center text-xs font-bold">
+                    <span className="text-[#888888] uppercase tracking-wider">Aggregated Total</span>
+                    <span className="font-mono text-[#ff5500]">₹{totalPrice}</span>
+                  </div>
                 </div>
               )}
 
@@ -220,7 +254,7 @@ export default function ReserveModal({ product, onClose }) {
               <PaymentInstructions 
                 upiId={settings.companyUpiId}
                 upiQrImage={settings.upiQrImage}
-                price={product.price}
+                price={totalPrice}
               />
 
               <ScreenshotUploader 
@@ -247,7 +281,19 @@ export default function ReserveModal({ product, onClose }) {
 
               <div className="bg-[#141414] border border-white/5 rounded-xl p-4 max-w-sm mx-auto text-left space-y-2 font-mono text-[10px] text-[#888888]">
                 <div><span className="text-white">ORDER ID:</span> {orderId}</div>
-                <div><span className="text-white">CASTING:</span> {product.brand} {product.name}</div>
+                {isCart ? (
+                  <div>
+                    <span className="text-white">ITEMS:</span>
+                    <ul className="list-disc list-inside mt-1 space-y-1">
+                      {cartItems.map(item => (
+                        <li key={item.id} className="truncate">{item.brand} {item.name}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <div><span className="text-white">CASTING:</span> {product?.brand} {product?.name}</div>
+                )}
+                <div><span className="text-white">TOTAL PRICE:</span> ₹{totalPrice}</div>
                 <div><span className="text-white">STATUS:</span> VERIFICATION PENDING</div>
               </div>
 
