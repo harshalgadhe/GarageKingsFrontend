@@ -515,7 +515,7 @@ export default function Navigation({ activeSection }) {
                     }}
                     className="w-full bg-[#ff5500] hover:bg-[#ff6611] active:bg-[#e64d00] text-black font-black text-sm py-4 rounded-xl transition-all duration-200 uppercase tracking-widest hover:shadow-[0_0_30px_rgba(255,85,0,0.3)] cursor-pointer"
                   >
-                    Proceed to Aggregate Pay
+                    Proceed to Reservation
                   </button>
                 </div>
               ) : (

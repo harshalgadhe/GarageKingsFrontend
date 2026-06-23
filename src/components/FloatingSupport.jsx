@@ -5,6 +5,25 @@ import { Link } from 'react-router-dom';
 
 export default function FloatingSupport() {
   const [isOpen, setIsOpen] = useState(false);
+  const [shouldHide, setShouldHide] = useState(false);
+
+  React.useEffect(() => {
+    // Initial check
+    setShouldHide(document.body.style.overflow === 'hidden');
+
+    const observer = new MutationObserver(() => {
+      setShouldHide(document.body.style.overflow === 'hidden');
+    });
+
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['style']
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  if (shouldHide) return null;
 
   return (
     <div className="fixed bottom-20 md:bottom-6 right-6 z-[150] font-sans text-left">
