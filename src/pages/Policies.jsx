@@ -7,8 +7,6 @@ import Footer from '../components/Footer';
 export default function Policies() {
   const [activeTab, setActiveTab] = useState('terms'); // 'terms' or 'privacy'
 
-  const lastUpdated = "June 2026";
-
   return (
     <div className="min-h-[100svh] bg-gk-black text-white selection:bg-gk-yellow selection:text-black pt-16 relative overflow-x-hidden">
       {/* Background Grid Floor effect */}
@@ -84,9 +82,6 @@ export default function Policies() {
                   <Scale className="text-gk-orange w-5 h-5" />
                   Terms of Service
                 </h2>
-                <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mt-1.5">
-                  Last Updated: {lastUpdated}
-                </p>
               </div>
 
               <div className="space-y-6 text-zinc-400 text-xs md:text-sm font-medium leading-relaxed">
@@ -141,9 +136,6 @@ export default function Policies() {
                   <Shield className="text-gk-orange w-5 h-5" />
                   Privacy Policy
                 </h2>
-                <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mt-1.5">
-                  Last Updated: {lastUpdated}
-                </p>
               </div>
 
               <div className="space-y-6 text-zinc-400 text-xs md:text-sm font-medium leading-relaxed">
