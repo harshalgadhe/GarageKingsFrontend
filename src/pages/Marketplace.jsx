@@ -326,7 +326,7 @@ export default function Marketplace() {
               </div>
 
               {/* Drawer Body (Scrollable items) */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              <div className="flex-1 overflow-y-auto p-6 space-y-4" data-lenis-prevent>
                 {cart.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
                     <ShoppingCart className="w-12 h-12 text-white/10" />

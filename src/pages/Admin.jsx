@@ -339,7 +339,7 @@ export default function Admin() {
       <div className="min-h-screen bg-[#090909] text-white flex justify-center items-center font-sans">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 rounded-full border-4 border-[#ff5500]/20 border-t-[#ff5500] animate-spin" />
-          <div className="text-xs uppercase tracking-widest text-[#ff5500] font-black animate-pulse">Launching Operating System...</div>
+          <div className="text-xs uppercase tracking-widest text-[#ff5500] font-black animate-pulse">Launching Admin Console...</div>
         </div>
       </div>
     );
@@ -424,7 +424,7 @@ export default function Admin() {
           <div className="flex items-center justify-between mb-8 pb-6 border-b border-white/5">
             <div>
               <p className="text-[10px] font-bold text-[#ff5500] uppercase tracking-widest">
-                Operating System • {adminTab}
+                Admin Console • {adminTab}
               </p>
               <h1 className="text-2xl font-black uppercase tracking-wide text-white mt-1">
                 Vault Console
@@ -434,7 +434,7 @@ export default function Admin() {
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               <span className="text-[10px] font-bold text-[#888888] uppercase tracking-widest font-mono">
-                SECURE OS ACTIVE
+                SECURE SESSION ACTIVE
               </span>
             </div>
           </div>
@@ -473,7 +473,7 @@ export default function Admin() {
                       View All
                     </button>
                   </div>
-                  <div className="space-y-3 max-h-[220px] overflow-y-auto">
+                  <div className="space-y-3 max-h-[220px] overflow-y-auto" data-lenis-prevent>
                     {notifications.length === 0 ? (
                       <p className="text-xs text-[#888888]">No critical updates.</p>
                     ) : (
@@ -499,7 +499,7 @@ export default function Admin() {
                       View All
                     </button>
                   </div>
-                  <div className="space-y-3 max-h-[220px] overflow-y-auto font-mono text-[10px]">
+                  <div className="space-y-3 max-h-[220px] overflow-y-auto font-mono text-[10px]" data-lenis-prevent>
                     {auditLogs.slice(0, 5).map(log => (
                       <div key={log.id} className="flex justify-between border-b border-white/5 pb-2">
                         <span className="text-[#ff5500]">{log.action}</span>
@@ -1148,7 +1148,7 @@ export default function Admin() {
               </h3>
               <button onClick={() => setIsAddingProduct(false)} className="text-[#888888] hover:text-white text-xs">✕</button>
             </div>
-            <form onSubmit={handleProductSubmit} className="p-6 max-h-[80vh] overflow-y-auto space-y-4 text-xs">
+            <form onSubmit={handleProductSubmit} className="p-6 max-h-[80vh] overflow-y-auto space-y-4 text-xs" data-lenis-prevent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">Brand</label>

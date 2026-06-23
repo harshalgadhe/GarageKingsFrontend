@@ -135,7 +135,7 @@ export default function ReserveModal({ product, cartItems, onClose }) {
         <div className="p-6 border-b border-white/5 flex items-center justify-between flex-shrink-0">
           <div>
             <span className="text-[9px] font-black text-[#ff5500] uppercase tracking-widest bg-[#ff5500]/10 border border-[#ff5500]/20 px-2 py-0.5 rounded">
-              Secure Checkout
+              Grail Reservation
             </span>
             <h2 className="text-base font-extrabold text-white mt-2 uppercase tracking-wide truncate max-w-[280px]">
               {isCart ? `Reserve Cart (${cartItems.length} items)` : `Reserve: ${product?.brand} ${product?.name}`}
@@ -150,7 +150,7 @@ export default function ReserveModal({ product, cartItems, onClose }) {
         </div>
 
         {/* Content body */}
-        <div className="p-6 overflow-y-auto space-y-6 flex-1 min-h-0">
+        <div className="p-6 overflow-y-auto space-y-6 flex-1 min-h-0 max-h-[65vh]" data-lenis-prevent>
           {step === 1 && (
             <form onSubmit={handleReserve} className="space-y-4">
               {error && (
@@ -162,7 +162,7 @@ export default function ReserveModal({ product, cartItems, onClose }) {
               {isCart && (
                 <div className="bg-[#141414] border border-white/5 rounded-xl p-4 space-y-2">
                   <div className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">Items in Cart</div>
-                  <div className="max-h-[120px] overflow-y-auto space-y-1.5 pr-2">
+                  <div className="max-h-[120px] overflow-y-auto space-y-1.5 pr-2" data-lenis-prevent>
                     {cartItems.map(item => (
                       <div key={item.id} className="flex justify-between items-center text-xs">
                         <span className="text-white truncate max-w-[200px]">{item.brand} {item.name}</span>

@@ -68,7 +68,7 @@ export default function Setup() {
             GK
           </div>
           <h1 className="text-2xl font-black tracking-tight text-white">
-            INITIALIZE OPERATING SYSTEM
+            INITIALIZE ADMIN SETUP
           </h1>
           <p className="text-xs text-[#888888] mt-1 uppercase tracking-widest">
             First Startup Owner Registration
@@ -147,7 +147,7 @@ export default function Setup() {
       </div>
 
       <div className="mt-8 text-center text-[10px] text-[#444444] tracking-widest uppercase">
-        GarageKings Operating System • Secure Presentational Sandbox
+        GarageKings Admin Panel • Secure Sandbox
       </div>
     </div>
   );
