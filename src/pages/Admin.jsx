@@ -15,13 +15,12 @@ export default function Admin() {
   const [isLoading, setIsLoading] = useState(true);
   const [dbError, setDbError] = useState('');
   
-  // Tab controller (Exactly 9 modules)
-  const [adminTab, setAdminTab] = useState('dashboard'); // 'dashboard', 'inventory', 'orders', 'customers', 'expenses', 'finance', 'analytics', 'notifications', 'settings'
+  // Tab controller (Exactly 8 modules)
+  const [adminTab, setAdminTab] = useState('dashboard'); // 'dashboard', 'inventory', 'orders', 'expenses', 'finance', 'analytics', 'notifications', 'settings'
 
   // Datasets
   const [cars, setCars] = useState([]);
   const [orders, setOrders] = useState([]);
-  const [customers, setCustomers] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [splitsData, setSplitsData] = useState({ totalExpenses: 0, paidMap: {}, targetOwed: {}, balances: {}, settlements: [], owesWho: [] });
   const [kpis, setKpis] = useState({ revenue: 0, expenses: 0, profit: 0, pendingPayments: 0, inventoryValue: 0 });
@@ -91,7 +90,6 @@ export default function Admin() {
       const [
         carsRes,
         ordersRes,
-        customersRes,
         expensesRes,
         splitsRes,
         kpiRes,
@@ -102,7 +100,6 @@ export default function Admin() {
       ] = await Promise.all([
         fetch(`${API_BASE_URL}/admin/products`, { credentials: 'include' }),
         fetch(`${API_BASE_URL}/admin/orders`, { credentials: 'include' }),
-        fetch(`${API_BASE_URL}/customers`, { credentials: 'include' }),
         fetch(`${API_BASE_URL}/admin/expenses`, { credentials: 'include' }),
         fetch(`${API_BASE_URL}/admin/splits`, { credentials: 'include' }),
         fetch(`${API_BASE_URL}/admin/dashboard/kpis`, { credentials: 'include' }),
@@ -114,7 +111,6 @@ export default function Admin() {
 
       if (carsRes.ok) setCars(await carsRes.json());
       if (ordersRes.ok) setOrders(await ordersRes.json());
-      if (customersRes.ok) setCustomers(await customersRes.json());
       if (expensesRes.ok) setExpenses(await expensesRes.json());
       if (splitsRes.ok) setSplitsData(await splitsRes.json());
       if (kpiRes.ok) setKpis(await kpiRes.json());
@@ -373,7 +369,6 @@ export default function Admin() {
             { id: 'dashboard', label: 'Dashboard', icon: TrendingUp },
             { id: 'inventory', label: 'Inventory', icon: Layers },
             { id: 'orders', label: 'Orders', icon: FileText },
-            { id: 'customers', label: 'Customers', icon: Users },
             { id: 'expenses', label: 'Expenses', icon: DollarSign },
             { id: 'finance', label: 'Founder Splits', icon: DollarSign },
             { id: 'analytics', label: 'Analytics', icon: TrendingUp },
@@ -722,64 +717,7 @@ export default function Admin() {
             </div>
           )}
 
-          {/* 4. CUSTOMERS CRM TAB */}
-          {adminTab === 'customers' && (
-            <div className="space-y-6">
-              <h3 className="text-xs font-black uppercase tracking-wider text-white">
-                Collectors Aggregate CRM Database
-              </h3>
 
-              <div className="overflow-x-auto border border-white/5 rounded-2xl">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-[#141414] border-b border-white/5 text-[#888888] uppercase tracking-widest text-[9px]">
-                      <th className="p-4 font-bold">Collector</th>
-                      <th className="p-4 font-bold">Instagram</th>
-                      <th className="p-4 font-bold">WhatsApp / Phone</th>
-                      <th className="p-4 font-bold text-center">Acquisitions</th>
-                      <th className="p-4 font-bold text-right">LTV Spend</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {customers.map(c => {
-                      const totalOrders = Number(c.totalOrders || 0);
-                      const totalSpend = Number(c.totalSpend || 0);
-                      const isVIP = totalSpend >= 10000;
-                      const isCollector = totalOrders >= 2;
-                      return (
-                        <tr key={c.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
-                          <td className="p-4">
-                            <span className="font-bold text-white block">{c.name}</span>
-                            <span className="text-[10px] text-[#888888]">{c.email}</span>
-                          </td>
-                          <td className="p-4 font-mono text-[#888888]">@{c.instagramUsername}</td>
-                          <td className="p-4 font-mono text-[#888888]">{c.phone}</td>
-                          <td className="p-4 text-center">
-                            <span className="font-bold text-white font-mono">{totalOrders}</span>
-                            <div className="flex gap-1 justify-center mt-1">
-                              {isVIP && (
-                                <span className="bg-[#ff5500]/10 text-[#ff5500] border border-[#ff5500]/20 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest">
-                                  VIP
-                                </span>
-                              )}
-                              {isCollector && !isVIP && (
-                                <span className="bg-blue-500/10 text-blue-400 border border-blue-500/20 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest">
-                                  Collector
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="p-4 text-right font-mono font-bold text-white">
-                            ₹{totalSpend.toLocaleString('en-IN')}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
 
           {/* 5. EXPENSES TAB */}
           {adminTab === 'expenses' && (
