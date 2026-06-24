@@ -518,7 +518,6 @@ export default function Admin() {
                       <th className="p-4 font-bold">SKU</th>
                       <th className="p-4 font-bold">Cost / Sale</th>
                       <th className="p-4 font-bold text-center">Available Stock</th>
-                      <th className="p-4 font-bold text-center">Status</th>
                       <th className="p-4 font-bold text-right">Actions</th>
                     </tr>
                   </thead>
@@ -553,15 +552,6 @@ export default function Admin() {
                                 Low Stock
                               </span>
                             )}
-                          </td>
-                          <td className="p-4 text-center">
-                            <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border ${
-                              car.status === 'Published' 
-                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
-                                : 'bg-white/5 text-[#888888] border-white/10'
-                            }`}>
-                              {car.status}
-                            </span>
                           </td>
                           <td className="p-4 text-right space-x-2">
                             <button onClick={() => handleEditProduct(car)} className="text-white hover:text-[#ff5500] p-1.5 rounded bg-white/5 hover:bg-white/10 transition-colors border border-white/5 cursor-pointer inline-flex">
