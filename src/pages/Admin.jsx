@@ -39,10 +39,10 @@ export default function Admin() {
   // UI state variables
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [editingProductId, setEditingProductId] = useState(null);
-  const [productForm, setProductForm] = useState({ name: '', brand: '', price: '', scale: '1:64', lane: '', totalStock: 10, description: '', image: '', category: 'JDM', purchasePrice: '' });
+  const [productForm, setProductForm] = useState({ name: '', brand: '', price: '', scale: '1:64', lane: '', totalStock: 10, description: '', image: '', category: 'JDM', purchasePrice: '', maxQtyPerCustomer: '', hasLimit: false });
   const [uploadingImage, setUploadingImage] = useState(false);
 
-  const [activeScreenshotUrl, setActiveScreenshotUrl] = useState(null);
+  const [activeScreenshotOrder, setActiveScreenshotOrder] = useState(null); // { url, orderId, status, orderRef }
   const [shippingModalOrder, setShippingModalOrder] = useState(null);
   const [shippingForm, setShippingForm] = useState({ courierPartner: 'Delhivery', trackingNumber: '', shippingCost: 0, packagingCost: 0, dispatchDate: new Date().toISOString().split('T')[0] });
 
@@ -171,7 +171,9 @@ export default function Admin() {
       description: car.description,
       image: car.image,
       category: car.category || 'JDM',
-      purchasePrice: car.purchasePrice || ''
+      purchasePrice: car.purchasePrice || '',
+      maxQtyPerCustomer: car.maxQtyPerCustomer || '',
+      hasLimit: !!car.maxQtyPerCustomer
     });
     setEditingProductId(car.id);
     setIsAddingProduct(true);
@@ -494,7 +496,7 @@ export default function Admin() {
                 </h3>
                 <button
                   onClick={() => {
-                    setProductForm({ name: '', brand: '', price: '', scale: '1:64', lane: 'Standard Edition', totalStock: 10, description: '', image: '', category: 'JDM', purchasePrice: '' });
+                    setProductForm({ name: '', brand: '', price: '', scale: '1:64', lane: 'Standard Edition', totalStock: 10, description: '', image: '', category: 'JDM', purchasePrice: '', maxQtyPerCustomer: '', hasLimit: false });
                     setEditingProductId(null);
                     setIsAddingProduct(true);
                   }}
@@ -635,7 +637,12 @@ export default function Admin() {
                           <p className="text-[9px] font-bold text-[#888888] uppercase tracking-wider">UPI Receipt</p>
                           {order.screenshotUrl ? (
                             <button
-                              onClick={() => setActiveScreenshotUrl(`${API_BASE_URL}/admin/orders/${order.id}/screenshot`)}
+                              onClick={() => setActiveScreenshotOrder({
+                                url: `${API_BASE_URL}/admin/orders/${order.id}/screenshot`,
+                                orderId: order.id,
+                                status: order.status,
+                                orderRef: `ORDER ${order.id.slice(0, 8)} — ${order.productBrand} ${order.productName}`
+                              })}
                               className="mt-1 bg-white/5 hover:bg-white/10 active:bg-white/15 border border-white/10 text-white font-bold text-[10px] px-3 py-1.5 rounded-lg uppercase tracking-wider transition-colors inline-flex cursor-pointer"
                             >
                               View Screenshot
@@ -984,27 +991,102 @@ export default function Admin() {
       {/* ── MODALS COMPLEMENTS ─────────────────────────────────────────── */}
       
       {/* 1. View screenshot Receipt modal */}
-      {activeScreenshotUrl && (
+      {activeScreenshotOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
-          <div className="w-full max-w-lg bg-[#0f0f0f] border border-white/5 rounded-2xl relative overflow-hidden shadow-2xl p-6">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4">UPI Receipt Screenshot</h3>
-            <div className="aspect-[3/4] bg-[#090909] border border-white/5 rounded-xl overflow-hidden relative">
-              <img 
-                src={activeScreenshotUrl} 
-                alt="Receipt screenshot details" 
-                className="w-full h-full object-contain p-2"
-                onError={(e) => {
-                  e.target.style.display = 'none';
-                  e.target.parentNode.innerHTML = `<span class="text-[#888888] text-xs font-bold absolute inset-0 flex items-center justify-center">Image failed to stream or expired.</span>`;
-                }}
-              />
+          <div className="w-full max-w-lg bg-[#0f0f0f] border border-white/5 rounded-2xl relative overflow-hidden shadow-2xl">
+            {/* Top accent bar */}
+            <div className="h-[2px] bg-gradient-to-r from-[#ff5500]/20 via-[#ff5500] to-[#ff5500]/20" />
+
+            {/* Header */}
+            <div className="p-5 border-b border-white/5 flex items-start justify-between gap-3">
+              <div>
+                <span className="text-[9px] font-black text-[#ff5500] uppercase tracking-widest bg-[#ff5500]/10 border border-[#ff5500]/20 px-2 py-0.5 rounded">
+                  UPI Payment Receipt
+                </span>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider mt-2">{activeScreenshotOrder.orderRef}</h3>
+                <span className={`text-[8px] font-black uppercase tracking-widest mt-1 inline-block ${
+                  activeScreenshotOrder.status === 'Verification Pending' ? 'text-amber-400' :
+                  activeScreenshotOrder.status === 'Confirmed' ? 'text-emerald-400' : 'text-white/50'
+                }`}>{activeScreenshotOrder.status}</span>
+              </div>
+              <button
+                onClick={() => setActiveScreenshotOrder(null)}
+                className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 text-[#888888] hover:text-white flex items-center justify-center text-xs flex-shrink-0 cursor-pointer border border-white/5"
+              >
+                ✕
+              </button>
             </div>
-            <button 
-              onClick={() => setActiveScreenshotUrl(null)}
-              className="mt-4 bg-white/5 hover:bg-white/10 text-white font-bold text-xs px-4 py-2.5 rounded-xl border border-white/10 uppercase tracking-wider transition-colors w-full cursor-pointer"
-            >
-              Close receipt viewport
-            </button>
+
+            {/* Screenshot image */}
+            <div className="p-4">
+              <div className="aspect-[3/4] bg-[#090909] border border-white/5 rounded-xl overflow-hidden relative max-h-[55vh]">
+                <img
+                  src={activeScreenshotOrder.url}
+                  alt="Receipt screenshot"
+                  className="w-full h-full object-contain p-2"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.parentNode.innerHTML = `<span class="text-[#888888] text-xs font-bold absolute inset-0 flex items-center justify-center">Image failed to stream or has expired.</span>`;
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Action buttons */}
+            <div className="px-4 pb-5 space-y-2">
+              {activeScreenshotOrder.status === 'Verification Pending' && (
+                <button
+                  onClick={async () => {
+                    if (!confirm('Confirm this payment and approve the order?')) return;
+                    try {
+                      const res = await fetch(`${API_BASE_URL}/admin/orders/${activeScreenshotOrder.orderId}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ status: 'Confirmed' })
+                      });
+                      if (!res.ok) throw new Error('Failed to confirm order');
+                      setActiveScreenshotOrder(null);
+                      await loadAllData();
+                    } catch (err) {
+                      alert(err.message);
+                    }
+                  }}
+                  className="w-full bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-black font-extrabold text-xs py-3 rounded-xl uppercase tracking-wider transition-all shadow-[0_4px_20px_-4px_rgba(52,211,153,0.4)] cursor-pointer"
+                >
+                  ✓ Approve Payment & Confirm Order
+                </button>
+              )}
+              {activeScreenshotOrder.status === 'Verification Pending' && (
+                <button
+                  onClick={async () => {
+                    if (!confirm('Reject this payment and cancel the order? This will release the reserved stock.')) return;
+                    try {
+                      const res = await fetch(`${API_BASE_URL}/admin/orders/${activeScreenshotOrder.orderId}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ status: 'Cancelled' })
+                      });
+                      if (!res.ok) throw new Error('Failed to cancel order');
+                      setActiveScreenshotOrder(null);
+                      await loadAllData();
+                    } catch (err) {
+                      alert(err.message);
+                    }
+                  }}
+                  className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 font-extrabold text-xs py-2.5 rounded-xl uppercase tracking-wider border border-red-500/20 transition-all cursor-pointer"
+                >
+                  ✕ Reject & Cancel Order
+                </button>
+              )}
+              <button
+                onClick={() => setActiveScreenshotOrder(null)}
+                className="w-full bg-white/5 hover:bg-white/10 text-white font-bold text-xs py-2.5 rounded-xl border border-white/10 uppercase tracking-wider transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
