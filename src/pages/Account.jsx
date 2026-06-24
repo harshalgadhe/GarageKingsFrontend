@@ -37,13 +37,20 @@ export default function Account() {
         ]);
         setDbOrders(data || []);
         if (prof) {
+          const displayPhone = (prof.phone && prof.phone.startsWith('unknown_')) ? '' : (prof.phone || '');
           setProfile({
             fullName: prof.fullName || '',
-            phone: prof.phone || '',
+            phone: displayPhone,
             instagram: prof.instagram || '',
             address: prof.address || '',
             city: prof.city || 'Unknown'
           });
+          if (prof.fullName && prof.fullName !== currentUser.displayName) {
+            currentUser.displayName = prof.fullName;
+            localStorage.setItem('gk_user', JSON.stringify(currentUser));
+            setUser(currentUser);
+            window.dispatchEvent(new Event('gk_user_updated'));
+          }
         }
       } catch (err) {
         console.error("Failed to load customer details:", err);
@@ -63,13 +70,21 @@ export default function Account() {
     try {
       const updated = await updateCustomerProfile(profile);
       if (updated) {
+        const displayPhone = (updated.phone && updated.phone.startsWith('unknown_')) ? '' : (updated.phone || '');
         setProfile({
           fullName: updated.fullName || '',
-          phone: updated.phone || '',
+          phone: displayPhone,
           instagram: updated.instagram || '',
           address: updated.address || '',
           city: updated.city || 'Unknown'
         });
+        const currentUser = getCurrentUser();
+        if (currentUser && updated.fullName && updated.fullName !== currentUser.displayName) {
+          currentUser.displayName = updated.fullName;
+          localStorage.setItem('gk_user', JSON.stringify(currentUser));
+          setUser(currentUser);
+          window.dispatchEvent(new Event('gk_user_updated'));
+        }
       }
       setProfileSuccess('Shipping profile updated successfully!');
     } catch (err) {
@@ -233,12 +248,7 @@ export default function Account() {
                 </h1>
               </div>
               
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-gk-orange animate-pulse" />
-                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest font-mono">
-                  ACTIVE SESSION
-                </span>
-              </div>
+              <div />
             </div>
 
             {error && (
@@ -379,7 +389,7 @@ export default function Account() {
                       </div>
 
                       <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block">Email Address (Read-only)</label>
+                        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block">Email Address</label>
                         <input 
                           type="text" 
                           value={user.email} 

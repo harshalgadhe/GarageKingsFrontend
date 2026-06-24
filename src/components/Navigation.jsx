@@ -31,7 +31,12 @@ export default function Navigation({ activeSection }) {
   const [checkoutCart, setCheckoutCart] = useState(null)
 
   useEffect(() => {
-    setUser(getCurrentUser())
+    const handleUserUpdate = () => {
+      setUser(getCurrentUser())
+    }
+    handleUserUpdate()
+    window.addEventListener('gk_user_updated', handleUserUpdate)
+    return () => window.removeEventListener('gk_user_updated', handleUserUpdate)
   }, [])
 
   // Sync cart state with localStorage across components
