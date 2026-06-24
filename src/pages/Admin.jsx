@@ -45,6 +45,7 @@ export default function Admin() {
   const [activeScreenshotOrder, setActiveScreenshotOrder] = useState(null); // { url, orderId, status, orderRef }
   const [shippingModalOrder, setShippingModalOrder] = useState(null);
   const [shippingForm, setShippingForm] = useState({ courierPartner: 'Delhivery', trackingNumber: '', shippingCost: 0, packagingCost: 0, dispatchDate: new Date().toISOString().split('T')[0] });
+  const [orderFilter, setOrderFilter] = useState('all'); // 'all' | 'Verification Pending' | 'Confirmed' | 'Shipped' | 'Delivered' | 'Cancelled'
 
   const [isAddingExpense, setIsAddingExpense] = useState(false);
   const [expenseForm, setExpenseForm] = useState({ title: '', amount: '', category: 'Stock Purchase', paidBy: 'Harshal', date: new Date().toISOString().split('T')[0], notes: '' });
@@ -370,7 +371,7 @@ export default function Admin() {
           {[
             { id: 'dashboard', label: 'Dashboard', icon: TrendingUp },
             { id: 'inventory', label: 'Inventory', icon: Layers },
-            { id: 'orders', label: 'Orders', icon: FileText },
+            { id: 'orders', label: 'Orders', icon: FileText, badge: orders.filter(o => o.status === 'Verification Pending').length },
             { id: 'expenses', label: 'Expenses', icon: DollarSign },
             { id: 'finance', label: 'Founder Splits', icon: DollarSign },
             { id: 'analytics', label: 'Analytics', icon: TrendingUp },
@@ -570,156 +571,238 @@ export default function Admin() {
           {/* 3. ORDERS TAB */}
           {adminTab === 'orders' && (
             <div className="space-y-6">
-              <h3 className="text-xs font-black uppercase tracking-wider text-white">
-                Orders & Payments Pipeline
-              </h3>
 
+              {/* ── PENDING APPROVALS BANNER ────────── */}
+              {orders.filter(o => o.status === 'Verification Pending').length > 0 && (
+                <div className="bg-amber-500/5 border border-amber-500/30 rounded-2xl p-5 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse flex-shrink-0" />
+                    <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest">
+                      {orders.filter(o => o.status === 'Verification Pending').length} Payment{orders.filter(o => o.status === 'Verification Pending').length > 1 ? 's' : ''} Awaiting Your Approval
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    {orders.filter(o => o.status === 'Verification Pending').map(order => (
+                      <div key={order.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-amber-500/5 border border-amber-500/15 rounded-xl px-4 py-3">
+                        <div className="text-xs">
+                          <span className="font-mono font-black text-white">ORDER {order.id.slice(0, 8)}</span>
+                          <span className="text-amber-300/70 mx-2">·</span>
+                          <span className="text-white/70">{order.productBrand} {order.productName}</span>
+                          <span className="text-amber-300/70 mx-2">·</span>
+                          <span className="font-mono text-white/50">₹{Number(order.priceAtPurchase).toLocaleString('en-IN')} × {order.qty}</span>
+                          <span className="text-[10px] text-[#888888] block mt-0.5">{order.customerName} · {order.customerEmail}</span>
+                        </div>
+                        {order.screenshotUrl ? (
+                          <button
+                            onClick={() => setActiveScreenshotOrder({
+                              url: `${API_BASE_URL}/admin/orders/${order.id}/screenshot`,
+                              orderId: order.id,
+                              status: order.status,
+                              orderRef: `ORDER ${order.id.slice(0, 8)} — ${order.productBrand} ${order.productName}`
+                            })}
+                            className="flex-shrink-0 bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-[10px] px-4 py-2 rounded-lg uppercase tracking-wider transition-colors cursor-pointer"
+                          >
+                            View Receipt & Approve →
+                          </button>
+                        ) : (
+                          <span className="text-[10px] text-amber-400/60 italic flex-shrink-0">Awaiting receipt upload</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ── HEADER + FILTER PILLS ──────────── */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-xs font-black uppercase tracking-wider text-white">Orders & Payments Pipeline</h3>
+                  <p className="text-[10px] text-[#888888] mt-0.5">{orders.length} total orders</p>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { key: 'all', label: 'All', count: orders.length },
+                    { key: 'Verification Pending', label: 'Pending', count: orders.filter(o => o.status === 'Verification Pending').length },
+                    { key: 'Active', label: 'Reserved', count: orders.filter(o => o.status === 'Active').length },
+                    { key: 'Confirmed', label: 'Confirmed', count: orders.filter(o => o.status === 'Confirmed').length },
+                    { key: 'Shipped', label: 'Shipped', count: orders.filter(o => o.status === 'Shipped').length },
+                    { key: 'Cancelled', label: 'Cancelled', count: orders.filter(o => o.status === 'Cancelled').length },
+                  ].map(f => (
+                    <button
+                      key={f.key}
+                      onClick={() => setOrderFilter(f.key)}
+                      className={`text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border transition-colors cursor-pointer ${
+                        orderFilter === f.key
+                          ? 'bg-[#ff5500]/10 border-[#ff5500]/30 text-[#ff5500]'
+                          : 'bg-white/5 border-white/10 text-[#888888] hover:text-white hover:bg-white/10'
+                      }`}
+                    >
+                      {f.label} {f.count > 0 && <span className="opacity-60">({f.count})</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── ORDER LIST ─────────────────────── */}
               <div className="space-y-4">
-                {orders.map(order => (
-                  <div key={order.id} className="bg-[#141414] border border-white/5 rounded-2xl p-5 space-y-4">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-white/5">
-                      <div>
-                        <span className="font-mono font-bold text-white text-xs block">ORDER {order.id.slice(0, 8)}</span>
-                        <span className="text-[10px] text-[#888888] mt-0.5 block">
-                          Logged: {new Date(order.createdAt).toLocaleString('en-IN')}
+                {(orderFilter === 'all' ? orders : orders.filter(o => o.status === orderFilter)).length === 0 ? (
+                  <div className="text-center py-12 text-[#555555] text-xs font-bold uppercase tracking-widest">
+                    No orders with this status.
+                  </div>
+                ) : (
+                  (orderFilter === 'all' ? orders : orders.filter(o => o.status === orderFilter)).map(order => (
+                    <div key={order.id} className={`bg-[#141414] border rounded-2xl p-5 space-y-4 ${
+                      order.status === 'Verification Pending' ? 'border-amber-500/20' : 'border-white/5'
+                    }`}>
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-white/5">
+                        <div>
+                          <span className="font-mono font-bold text-white text-xs block">ORDER {order.id.slice(0, 8)}</span>
+                          <span className="text-[10px] text-[#888888] mt-0.5 block">
+                            Logged: {new Date(order.createdAt).toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border ${
+                          order.status === 'Confirmed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                          order.status === 'Shipped' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                          order.status === 'Cancelled' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                          order.status === 'Delivered' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
+                          'bg-amber-500/10 text-amber-400 border-amber-500/20 animate-pulse'
+                        }`}>
+                          {order.status}
                         </span>
                       </div>
-                      <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border ${
-                        order.status === 'Confirmed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                        order.status === 'Shipped' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                        order.status === 'Cancelled' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
-                        'bg-amber-500/10 text-amber-400 border-amber-500/20 animate-pulse'
-                      }`}>
-                        {order.status}
-                      </span>
-                    </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs">
-                      {/* Product details */}
-                      <div>
-                        <p className="text-[9px] font-bold text-[#888888] uppercase tracking-wider">Casting</p>
-                        <p className="font-bold text-white mt-1">{order.productBrand} {order.productName}</p>
-                        <p className="font-mono text-white/50 mt-0.5">₹{Number(order.priceAtPurchase).toLocaleString('en-IN')} (x{order.qty})</p>
-                      </div>
-
-                      {/* Customer Info */}
-                      <div>
-                        <p className="text-[9px] font-bold text-[#888888] uppercase tracking-wider">Collector Contact</p>
-                        <p className="font-bold text-white mt-1">{order.customerName}</p>
-                        <p className="text-[#888888] mt-0.5">{order.customerEmail}</p>
-                        {order.instagramUsername && (
-                          <div className="flex items-center gap-2 mt-1.5">
-                            <span className="text-white/60">@{order.instagramUsername}</span>
-                            <button 
-                              onClick={() => {
-                                navigator.clipboard.writeText(order.instagramUsername);
-                                alert('Instagram handle copied to clipboard.');
-                              }}
-                              className="text-[9px] font-bold text-[#ff5500] hover:underline uppercase cursor-pointer bg-transparent border-0 p-0"
-                            >
-                              Copy
-                            </button>
-                            <a 
-                              href={`https://instagram.com/${order.instagramUsername}`} 
-                              target="_blank" 
-                              rel="noreferrer"
-                              className="text-[9px] font-bold text-[#ff5500] hover:underline uppercase"
-                            >
-                              Open
-                            </a>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Payment & Actions */}
-                      <div className="space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs">
+                        {/* Product details */}
                         <div>
-                          <p className="text-[9px] font-bold text-[#888888] uppercase tracking-wider">UPI Receipt</p>
-                          {order.screenshotUrl ? (
-                            <button
-                              onClick={() => setActiveScreenshotOrder({
-                                url: `${API_BASE_URL}/admin/orders/${order.id}/screenshot`,
-                                orderId: order.id,
-                                status: order.status,
-                                orderRef: `ORDER ${order.id.slice(0, 8)} — ${order.productBrand} ${order.productName}`
-                              })}
-                              className="mt-1 bg-white/5 hover:bg-white/10 active:bg-white/15 border border-white/10 text-white font-bold text-[10px] px-3 py-1.5 rounded-lg uppercase tracking-wider transition-colors inline-flex cursor-pointer"
-                            >
-                              View Screenshot
-                            </button>
-                          ) : (
-                            <span className="text-[#666666] italic block mt-1">No file uploaded</span>
+                          <p className="text-[9px] font-bold text-[#888888] uppercase tracking-wider">Casting</p>
+                          <p className="font-bold text-white mt-1">{order.productBrand} {order.productName}</p>
+                          <p className="font-mono text-white/50 mt-0.5">₹{Number(order.priceAtPurchase).toLocaleString('en-IN')} (x{order.qty})</p>
+                        </div>
+
+                        {/* Customer Info */}
+                        <div>
+                          <p className="text-[9px] font-bold text-[#888888] uppercase tracking-wider">Collector Contact</p>
+                          <p className="font-bold text-white mt-1">{order.customerName}</p>
+                          <p className="text-[#888888] mt-0.5">{order.customerEmail}</p>
+                          {order.instagramUsername && (
+                            <div className="flex items-center gap-2 mt-1.5">
+                              <span className="text-white/60">@{order.instagramUsername}</span>
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(order.instagramUsername);
+                                  alert('Instagram handle copied to clipboard.');
+                                }}
+                                className="text-[9px] font-bold text-[#ff5500] hover:underline uppercase cursor-pointer bg-transparent border-0 p-0"
+                              >
+                                Copy
+                              </button>
+                              <a
+                                href={`https://instagram.com/${order.instagramUsername}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[9px] font-bold text-[#ff5500] hover:underline uppercase"
+                              >
+                                Open
+                              </a>
+                            </div>
                           )}
                         </div>
+
+                        {/* Payment & Screenshot */}
+                        <div className="space-y-3">
+                          <div>
+                            <p className="text-[9px] font-bold text-[#888888] uppercase tracking-wider">UPI Receipt</p>
+                            {order.screenshotUrl ? (
+                              <button
+                                onClick={() => setActiveScreenshotOrder({
+                                  url: `${API_BASE_URL}/admin/orders/${order.id}/screenshot`,
+                                  orderId: order.id,
+                                  status: order.status,
+                                  orderRef: `ORDER ${order.id.slice(0, 8)} — ${order.productBrand} ${order.productName}`
+                                })}
+                                className={`mt-1 border font-bold text-[10px] px-3 py-1.5 rounded-lg uppercase tracking-wider transition-colors inline-flex cursor-pointer ${
+                                  order.status === 'Verification Pending'
+                                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20'
+                                    : 'bg-white/5 hover:bg-white/10 border-white/10 text-white'
+                                }`}
+                              >
+                                {order.status === 'Verification Pending' ? '⚠ View & Approve Receipt' : 'View Screenshot'}
+                              </button>
+                            ) : (
+                              <span className="text-[#666666] italic block mt-1">No file uploaded</span>
+                            )}
+                          </div>
+                        </div>
                       </div>
+
+                      {/* Shipping Address */}
+                      {order.shippingAddress && (
+                        <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 text-xs">
+                          <span className="text-[#888888] block text-[9px] uppercase tracking-wider mb-1 font-bold">Shipping Destination (Locked at checkout)</span>
+                          <span className="text-white font-mono">{order.shippingAddress}</span>
+                        </div>
+                      )}
+
+                      {/* Ship Details if shipped */}
+                      {(order.status === 'Shipped' || order.status === 'Delivered') && (
+                        <div className="bg-[#1c1c1c] border border-white/5 rounded-xl p-3 text-xs font-mono grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          <div><span className="text-[#888888]">COURIER:</span> {order.courierPartner}</div>
+                          <div><span className="text-[#888888]">TRACKING:</span> {order.trackingNumber}</div>
+                          <div><span className="text-[#888888]">SHIPPING COST:</span> ₹{order.shippingCost}</div>
+                        </div>
+                      )}
+
+                      {/* Order Action Buttons */}
+                      {order.status !== 'Cancelled' && order.status !== 'Delivered' && (
+                        <div className="flex flex-wrap gap-2 pt-2 border-t border-white/5">
+                          {order.status === 'Verification Pending' && (
+                            <button
+                              onClick={() => handleConfirmOrder(order.id)}
+                              className="bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold text-[10px] px-4 py-2 rounded-lg uppercase tracking-wider transition-colors cursor-pointer"
+                            >
+                              Approve Payment
+                            </button>
+                          )}
+                          {order.status === 'Confirmed' && (
+                            <button
+                              onClick={() => {
+                                setShippingModalOrder(order);
+                                setShippingForm({ courierPartner: 'Delhivery', trackingNumber: '', shippingCost: 0, packagingCost: 0, dispatchDate: new Date().toISOString().split('T')[0] });
+                              }}
+                              className="bg-blue-500 hover:bg-blue-600 text-black font-extrabold text-[10px] px-4 py-2 rounded-lg uppercase tracking-wider transition-colors cursor-pointer"
+                            >
+                              Dispatch Shipment
+                            </button>
+                          )}
+                          {order.status === 'Shipped' && (
+                            <button
+                              onClick={async () => {
+                                if (!confirm('Mark order as delivered?')) return;
+                                const res = await fetch(`${API_BASE_URL}/admin/orders/${order.id}`, {
+                                  method: 'PATCH',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  credentials: 'include',
+                                  body: JSON.stringify({ status: 'Delivered' })
+                                });
+                                if (res.ok) await loadAllData();
+                              }}
+                              className="bg-purple-500 hover:bg-purple-600 text-white font-extrabold text-[10px] px-4 py-2 rounded-lg uppercase tracking-wider transition-colors cursor-pointer"
+                            >
+                              Mark Delivered
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleCancelOrder(order.id)}
+                            className="bg-red-500/10 hover:bg-red-500/20 text-red-400 font-extrabold text-[10px] px-4 py-2 rounded-lg border border-red-500/20 uppercase tracking-wider transition-colors cursor-pointer"
+                          >
+                            Cancel / Void
+                          </button>
+                        </div>
+                      )}
                     </div>
-
-                    {/* Shipping Address */}
-                    {order.shippingAddress && (
-                      <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 text-xs">
-                        <span className="text-[#888888] block text-[9px] uppercase tracking-wider mb-1 font-bold">Shipping Destination (Locked at checkout)</span>
-                        <span className="text-white font-mono">{order.shippingAddress}</span>
-                      </div>
-                    )}
-
-                    {/* Ship Details if shipped */}
-                    {(order.status === 'Shipped' || order.status === 'Delivered') && (
-                      <div className="bg-[#1c1c1c] border border-white/5 rounded-xl p-3 text-xs font-mono grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <div><span className="text-[#888888]">COURIER:</span> {order.courierPartner}</div>
-                        <div><span className="text-[#888888]">TRACKING:</span> {order.trackingNumber}</div>
-                        <div><span className="text-[#888888]">SHIPPING COST:</span> ₹{order.shippingCost}</div>
-                      </div>
-                    )}
-
-                    {/* Order Action Buttons */}
-                    {order.status !== 'Cancelled' && order.status !== 'Delivered' && (
-                      <div className="flex flex-wrap gap-2 pt-2 border-t border-white/5">
-                        {order.status === 'Verification Pending' && (
-                          <button
-                            onClick={() => handleConfirmOrder(order.id)}
-                            className="bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold text-[10px] px-4 py-2 rounded-lg uppercase tracking-wider transition-colors cursor-pointer"
-                          >
-                            Approve Payment
-                          </button>
-                        )}
-                        {order.status === 'Confirmed' && (
-                          <button
-                            onClick={() => {
-                              setShippingModalOrder(order);
-                              setShippingForm({ courierPartner: 'Delhivery', trackingNumber: '', shippingCost: 0, packagingCost: 0, dispatchDate: new Date().toISOString().split('T')[0] });
-                            }}
-                            className="bg-blue-500 hover:bg-blue-600 text-black font-extrabold text-[10px] px-4 py-2 rounded-lg uppercase tracking-wider transition-colors cursor-pointer"
-                          >
-                            Dispatch Shipment
-                          </button>
-                        )}
-                        {order.status === 'Shipped' && (
-                          <button
-                            onClick={async () => {
-                              if (!confirm('Mark order as delivered?')) return;
-                              const res = await fetch(`${API_BASE_URL}/admin/orders/${order.id}`, {
-                                method: 'PATCH',
-                                headers: { 'Content-Type': 'application/json' },
-                                credentials: 'include',
-                                body: JSON.stringify({ status: 'Delivered' })
-                              });
-                              if (res.ok) await loadAllData();
-                            }}
-                            className="bg-purple-500 hover:bg-purple-600 text-white font-extrabold text-[10px] px-4 py-2 rounded-lg uppercase tracking-wider transition-colors cursor-pointer"
-                          >
-                            Mark Delivered
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleCancelOrder(order.id)}
-                          className="bg-red-500/10 hover:bg-red-500/20 text-red-400 font-extrabold text-[10px] px-4 py-2 rounded-lg border border-red-500/20 uppercase tracking-wider transition-colors cursor-pointer"
-                        >
-                          Cancel / Void
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
           )}
