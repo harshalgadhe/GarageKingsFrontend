@@ -15,8 +15,8 @@ export default function Admin() {
   const [isLoading, setIsLoading] = useState(true);
   const [dbError, setDbError] = useState('');
   
-  // Tab controller (Exactly 10 modules)
-  const [adminTab, setAdminTab] = useState('dashboard'); // 'dashboard', 'inventory', 'orders', 'customers', 'expenses', 'finance', 'analytics', 'notifications', 'audit-logs', 'settings'
+  // Tab controller (Exactly 9 modules)
+  const [adminTab, setAdminTab] = useState('dashboard'); // 'dashboard', 'inventory', 'orders', 'customers', 'expenses', 'finance', 'analytics', 'notifications', 'settings'
 
   // Datasets
   const [cars, setCars] = useState([]);
@@ -26,7 +26,6 @@ export default function Admin() {
   const [splitsData, setSplitsData] = useState({ totalExpenses: 0, paidMap: {}, targetOwed: {}, balances: {}, settlements: [], owesWho: [] });
   const [kpis, setKpis] = useState({ revenue: 0, expenses: 0, profit: 0, pendingPayments: 0, inventoryValue: 0 });
   const [analytics, setAnalytics] = useState({ topSellingProduct: null, topBrand: null, averageOrderValue: 0, topCustomer: null, deadStockCount: 0, deadStock: [] });
-  const [auditLogs, setAuditLogs] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [cmsData, setCmsData] = useState({ sections: [], items: [] });
   const [globalSettings, setGlobalSettings] = useState({
@@ -97,7 +96,6 @@ export default function Admin() {
         splitsRes,
         kpiRes,
         analyticsRes,
-        auditLogsRes,
         notificationsRes,
         cmsRes,
         settingsRes
@@ -109,7 +107,6 @@ export default function Admin() {
         fetch(`${API_BASE_URL}/admin/splits`, { credentials: 'include' }),
         fetch(`${API_BASE_URL}/admin/dashboard/kpis`, { credentials: 'include' }),
         fetch(`${API_BASE_URL}/admin/analytics`, { credentials: 'include' }),
-        fetch(`${API_BASE_URL}/admin/audit-logs`, { credentials: 'include' }),
         fetch(`${API_BASE_URL}/admin/notifications`, { credentials: 'include' }),
         fetch(`${API_BASE_URL}/admin/homepage-cms`, { credentials: 'include' }),
         fetch(`${API_BASE_URL}/settings`, { credentials: 'include' })
@@ -122,7 +119,6 @@ export default function Admin() {
       if (splitsRes.ok) setSplitsData(await splitsRes.json());
       if (kpiRes.ok) setKpis(await kpiRes.json());
       if (analyticsRes.ok) setAnalytics(await analyticsRes.json());
-      if (auditLogsRes.ok) setAuditLogs(await auditLogsRes.json());
       if (notificationsRes.ok) setNotifications(await notificationsRes.json());
       if (cmsRes.ok) setCmsData(await cmsRes.json());
       if (settingsRes.ok) setGlobalSettings(await settingsRes.json());
@@ -382,7 +378,6 @@ export default function Admin() {
             { id: 'finance', label: 'Founder Splits', icon: DollarSign },
             { id: 'analytics', label: 'Analytics', icon: TrendingUp },
             { id: 'notifications', label: 'Alerts', icon: Bell, badge: notifications.filter(n => !n.is_read).length },
-            { id: 'audit-logs', label: 'Audit Logs', icon: FileText },
             { id: 'settings', label: 'Settings', icon: Settings }
           ].map(tab => {
             const Icon = tab.icon;
@@ -465,7 +460,7 @@ export default function Admin() {
               </div>
 
               {/* Alert Feed Widget */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 gap-8">
                 <div className="bg-[#141414] border border-white/5 rounded-2xl p-6 space-y-4">
                   <div className="flex justify-between items-center pb-3 border-b border-white/5">
                     <h3 className="text-xs font-black uppercase tracking-wider text-white">
@@ -489,25 +484,6 @@ export default function Admin() {
                         </div>
                       ))
                     )}
-                  </div>
-                </div>
-
-                <div className="bg-[#141414] border border-white/5 rounded-2xl p-6 space-y-4">
-                  <div className="flex justify-between items-center pb-3 border-b border-white/5">
-                    <h3 className="text-xs font-black uppercase tracking-wider text-white">
-                      Recent System Audits
-                    </h3>
-                    <button onClick={() => setAdminTab('audit-logs')} className="text-[9px] font-bold text-[#ff5500] uppercase tracking-wider hover:underline bg-transparent border-0 cursor-pointer">
-                      View All
-                    </button>
-                  </div>
-                  <div className="space-y-3 max-h-[220px] overflow-y-auto font-mono text-[10px]" data-lenis-prevent>
-                    {auditLogs.slice(0, 5).map(log => (
-                      <div key={log.id} className="flex justify-between border-b border-white/5 pb-2">
-                        <span className="text-[#ff5500]">{log.action}</span>
-                        <span className="text-[#888888]">{log.performedBy}</span>
-                      </div>
-                    ))}
                   </div>
                 </div>
               </div>
@@ -1012,41 +988,7 @@ export default function Admin() {
             </div>
           )}
 
-          {/* 9. AUDIT LOGS TAB */}
-          {adminTab === 'audit-logs' && (
-            <div className="space-y-6">
-              <h3 className="text-xs font-black uppercase tracking-wider text-white">
-                Immutable Operation Audit Trails
-              </h3>
 
-              <div className="overflow-x-auto border border-white/5 rounded-2xl">
-                <table className="w-full text-left border-collapse text-xs font-mono">
-                  <thead>
-                    <tr className="bg-[#141414] border-b border-white/5 text-[#888888] uppercase tracking-widest text-[9px]">
-                      <th className="p-4 font-bold">Timestamp</th>
-                      <th className="p-4 font-bold">Actor</th>
-                      <th className="p-4 font-bold">Action Log</th>
-                      <th className="p-4 font-bold">Target IP</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {auditLogs.map(log => (
-                      <tr key={log.id} className="border-b border-white/5 hover:bg-white/[0.02]">
-                        <td className="p-4 text-[#888888] whitespace-nowrap">{new Date(log.timestamp).toLocaleString('en-IN')}</td>
-                        <td className="p-4 text-white font-bold">{log.performedBy}</td>
-                        <td className="p-4 text-white">
-                          <span className="text-[#ff5500] font-bold">{log.action}</span>
-                          <span className="text-[#666666] mx-1.5">•</span>
-                          <span className="text-[#888888]">{log.entity} ({log.entityId.slice(0, 8)})</span>
-                        </td>
-                        <td className="p-4 text-[#666666]">{log.ipAddress}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
 
           {/* 10. SETTINGS TAB */}
           {adminTab === 'settings' && (
