@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
   Plus, Trash2, Edit2, Save, X, Settings, Eye, EyeOff, LogOut, User, Search,
@@ -47,6 +47,39 @@ export default function Admin() {
   const [shippingModalOrder, setShippingModalOrder] = useState(null);
   const [shippingForm, setShippingForm] = useState({ courierPartner: 'Delhivery', trackingNumber: '', shippingCost: 0, packagingCost: 0, dispatchDate: new Date().toISOString().split('T')[0] });
   const [orderFilter, setOrderFilter] = useState('all'); // 'all' | 'Verification Pending' | 'Confirmed' | 'Shipped' | 'Delivered' | 'Cancelled'
+
+  const groupedOrders = useMemo(() => {
+    const groups = {};
+    orders.forEach(item => {
+      if (!groups[item.id]) {
+        groups[item.id] = {
+          id: item.id,
+          status: item.status,
+          totalPrice: item.totalPrice,
+          shippingAddress: item.shippingAddress,
+          trackingNumber: item.trackingNumber,
+          createdAt: item.createdAt,
+          screenshotUrl: item.screenshotUrl,
+          courierPartner: item.courierPartner,
+          shippingCost: item.shippingCost,
+          packagingCost: item.packagingCost,
+          dispatchDate: item.dispatchDate,
+          deliveryDate: item.deliveryDate,
+          customerEmail: item.customerEmail,
+          customerName: item.customerName,
+          instagramUsername: item.instagramUsername,
+          items: []
+        };
+      }
+      groups[item.id].items.push({
+        productName: item.productName,
+        productBrand: item.productBrand,
+        priceAtPurchase: item.priceAtPurchase,
+        qty: item.qty
+      });
+    });
+    return Object.values(groups);
+  }, [orders]);
 
   const [isAddingExpense, setIsAddingExpense] = useState(false);
   const [expenseForm, setExpenseForm] = useState({ title: '', amount: '', category: 'Stock Purchase', paidBy: 'Harshal', date: new Date().toISOString().split('T')[0], notes: '' });
@@ -405,7 +438,7 @@ export default function Admin() {
           {[
             { id: 'dashboard', label: 'Dashboard', icon: TrendingUp },
             { id: 'inventory', label: 'Inventory', icon: Layers },
-            { id: 'orders', label: 'Orders', icon: FileText, badge: orders.filter(o => o.status === 'Verification Pending').length },
+            { id: 'orders', label: 'Orders', icon: FileText, badge: groupedOrders.filter(o => o.status === 'Verification Pending').length },
             { id: 'expenses', label: 'Expenses', icon: DollarSign },
             { id: 'finance', label: 'Founder Splits', icon: DollarSign },
             { id: 'analytics', label: 'Analytics', icon: TrendingUp },
@@ -607,23 +640,25 @@ export default function Admin() {
             <div className="space-y-6">
 
               {/* ── PENDING APPROVALS BANNER ────────── */}
-              {orders.filter(o => o.status === 'Verification Pending').length > 0 && (
+              {groupedOrders.filter(o => o.status === 'Verification Pending').length > 0 && (
                 <div className="bg-amber-500/5 border border-amber-500/30 rounded-2xl p-5 space-y-3">
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse flex-shrink-0" />
                     <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest">
-                      {orders.filter(o => o.status === 'Verification Pending').length} Payment{orders.filter(o => o.status === 'Verification Pending').length > 1 ? 's' : ''} Awaiting Your Approval
+                      {groupedOrders.filter(o => o.status === 'Verification Pending').length} Payment{groupedOrders.filter(o => o.status === 'Verification Pending').length > 1 ? 's' : ''} Awaiting Your Approval
                     </span>
                   </div>
                   <div className="space-y-2">
-                    {orders.filter(o => o.status === 'Verification Pending').map(order => (
+                    {groupedOrders.filter(o => o.status === 'Verification Pending').map(order => (
                       <div key={order.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-amber-500/5 border border-amber-500/15 rounded-xl px-4 py-3">
                         <div className="text-xs">
-                          <span className="font-mono font-black text-white">ORDER {order.id.slice(0, 8)}</span>
+                          <span className="font-mono font-black text-white text-[11px]">ORDER {order.id.slice(0, 8)}</span>
                           <span className="text-amber-300/70 mx-2">·</span>
-                          <span className="text-white/70">{order.productBrand} {order.productName}</span>
+                          <span className="text-white/70">
+                            {order.items.map(item => `${item.productBrand} ${item.productName}${item.qty > 1 ? ` (x${item.qty})` : ''}`).join(', ')}
+                          </span>
                           <span className="text-amber-300/70 mx-2">·</span>
-                          <span className="font-mono text-white/50">₹{Number(order.priceAtPurchase).toLocaleString('en-IN')} × {order.qty}</span>
+                          <span className="font-mono text-gk-orange font-bold">₹{Number(order.totalPrice).toLocaleString('en-IN')}</span>
                           <span className="text-[10px] text-[#888888] block mt-0.5">{order.customerName} · {order.customerEmail}</span>
                         </div>
                         {order.screenshotUrl ? (
@@ -632,7 +667,7 @@ export default function Admin() {
                               url: `${API_BASE_URL}/admin/orders/${order.id}/screenshot`,
                               orderId: order.id,
                               status: order.status,
-                              orderRef: `ORDER ${order.id.slice(0, 8)} — ${order.productBrand} ${order.productName}`
+                              orderRef: `ORDER ${order.id.slice(0, 8)} — ${order.items.map(item => `${item.productBrand} ${item.productName}${item.qty > 1 ? ` (x${item.qty})` : ''}`).join(', ')}`
                             })}
                             className="flex-shrink-0 bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-[10px] px-4 py-2 rounded-lg uppercase tracking-wider transition-colors cursor-pointer"
                           >
@@ -651,16 +686,16 @@ export default function Admin() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <h3 className="text-xs font-black uppercase tracking-wider text-white">Orders & Payments Pipeline</h3>
-                  <p className="text-[10px] text-[#888888] mt-0.5">{orders.length} total orders</p>
+                  <p className="text-[10px] text-[#888888] mt-0.5">{groupedOrders.length} total orders</p>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {[
-                    { key: 'all', label: 'All', count: orders.length },
-                    { key: 'Verification Pending', label: 'Pending', count: orders.filter(o => o.status === 'Verification Pending').length },
-                    { key: 'Active', label: 'Reserved', count: orders.filter(o => o.status === 'Active').length },
-                    { key: 'Confirmed', label: 'Confirmed', count: orders.filter(o => o.status === 'Confirmed').length },
-                    { key: 'Shipped', label: 'Shipped', count: orders.filter(o => o.status === 'Shipped').length },
-                    { key: 'Cancelled', label: 'Cancelled', count: orders.filter(o => o.status === 'Cancelled').length },
+                    { key: 'all', label: 'All', count: groupedOrders.length },
+                    { key: 'Verification Pending', label: 'Pending', count: groupedOrders.filter(o => o.status === 'Verification Pending').length },
+                    { key: 'Active', label: 'Reserved', count: groupedOrders.filter(o => o.status === 'Active').length },
+                    { key: 'Confirmed', label: 'Confirmed', count: groupedOrders.filter(o => o.status === 'Confirmed').length },
+                    { key: 'Shipped', label: 'Shipped', count: groupedOrders.filter(o => o.status === 'Shipped').length },
+                    { key: 'Cancelled', label: 'Cancelled', count: groupedOrders.filter(o => o.status === 'Cancelled').length },
                   ].map(f => (
                     <button
                       key={f.key}
@@ -679,12 +714,12 @@ export default function Admin() {
 
               {/* ── ORDER LIST ─────────────────────── */}
               <div className="space-y-4">
-                {(orderFilter === 'all' ? orders : orders.filter(o => o.status === orderFilter)).length === 0 ? (
+                {(orderFilter === 'all' ? groupedOrders : groupedOrders.filter(o => o.status === orderFilter)).length === 0 ? (
                   <div className="text-center py-12 text-[#555555] text-xs font-bold uppercase tracking-widest">
                     No orders with this status.
                   </div>
                 ) : (
-                  (orderFilter === 'all' ? orders : orders.filter(o => o.status === orderFilter)).map(order => (
+                  (orderFilter === 'all' ? groupedOrders : groupedOrders.filter(o => o.status === orderFilter)).map(order => (
                     <div key={order.id} className={`bg-[#141414] border rounded-2xl p-5 space-y-4 ${
                       order.status === 'Verification Pending' ? 'border-amber-500/20' : 'border-white/5'
                     }`}>
@@ -695,23 +730,34 @@ export default function Admin() {
                             Logged: {new Date(order.createdAt).toLocaleString('en-IN')}
                           </span>
                         </div>
-                        <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border ${
-                          order.status === 'Confirmed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                          order.status === 'Shipped' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                          order.status === 'Cancelled' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
-                          order.status === 'Delivered' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
-                          'bg-amber-500/10 text-amber-400 border-amber-500/20 animate-pulse'
-                        }`}>
-                          {order.status}
-                        </span>
+                        <div className="flex items-center gap-3">
+                          <span className="font-mono text-gk-orange font-bold text-xs">
+                            ₹{Number(order.totalPrice).toLocaleString('en-IN')}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border ${
+                            order.status === 'Confirmed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                            order.status === 'Shipped' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                            order.status === 'Cancelled' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                            order.status === 'Delivered' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
+                            'bg-amber-500/10 text-amber-400 border-amber-500/20 animate-pulse'
+                          }`}>
+                            {order.status}
+                          </span>
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs">
                         {/* Product details */}
                         <div>
-                          <p className="text-[9px] font-bold text-[#888888] uppercase tracking-wider">Casting</p>
-                          <p className="font-bold text-white mt-1">{order.productBrand} {order.productName}</p>
-                          <p className="font-mono text-white/50 mt-0.5">₹{Number(order.priceAtPurchase).toLocaleString('en-IN')} (x{order.qty})</p>
+                          <p className="text-[9px] font-bold text-[#888888] uppercase tracking-wider mb-2">Castings</p>
+                          <div className="space-y-2">
+                            {order.items.map((item, idx) => (
+                              <div key={idx} className="border-l-2 border-[#ff5500]/20 pl-2">
+                                <p className="font-bold text-white">{item.productBrand} {item.productName}</p>
+                                <p className="font-mono text-white/50 text-[10px]">₹{Number(item.priceAtPurchase).toLocaleString('en-IN')} × {item.qty}</p>
+                              </div>
+                            ))}
+                          </div>
                         </div>
 
                         {/* Customer Info */}
@@ -753,7 +799,7 @@ export default function Admin() {
                                   url: `${API_BASE_URL}/admin/orders/${order.id}/screenshot`,
                                   orderId: order.id,
                                   status: order.status,
-                                  orderRef: `ORDER ${order.id.slice(0, 8)} — ${order.productBrand} ${order.productName}`
+                                  orderRef: `ORDER ${order.id.slice(0, 8)} — ${order.items.map(item => `${item.productBrand} ${item.productName}${item.qty > 1 ? ` (x${item.qty})` : ''}`).join(', ')}`
                                 })}
                                 className={`mt-1 border font-bold text-[10px] px-3 py-1.5 rounded-lg uppercase tracking-wider transition-colors inline-flex cursor-pointer ${
                                   order.status === 'Verification Pending'
