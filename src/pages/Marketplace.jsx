@@ -189,100 +189,120 @@ export default function Marketplace() {
           <div className="text-center py-20 md:py-32 text-white/50">No items found matching "{searchQuery}".</div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredCars.map((car, index) => (
-              <motion.div
-                key={car.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="group relative flex flex-col rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 overflow-hidden hover:bg-white/10 transition-colors duration-500"
-              >
-                {/* Image */}
-                <div className="aspect-[4/3] bg-black/10 overflow-hidden relative" onContextMenu={(e) => e.preventDefault()}>
-                  <div className="absolute inset-0 z-30" />
-                  <img
-                    src={car.image || '/vault-1.png'}
-                    alt={car.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-[0.22,1,0.36,1] pointer-events-none select-none"
-                    style={{ WebkitUserDrag: 'none' }}
-                  />
-                  <div className="absolute top-4 right-4 z-20 px-3 py-1 rounded-full bg-black/80 backdrop-blur-md border border-white/10 text-[10px] font-black uppercase tracking-widest text-gk-yellow pointer-events-none shadow-xl">
-                    {car.lane}
-                  </div>
-                </div>
+            {filteredCars.map((car, index) => {
+              const isSoldOut = car.availableStock !== undefined 
+                ? car.availableStock <= 0 
+                : (Number(car.totalStock || 0) - Number(car.soldStock || 0) <= 0);
 
-                {/* Content */}
-                <div className="p-6 flex flex-col grow">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="text-xs font-semibold uppercase tracking-wider text-white/40">{car.grade}</div>
-                    {car.scale && <div className="text-[10px] font-bold uppercase tracking-wider text-white/30 bg-white/5 px-2 py-0.5 rounded">{car.scale}</div>}
+              return (
+                <motion.div
+                  key={car.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="group relative flex flex-col rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 overflow-hidden hover:bg-white/10 transition-colors duration-500"
+                >
+                  {/* Image */}
+                  <div className="aspect-[4/3] bg-black/10 overflow-hidden relative" onContextMenu={(e) => e.preventDefault()}>
+                    <div className="absolute inset-0 z-30" />
+                    <img
+                      src={car.image || '/vault-1.png'}
+                      alt={car.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-[0.22,1,0.36,1] pointer-events-none select-none"
+                      style={{ WebkitUserDrag: 'none' }}
+                    />
+                    {isSoldOut && (
+                      <div className="absolute inset-0 bg-black/60 backdrop-blur-[1.5px] z-25 flex items-center justify-center pointer-events-none">
+                        <span className="px-4 py-2 border border-red-500/40 bg-red-950/20 rounded-xl text-red-500 font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-red-500/5 select-none">
+                          Sold Out
+                        </span>
+                      </div>
+                    )}
+                    <div className="absolute top-4 right-4 z-20 px-3 py-1 rounded-full bg-black/80 backdrop-blur-md border border-white/10 text-[10px] font-black uppercase tracking-widest text-gk-yellow pointer-events-none shadow-xl">
+                      {car.lane}
+                    </div>
                   </div>
-                  
-                  {(car.brand || car.carBrand) && (
-                    <div className="text-[10px] font-black uppercase tracking-widest text-gk-orange mb-1">
-                      {car.carBrand ? `${car.brand} • ${car.carBrand}` : car.brand}
-                    </div>
-                  )}
-                  
-                  {car.tags && car.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mb-2.5">
-                      {car.tags.map(tag => {
-                        let colorClass = 'bg-white/10 text-white/70 border-white/10';
-                        if (tag === 'Hot') colorClass = 'bg-[#E10600]/15 text-[#E10600] border-[#E10600]/30 shadow-[0_0_10px_rgba(225,6,0,0.15)]';
-                        if (tag === 'Trending') colorClass = 'bg-purple-500/15 text-purple-400 border-purple-500/30 shadow-[0_0_10px_rgba(168,85,247,0.15)]';
-                        if (tag === 'Rare') colorClass = 'bg-amber-500/15 text-amber-400 border-amber-500/30 shadow-[0_0_10px_rgba(245,158,11,0.15)]';
-                        return (
-                          <span key={tag} className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider border ${colorClass}`}>
-                            {tag}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  )}
-                  
-                  <h3 className="text-xl font-bold leading-tight mb-3 group-hover:text-gk-orange transition-colors">{car.name}</h3>
 
-                  {car.description && (
-                    <p className="text-sm text-white/50 line-clamp-3 mb-4">{car.description}</p>
-                  )}
-                  
-                  <div className="mt-auto pt-4 border-t border-white/10 flex items-center justify-between gap-4 w-full">
-                    {settings.showPrices === true ? (
-                      <>
-                        <div>
-                          <div className="text-[9px] uppercase tracking-wider text-white/40 mb-0.5">Price</div>
-                          <div className="font-mono text-base text-white font-medium">{car.currency || '₹'}{car.price}</div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => addToCart(car)}
-                            className="px-3 py-2 rounded-xl border border-white/10 hover:border-gk-orange/30 hover:bg-gk-orange/5 text-white/80 hover:text-white font-black text-[10px] uppercase tracking-wider transition-all active:scale-[0.98] cursor-pointer"
-                          >
-                            Add to Cart
-                          </button>
+                  {/* Content */}
+                  <div className="p-6 flex flex-col grow">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-xs font-semibold uppercase tracking-wider text-white/40">{car.grade}</div>
+                      {car.scale && <div className="text-[10px] font-bold uppercase tracking-wider text-white/30 bg-white/5 px-2 py-0.5 rounded">{car.scale}</div>}
+                    </div>
+                    
+                    {(car.brand || car.carBrand) && (
+                      <div className="text-[10px] font-black uppercase tracking-widest text-gk-orange mb-1">
+                        {car.carBrand ? `${car.brand} • ${car.carBrand}` : car.brand}
+                      </div>
+                    )}
+                    
+                    {car.tags && car.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mb-2.5">
+                        {car.tags.map(tag => {
+                          let colorClass = 'bg-white/10 text-white/70 border-white/10';
+                          if (tag === 'Hot') colorClass = 'bg-[#E10600]/15 text-[#E10600] border-[#E10600]/30 shadow-[0_0_10px_rgba(225,6,0,0.15)]';
+                          if (tag === 'Trending') colorClass = 'bg-purple-500/15 text-purple-400 border-purple-500/30 shadow-[0_0_10px_rgba(168,85,247,0.15)]';
+                          if (tag === 'Rare') colorClass = 'bg-amber-500/15 text-amber-400 border-amber-500/30 shadow-[0_0_10px_rgba(245,158,11,0.15)]';
+                          return (
+                            <span key={tag} className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider border ${colorClass}`}>
+                              {tag}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+                    
+                    <h3 className="text-xl font-bold leading-tight mb-3 group-hover:text-gk-orange transition-colors">{car.name}</h3>
+
+                    {car.description && (
+                      <p className="text-sm text-white/50 line-clamp-3 mb-4">{car.description}</p>
+                    )}
+                    
+                    <div className="mt-auto pt-4 border-t border-white/10 flex items-center justify-between gap-4 w-full">
+                      {isSoldOut ? (
+                        <button
+                          disabled
+                          className="w-full py-3.5 rounded-xl bg-zinc-900 border border-white/5 text-zinc-600 font-black text-xs uppercase tracking-widest cursor-not-allowed text-center"
+                        >
+                          Sold Out
+                        </button>
+                      ) : settings.showPrices === true ? (
+                        <>
+                          <div>
+                            <div className="text-[9px] uppercase tracking-wider text-white/40 mb-0.5">Price</div>
+                            <div className="font-mono text-base text-white font-medium">{car.currency || '₹'}{car.price}</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => addToCart(car)}
+                              className="px-3 py-2 rounded-xl border border-white/10 hover:border-gk-orange/30 hover:bg-gk-orange/5 text-white/80 hover:text-white font-black text-[10px] uppercase tracking-wider transition-all active:scale-[0.98] cursor-pointer"
+                            >
+                              Add to Cart
+                            </button>
+                            <button
+                              onClick={() => handleBuyClick(car)}
+                              className="px-3.5 py-2 rounded-xl bg-gk-orange hover:bg-orange-500 text-white font-black text-[10px] uppercase tracking-wider transition-all hover:shadow-[0_0_20px_rgba(225,6,0,0.4)] active:scale-[0.98] cursor-pointer"
+                            >
+                              Buy Now
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="text-xs uppercase tracking-wider text-gk-orange font-bold">DM for Price</div>
                           <button
                             onClick={() => handleBuyClick(car)}
-                            className="px-3.5 py-2 rounded-xl bg-gk-orange hover:bg-orange-500 text-white font-black text-[10px] uppercase tracking-wider transition-all hover:shadow-[0_0_20px_rgba(225,6,0,0.4)] active:scale-[0.98] cursor-pointer"
+                            className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:border-gk-orange/30 hover:bg-gk-orange/5 text-white font-black text-xs uppercase tracking-wider transition-all cursor-pointer"
                           >
-                            Buy Now
+                            Inquire
                           </button>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="text-xs uppercase tracking-wider text-gk-orange font-bold">DM for Price</div>
-                        <button
-                          onClick={() => handleBuyClick(car)}
-                          className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:border-gk-orange/30 hover:bg-gk-orange/5 text-white font-black text-xs uppercase tracking-wider transition-all cursor-pointer"
-                        >
-                          Inquire
-                        </button>
-                      </>
-                    )}
+                        </>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              );
+            })}
           </div>
         )}
       </div>
