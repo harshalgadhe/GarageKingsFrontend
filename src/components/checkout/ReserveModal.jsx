@@ -12,7 +12,7 @@ const generateUUID = () => {
 };
 
 export default function ReserveModal({ product, cartItems, onClose }) {
-  const [step, setStep] = useState(1); // 1 = Details, 2 = Payment, 3 = Complete
+  const [step, setStep] = useState(1); // 1 = Shipping details, 2 = UPI Pay instructions, 3 = Receipt upload, 4 = Complete
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -168,6 +168,43 @@ export default function ReserveModal({ product, cartItems, onClose }) {
             ✕
           </button>
         </div>
+        
+        {/* Stepper progress indicator */}
+        <div className="px-6 py-4 bg-white/[0.01] border-b border-white/5 flex items-center justify-between text-[9px] font-black uppercase tracking-widest select-none flex-shrink-0">
+          <div className="flex items-center gap-1.5">
+            <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] transition-all duration-300 ${step === 1 ? 'bg-[#ff5500] text-black font-black' : step > 1 ? 'bg-[#ff5500]/20 text-[#ff5500] border border-[#ff5500]/30' : 'bg-white/5 text-white/40 border border-white/10'}`}>
+              {step > 1 ? '✓' : '1'}
+            </div>
+            <span className={step === 1 ? 'text-white font-bold' : step > 1 ? 'text-[#ff5500]' : 'text-white/30'}>Shipping</span>
+          </div>
+          
+          <div className={`h-[1px] grow mx-3 transition-colors duration-300 ${step > 1 ? 'bg-[#ff5500]/30' : 'bg-white/5'}`} />
+          
+          <div className="flex items-center gap-1.5">
+            <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] transition-all duration-300 ${step === 2 ? 'bg-[#ff5500] text-black font-black' : step > 2 ? 'bg-[#ff5500]/20 text-[#ff5500] border border-[#ff5500]/30' : 'bg-white/5 text-white/40 border border-white/10'}`}>
+              {step > 2 ? '✓' : '2'}
+            </div>
+            <span className={step === 2 ? 'text-white font-bold' : step > 2 ? 'text-[#ff5500]' : 'text-white/30'}>UPI Pay</span>
+          </div>
+          
+          <div className={`h-[1px] grow mx-3 transition-colors duration-300 ${step > 2 ? 'bg-[#ff5500]/30' : 'bg-white/5'}`} />
+          
+          <div className="flex items-center gap-1.5">
+            <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] transition-all duration-300 ${step === 3 ? 'bg-[#ff5500] text-black font-black' : step > 3 ? 'bg-[#ff5500]/20 text-[#ff5500] border border-[#ff5500]/30' : 'bg-white/5 text-white/40 border border-white/10'}`}>
+              {step > 3 ? '✓' : '3'}
+            </div>
+            <span className={step === 3 ? 'text-white font-bold' : step > 3 ? 'text-[#ff5500]' : 'text-white/30'}>Upload</span>
+          </div>
+          
+          <div className={`h-[1px] grow mx-3 transition-colors duration-300 ${step > 3 ? 'bg-[#ff5500]/30' : 'bg-white/5'}`} />
+          
+          <div className="flex items-center gap-1.5">
+            <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] transition-all duration-300 ${step === 4 ? 'bg-[#ff5500] text-black font-black' : 'bg-white/5 text-white/40 border border-white/10'}`}>
+              4
+            </div>
+            <span className={step === 4 ? 'text-white font-bold' : 'text-white/30'}>Complete</span>
+          </div>
+        </div>
 
         {/* Content body */}
         <div className="p-6 overflow-y-auto space-y-6 flex-1 min-h-0 max-h-[65vh]" data-lenis-prevent>
@@ -267,21 +304,50 @@ export default function ReserveModal({ product, cartItems, onClose }) {
 
           {step === 2 && (
             <div className="space-y-5">
-
               <PaymentInstructions 
                 upiId={settings.companyUpiId}
                 upiQrImage={settings.upiQrImage}
                 price={totalPrice}
               />
 
-              <ScreenshotUploader 
-                orderId={orderId} 
-                onUploadSuccess={() => setStep(3)}
-              />
+              <button
+                onClick={() => setStep(3)}
+                className="w-full bg-[#ff5500] hover:bg-[#ff6611] active:bg-[#e64d00] text-black font-extrabold text-xs py-3.5 px-4 rounded-xl transition-all duration-200 uppercase tracking-wider mt-2 shadow-[0_4px_20px_-4px_rgba(255,85,0,0.3)] cursor-pointer"
+              >
+                I Have Paid, Proceed to Upload Receipt
+              </button>
             </div>
           )}
 
           {step === 3 && (
+            <div className="space-y-5">
+              <div className="bg-[#141414] border border-white/5 rounded-xl p-4 space-y-2">
+                <div className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">Order Summary</div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-white/60">Amount to Transfer:</span>
+                  <span className="font-mono text-[#ff5500] font-bold">₹{totalPrice}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-white/60">Order ID:</span>
+                  <span className="font-mono text-white/80">{orderId}</span>
+                </div>
+              </div>
+
+              <ScreenshotUploader 
+                orderId={orderId} 
+                onUploadSuccess={() => setStep(4)}
+              />
+
+              <button
+                onClick={() => setStep(2)}
+                className="w-full bg-transparent hover:bg-white/5 text-white/60 hover:text-white border border-white/10 font-bold text-xs py-2.5 px-4 rounded-xl transition-colors uppercase tracking-wider text-center cursor-pointer"
+              >
+                ← Back to QR Code
+              </button>
+            </div>
+          )}
+
+          {step === 4 && (
             <div className="text-center py-8 space-y-6">
               <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-[#ff5500]/10 border border-[#ff5500]/20 text-[#ff5500] text-3xl animate-bounce">
                 ✓
@@ -316,7 +382,7 @@ export default function ReserveModal({ product, cartItems, onClose }) {
 
               <button
                 onClick={onClose}
-                className="bg-white/5 hover:bg-white/10 text-white font-extrabold text-xs px-6 py-3 rounded-xl border border-white/10 uppercase tracking-wider transition-colors"
+                className="bg-white/5 hover:bg-white/10 text-white font-extrabold text-xs px-6 py-3 rounded-xl border border-white/10 uppercase tracking-wider transition-colors cursor-pointer"
               >
                 Close Portal
               </button>
