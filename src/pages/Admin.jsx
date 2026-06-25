@@ -23,8 +23,42 @@ export default function Admin() {
   const [orders, setOrders] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [splitsData, setSplitsData] = useState({ totalExpenses: 0, paidMap: {}, targetOwed: {}, balances: {}, settlements: [], owesWho: [] });
-  const [kpis, setKpis] = useState({ revenue: 0, expenses: 0, profit: 0, pendingPayments: 0, inventoryValue: 0 });
-  const [analytics, setAnalytics] = useState({ topSellingProduct: null, topBrand: null, averageOrderValue: 0, topCustomer: null, deadStockCount: 0, deadStock: [] });
+  const [kpis, setKpis] = useState(null);
+  const [kpisLoading, setKpisLoading] = useState(false);
+  const [analytics, setAnalytics] = useState(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+
+  const fetchKPIs = async () => {
+    setKpisLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/dashboard/kpis`, { credentials: 'include' });
+      if (res.ok) {
+        setKpis(await res.json());
+      } else {
+        alert("Failed to load KPIs");
+      }
+    } catch (e) {
+      console.error("Error loading KPIs:", e);
+    } finally {
+      setKpisLoading(false);
+    }
+  };
+
+  const fetchAnalytics = async () => {
+    setAnalyticsLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/analytics`, { credentials: 'include' });
+      if (res.ok) {
+        setAnalytics(await res.json());
+      } else {
+        alert("Failed to load Analytics");
+      }
+    } catch (e) {
+      console.error("Error loading Analytics:", e);
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  };
   const [notifications, setNotifications] = useState([]);
   const [hasMoreNotifications, setHasMoreNotifications] = useState(true);
   const [cmsData, setCmsData] = useState({ sections: [], items: [] });
@@ -127,8 +161,6 @@ export default function Admin() {
         ordersRes,
         expensesRes,
         splitsRes,
-        kpiRes,
-        analyticsRes,
         notificationsRes,
         cmsRes,
         settingsRes
@@ -137,8 +169,6 @@ export default function Admin() {
         fetch(`${API_BASE_URL}/admin/orders`, { credentials: 'include' }),
         fetch(`${API_BASE_URL}/admin/expenses`, { credentials: 'include' }),
         fetch(`${API_BASE_URL}/admin/splits`, { credentials: 'include' }),
-        fetch(`${API_BASE_URL}/admin/dashboard/kpis`, { credentials: 'include' }),
-        fetch(`${API_BASE_URL}/admin/analytics`, { credentials: 'include' }),
         fetch(`${API_BASE_URL}/admin/notifications`, { credentials: 'include' }),
         fetch(`${API_BASE_URL}/admin/homepage-cms`, { credentials: 'include' }),
         fetch(`${API_BASE_URL}/settings`, { credentials: 'include' })
@@ -148,8 +178,6 @@ export default function Admin() {
       if (ordersRes.ok) setOrders(await ordersRes.json());
       if (expensesRes.ok) setExpenses(await expensesRes.json());
       if (splitsRes.ok) setSplitsData(await splitsRes.json());
-      if (kpiRes.ok) setKpis(await kpiRes.json());
-      if (analyticsRes.ok) setAnalytics(await analyticsRes.json());
       if (notificationsRes.ok) {
         const notifs = await notificationsRes.json();
         setNotifications(notifs);
@@ -157,6 +185,10 @@ export default function Admin() {
       }
       if (cmsRes.ok) setCmsData(await cmsRes.json());
       if (settingsRes.ok) setGlobalSettings(await settingsRes.json());
+      
+      // Reset loaded metrics on refetches to ensure they represent fresh data when calculated next
+      setKpis(null);
+      setAnalytics(null);
     } catch (e) {
       setDbError('Error loading dashboard datasets.');
     }
@@ -505,24 +537,66 @@ export default function Admin() {
           {adminTab === 'dashboard' && (
             <div className="space-y-8">
               {/* Financial KPI Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
-                {[
-                  { label: 'Total Revenue', val: kpis.revenue, color: 'text-white' },
-                  { label: 'Total Expenses', val: kpis.expenses, color: 'text-white' },
-                  { label: 'Net profit / loss', val: kpis.profit, color: kpis.profit >= 0 ? 'text-emerald-400' : 'text-red-400' },
-                  { label: 'Pending Payments', val: kpis.pendingPayments, color: 'text-amber-400' },
-                  { label: 'Inventory asset value', val: kpis.inventoryValue, color: 'text-[#ff5500]' }
-                ].map((kpi, i) => (
-                  <div key={i} className="bg-[#141414] border border-white/5 rounded-2xl p-5 shadow-sm">
-                    <p className="text-[9px] font-bold text-[#888888] uppercase tracking-widest">
-                      {kpi.label}
-                    </p>
-                    <h3 className={`text-xl font-black mt-2 font-mono ${kpi.color}`}>
-                      ₹{kpi.val.toLocaleString('en-IN')}
+              {!kpis ? (
+                <div className="bg-[#141414] border border-white/5 rounded-2xl p-8 text-center space-y-4">
+                  <div className="max-w-md mx-auto space-y-2">
+                    <h3 className="text-sm font-black uppercase tracking-wider text-white">
+                      Financial Performance Metrics
                     </h3>
+                    <p className="text-xs text-[#888888] leading-relaxed">
+                      Perform database aggregations to retrieve total revenue, expenses, profit/loss, and inventory asset value.
+                    </p>
                   </div>
-                ))}
-              </div>
+                  <button
+                    onClick={fetchKPIs}
+                    disabled={kpisLoading}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-[#ff5500] hover:bg-[#ff6611] active:bg-[#e64d00] disabled:bg-[#ff5500]/50 text-black font-extrabold text-xs rounded-xl uppercase tracking-wider transition-all shadow-[0_4px_20px_-4px_rgba(255,85,0,0.3)] cursor-pointer"
+                  >
+                    {kpisLoading ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                        Calculating KPIs...
+                      </>
+                    ) : (
+                      'Load KPI Metrics'
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-xs font-black uppercase tracking-wider text-white/40">
+                      Financial KPIs (On-Demand)
+                    </h3>
+                    <button 
+                      onClick={fetchKPIs}
+                      disabled={kpisLoading}
+                      className="text-[10px] font-black text-[#ff5500] hover:underline uppercase tracking-widest bg-transparent border-none cursor-pointer"
+                    >
+                      {kpisLoading ? 'Recalculating...' : 'Refresh KPIs'}
+                    </button>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+                    {[
+                      { label: 'Total Revenue', val: kpis.revenue, color: 'text-white' },
+                      { label: 'Total Expenses', val: kpis.expenses, color: 'text-white' },
+                      { label: 'Net profit / loss', val: kpis.profit, color: kpis.profit >= 0 ? 'text-emerald-400' : 'text-red-400' },
+                      { label: 'Pending Payments', val: kpis.pendingPayments, color: 'text-amber-400' },
+                      { label: 'Inventory asset value', val: kpis.inventoryValue, color: 'text-[#ff5500]' }
+                    ].map((kpi, i) => (
+                      <div key={i} className="bg-[#141414] border border-white/5 rounded-2xl p-5 shadow-sm">
+                        <p className="text-[9px] font-bold text-[#888888] uppercase tracking-widest">
+                          {kpi.label}
+                        </p>
+                        <h3 className={`text-xl font-black mt-2 font-mono ${kpi.color}`}>
+                          ₹{kpi.val.toLocaleString('en-IN')}
+                        </h3>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Alert Feed Widget */}
               <div className="grid grid-cols-1 gap-8">
@@ -1000,53 +1074,103 @@ export default function Admin() {
           {/* 7. ANALYTICS TAB */}
           {adminTab === 'analytics' && (
             <div className="space-y-8">
-              {/* Analytics summary details */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                  { label: 'Top Selling Brand', val: analytics.topBrand || 'N/A' },
-                  { label: 'Top Casting Model', val: analytics.topSellingProduct ? `${analytics.topSellingProduct.brand} ${analytics.topSellingProduct.name}` : 'N/A' },
-                  { label: 'Average Order Value', val: `₹${Number(analytics.averageOrderValue.toFixed(2)).toLocaleString('en-IN')}` },
-                  { label: 'Top Customer Buyer', val: analytics.topCustomer ? `${analytics.topCustomer.name}` : 'N/A' }
-                ].map((stat, i) => (
-                  <div key={i} className="bg-[#141414] border border-white/5 rounded-2xl p-5">
-                    <p className="text-[9px] font-bold text-[#888888] uppercase tracking-widest">{stat.label}</p>
-                    <h3 className="text-sm font-extrabold text-white mt-3 uppercase tracking-wide truncate">
-                      {stat.val}
+              {!analytics ? (
+                <div className="bg-[#141414] border border-white/5 rounded-2xl p-8 text-center space-y-4">
+                  <div className="max-w-md mx-auto space-y-2">
+                    <h3 className="text-sm font-black uppercase tracking-wider text-white">
+                      Database Analytics & Reports
                     </h3>
+                    <p className="text-xs text-[#888888] leading-relaxed">
+                      Execute aggregated queries to calculate top selling brands, best models, average order value, top buyers, and catalog dead stock.
+                    </p>
                   </div>
-                ))}
-              </div>
+                  <button
+                    onClick={fetchAnalytics}
+                    disabled={analyticsLoading}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-[#ff5500] hover:bg-[#ff6611] active:bg-[#e64d00] disabled:bg-[#ff5500]/50 text-black font-extrabold text-xs rounded-xl uppercase tracking-wider transition-all shadow-[0_4px_20px_-4px_rgba(255,85,0,0.3)] cursor-pointer"
+                  >
+                    {analyticsLoading ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                        Running Queries...
+                      </>
+                    ) : (
+                      'Generate Analytics Report'
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-8">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-xs font-black uppercase tracking-wider text-white/40">
+                      Aggregated Metrics (On-Demand)
+                    </h3>
+                    <button 
+                      onClick={fetchAnalytics}
+                      disabled={analyticsLoading}
+                      className="text-[10px] font-black text-[#ff5500] hover:underline uppercase tracking-widest bg-transparent border-none cursor-pointer"
+                    >
+                      {analyticsLoading ? 'Regenerating...' : 'Refresh Report'}
+                    </button>
+                  </div>
 
-              {/* Dead stock catalog check */}
-              <div className="bg-[#141414] border border-white/5 rounded-2xl p-6 space-y-4">
-                <div>
-                  <h4 className="text-xs font-black uppercase tracking-wider text-white">
-                    Dead Stock Catalog (90+ Days Unsold)
-                  </h4>
-                  <p className="text-[10px] text-[#888888] mt-0.5">Inventory assets locked in low-velocity castings.</p>
+                  {/* Analytics summary details */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {[
+                      { label: 'Top Selling Brand', val: analytics.topBrand || 'N/A' },
+                      { label: 'Top Casting Model', val: analytics.topSellingProduct ? `${analytics.topSellingProduct.brand} ${analytics.topSellingProduct.name}` : 'N/A' },
+                      { label: 'Average Order Value', val: `₹${Number((analytics.averageOrderValue || 0).toFixed(2)).toLocaleString('en-IN')}` },
+                      { label: 'Top Customer Buyer', val: analytics.topCustomer ? `${analytics.topCustomer.name}` : 'N/A' }
+                    ].map((stat, i) => (
+                      <div key={i} className="bg-[#141414] border border-white/5 rounded-2xl p-5">
+                        <p className="text-[9px] font-bold text-[#888888] uppercase tracking-widest">{stat.label}</p>
+                        <h3 className="text-sm font-extrabold text-white mt-3 uppercase tracking-wide truncate">
+                          {stat.val}
+                        </h3>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Dead stock catalog check */}
+                  <div className="bg-[#141414] border border-white/5 rounded-2xl p-6 space-y-4">
+                    <div>
+                      <h4 className="text-xs font-black uppercase tracking-wider text-white">
+                        Dead Stock Catalog (90+ Days Unsold)
+                      </h4>
+                      <p className="text-[10px] text-[#888888] mt-0.5">Inventory assets locked in low-velocity castings.</p>
+                    </div>
+                    
+                    <div className="overflow-x-auto border border-white/5 rounded-xl">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="bg-[#1c1c1c] border-b border-white/5 text-[#888888] uppercase tracking-widest text-[9px]">
+                            <th className="p-3 font-bold">Casting</th>
+                            <th className="p-3 font-bold">Added Date</th>
+                            <th className="p-3 font-bold text-center">Remaining Stock</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {analytics.deadStock && analytics.deadStock.length > 0 ? (
+                            analytics.deadStock.map(car => (
+                              <tr key={car.id} className="border-b border-white/5 hover:bg-white/[0.02]">
+                                <td className="p-3 font-bold text-white">{car.brand} {car.name}</td>
+                                <td className="p-3 font-mono text-[#888888]">{new Date(car.createdAt).toLocaleDateString('en-IN')}</td>
+                                <td className="p-3 text-center font-mono font-bold text-white">{car.available}</td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td colSpan="3" className="p-4 text-center text-white/30 uppercase text-[10px] tracking-wider font-bold">
+                                No Dead Stock Detected
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
-                
-                <div className="overflow-x-auto border border-white/5 rounded-xl">
-                  <table className="w-full text-left border-collapse text-xs">
-                    <thead>
-                      <tr className="bg-[#1c1c1c] border-b border-white/5 text-[#888888] uppercase tracking-widest text-[9px]">
-                        <th className="p-3 font-bold">Casting</th>
-                        <th className="p-3 font-bold">Added Date</th>
-                        <th className="p-3 font-bold text-center">Remaining Stock</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {analytics.deadStock?.map(car => (
-                        <tr key={car.id} className="border-b border-white/5 hover:bg-white/[0.02]">
-                          <td className="p-3 font-bold text-white">{car.brand} {car.name}</td>
-                          <td className="p-3 font-mono text-[#888888]">{new Date(car.createdAt).toLocaleDateString('en-IN')}</td>
-                          <td className="p-3 text-center font-mono font-bold text-white">{car.available}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+              )}
             </div>
           )}
 
