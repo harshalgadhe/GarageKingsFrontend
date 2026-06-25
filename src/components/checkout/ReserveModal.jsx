@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import PaymentInstructions from './PaymentInstructions';
 import ScreenshotUploader from './ScreenshotUploader';
+import { getCurrentUser } from '../../lib/auth';
 
 const generateUUID = () => {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -58,6 +59,30 @@ export default function ReserveModal({ product, cartItems, onClose }) {
       }
     }
     fetchSettings();
+
+    // Pre-fill user profile details if logged in
+    const user = getCurrentUser();
+    if (user) {
+      setEmail(user.email || '');
+      setName(user.displayName || '');
+
+      async function loadProfile() {
+        try {
+          const res = await fetch(`${API_BASE_URL}/profile/my`);
+          if (res.ok) {
+            const prof = await res.json();
+            if (prof) {
+              if (prof.fullName) setName(prof.fullName);
+              if (prof.phone && !prof.phone.startsWith('unknown_')) setPhone(prof.phone);
+              if (prof.address) setAddress(prof.address);
+            }
+          }
+        } catch (e) {
+          console.warn("Failed to load user profile for checkout prefill:", e);
+        }
+      }
+      loadProfile();
+    }
 
     return () => {
       // Re-enable background scroll
