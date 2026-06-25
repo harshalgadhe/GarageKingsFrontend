@@ -205,10 +205,10 @@ export default function Help() {
             <div className="bg-[#0c0c0f] border border-white/5 rounded-2xl p-5 hover:border-white/10 transition-colors shadow-lg">
               <h3 className="text-xs font-black uppercase tracking-wider text-gk-orange flex items-center gap-2 mb-2.5">
                 <FileText size={14} />
-                Reservations
+                Order Placement
               </h3>
               <p className="text-xs text-zinc-400 leading-relaxed font-medium">
-                Reservations automatically expire after the timer ends. Payment and screenshot upload must occur within this window to secure your reservation.
+                Orders are processed on a first-come, first-served basis. Payment and screenshot upload must occur promptly. Stock is only secured once payment is verified.
               </p>
             </div>
 

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import ReservationTimer from './ReservationTimer';
 import PaymentInstructions from './PaymentInstructions';
 import ScreenshotUploader from './ScreenshotUploader';
 
@@ -35,7 +34,7 @@ export default function ReserveModal({ product, cartItems, onClose }) {
 
   const isCart = !!cartItems;
   const totalPrice = isCart 
-    ? cartItems.reduce((sum, item) => sum + Number(item.price || 0), 0)
+    ? cartItems.reduce((sum, item) => sum + Number(item.price || 0) * (item.quantity || 1), 0)
     : Number(product?.price || 0);
 
   // Generate unique idempotency key once per modal mount and lock/unlock body scroll
@@ -79,7 +78,9 @@ export default function ReserveModal({ product, cartItems, onClose }) {
     try {
       const endpoint = isCart ? `${API_BASE_URL}/products/reserve-cart` : `${API_BASE_URL}/products/reserve`;
       const body = isCart ? {
-        items: cartItems.map(item => ({ productId: item.id, price: item.price })),
+        items: cartItems.flatMap(item => 
+          Array.from({ length: item.quantity || 1 }, () => ({ productId: item.id, price: item.price }))
+        ),
         name,
         email,
         phone,
@@ -106,24 +107,16 @@ export default function ReserveModal({ product, cartItems, onClose }) {
 
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.message || 'Stock reservation failed.');
+        throw new Error(data.message || 'Checkout failed.');
       }
 
       setOrderId(data.orderId);
-      setExpiresAt(data.expiresAt);
       setStep(2);
     } catch (err) {
-      setError(err.message || 'Failed to lock stock.');
+      setError(err.message || 'Failed to place order.');
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleExpire = () => {
-    setError('Your reservation has expired and the stock has been released.');
-    setStep(1);
-    // Refresh idempotency key so they can try again
-    setIdempotencyKey(generateUUID());
   };
 
   return (
@@ -137,10 +130,10 @@ export default function ReserveModal({ product, cartItems, onClose }) {
         <div className="p-6 border-b border-white/5 flex items-center justify-between flex-shrink-0">
           <div>
             <span className="text-[9px] font-black text-[#ff5500] uppercase tracking-widest bg-[#ff5500]/10 border border-[#ff5500]/20 px-2 py-0.5 rounded">
-              Grail Reservation
+              Checkout
             </span>
             <h2 className="text-base font-extrabold text-white mt-2 uppercase tracking-wide truncate max-w-[280px]">
-              {isCart ? `Reserve Cart (${cartItems.length} items)` : `Reserve: ${product?.brand} ${product?.name}`}
+              {isCart ? `Checkout Cart (${cartItems.reduce((sum, item) => sum + (item.quantity || 1), 0)} items)` : `Checkout: ${product?.brand} ${product?.name}`}
             </h2>
           </div>
           <button 
@@ -167,8 +160,8 @@ export default function ReserveModal({ product, cartItems, onClose }) {
                   <div className="max-h-[120px] overflow-y-auto space-y-1.5 pr-2" data-lenis-prevent>
                     {cartItems.map(item => (
                       <div key={item.id} className="flex justify-between items-center text-xs">
-                        <span className="text-white truncate max-w-[200px]">{item.brand} {item.name}</span>
-                        <span className="font-mono text-white/60">₹{item.price}</span>
+                        <span className="text-white truncate max-w-[200px]">{item.brand} {item.name} {item.quantity > 1 ? `x${item.quantity}` : ''}</span>
+                        <span className="font-mono text-white/60">₹{Number(item.price) * (item.quantity || 1)}</span>
                       </div>
                     ))}
                   </div>
@@ -242,16 +235,13 @@ export default function ReserveModal({ product, cartItems, onClose }) {
                 disabled={loading}
                 className="w-full bg-[#ff5500] hover:bg-[#ff6611] active:bg-[#e64d00] disabled:bg-[#ff5500]/50 text-black font-extrabold text-xs py-3.5 px-4 rounded-xl transition-all duration-200 uppercase tracking-wider mt-2 shadow-[0_4px_20px_-4px_rgba(255,85,0,0.3)]"
               >
-                {loading ? 'Locking Stock...' : 'Lock Stock & Go to Pay'}
+                {loading ? 'Processing...' : 'Place Order & Go to Pay'}
               </button>
             </form>
           )}
 
           {step === 2 && (
             <div className="space-y-5">
-              <div className="flex justify-center">
-                <ReservationTimer expiresAt={expiresAt} onExpire={handleExpire} />
-              </div>
 
               <PaymentInstructions 
                 upiId={settings.companyUpiId}
@@ -274,10 +264,10 @@ export default function ReserveModal({ product, cartItems, onClose }) {
               
               <div className="space-y-2">
                 <h3 className="text-lg font-black text-white uppercase tracking-wider">
-                  Reservation Logged
+                  Order Placed
                 </h3>
                 <p className="text-xs text-[#888888] leading-relaxed max-w-sm mx-auto">
-                  Your UPI screenshot is uploaded and pending verification by our founders. We will notify you via email or WhatsApp once verified.
+                  Your UPI screenshot is uploaded and pending verification by our founders. We will verify it on a first-come, first-served basis. We will notify you once verified.
                 </p>
               </div>
 
@@ -288,7 +278,7 @@ export default function ReserveModal({ product, cartItems, onClose }) {
                     <span className="text-white">ITEMS:</span>
                     <ul className="list-disc list-inside mt-1 space-y-1">
                       {cartItems.map(item => (
-                        <li key={item.id} className="truncate">{item.brand} {item.name}</li>
+                        <li key={item.id} className="truncate">{item.brand} {item.name} {item.quantity > 1 ? `x${item.quantity}` : ''}</li>
                       ))}
                     </ul>
                   </div>

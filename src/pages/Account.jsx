@@ -152,7 +152,7 @@ export default function Account() {
             </div>
             <h1 className="text-2xl font-black uppercase tracking-wide mb-3 text-white">Collector Space</h1>
             <p className="text-xs text-zinc-500 leading-relaxed mb-8 max-w-sm mx-auto">
-              Access your personal dashboard to track reserved castings, check purchase history, and manage your collector details.
+              Access your personal dashboard to track active orders, check purchase history, and manage your collector details.
             </p>
             <button 
               onClick={() => {
@@ -427,11 +427,11 @@ export default function Account() {
                   <ul className="space-y-2.5 text-xs text-zinc-400">
                     <li className="flex items-start gap-2">
                       <span className="text-gk-orange font-bold">•</span>
-                      <span>Reserved items are locked exclusively in your account name for a limited duration.</span>
+                      <span>Orders are processed on a first-come-first-served basis upon receipt verification.</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-gk-orange font-bold">•</span>
-                      <span>Payment screenshots must be uploaded before the lock countdown expires to ensure verification.</span>
+                      <span>Upload your payment screenshot as soon as possible to submit your order for admin approval.</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-gk-orange font-bold">•</span>

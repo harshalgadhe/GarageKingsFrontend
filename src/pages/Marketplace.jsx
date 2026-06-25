@@ -31,11 +31,17 @@ export default function Marketplace() {
   };
 
   const addToCart = (car) => {
-    if (cart.some(item => item.id === car.id)) {
-      alert(`${car.brand} ${car.name} is already in your cart.`);
-      return;
+    const existingIndex = cart.findIndex(item => item.id === car.id);
+    let newCart;
+    if (existingIndex > -1) {
+      newCart = cart.map((item, idx) => 
+        idx === existingIndex 
+          ? { ...item, quantity: (item.quantity || 1) + 1 }
+          : item
+      );
+    } else {
+      newCart = [...cart, { ...car, quantity: 1 }];
     }
-    const newCart = [...cart, car];
     saveCart(newCart, true);
   };
 

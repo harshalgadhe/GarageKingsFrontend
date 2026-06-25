@@ -26,6 +26,7 @@ export default function Admin() {
   const [kpis, setKpis] = useState({ revenue: 0, expenses: 0, profit: 0, pendingPayments: 0, inventoryValue: 0 });
   const [analytics, setAnalytics] = useState({ topSellingProduct: null, topBrand: null, averageOrderValue: 0, topCustomer: null, deadStockCount: 0, deadStock: [] });
   const [notifications, setNotifications] = useState([]);
+  const [hasMoreNotifications, setHasMoreNotifications] = useState(true);
   const [cmsData, setCmsData] = useState({ sections: [], items: [] });
   const [globalSettings, setGlobalSettings] = useState({
     showPrices: true,
@@ -116,7 +117,11 @@ export default function Admin() {
       if (splitsRes.ok) setSplitsData(await splitsRes.json());
       if (kpiRes.ok) setKpis(await kpiRes.json());
       if (analyticsRes.ok) setAnalytics(await analyticsRes.json());
-      if (notificationsRes.ok) setNotifications(await notificationsRes.json());
+      if (notificationsRes.ok) {
+        const notifs = await notificationsRes.json();
+        setNotifications(notifs);
+        setHasMoreNotifications(notifs.length === 10);
+      }
       if (cmsRes.ok) setCmsData(await cmsRes.json());
       if (settingsRes.ok) setGlobalSettings(await settingsRes.json());
     } catch (e) {
@@ -324,7 +329,36 @@ export default function Admin() {
         credentials: 'include'
       });
       if (res.ok) {
-        await loadAllData();
+        setNotifications([]);
+        setHasMoreNotifications(false);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const loadMoreNotifications = async () => {
+    try {
+      const offset = notifications.length;
+      const res = await fetch(`${API_BASE_URL}/admin/notifications?limit=10&offset=${offset}`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setNotifications(prev => [...prev, ...data]);
+        setHasMoreNotifications(data.length === 10);
+      }
+    } catch (err) {
+      console.error("Error loading more notifications:", err);
+    }
+  };
+
+  const handleDeleteNotification = async (id) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/notifications/${id}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      if (res.ok) {
+        setNotifications(prev => prev.filter(n => n.id !== id));
       }
     } catch (e) {
       console.error(e);
@@ -375,7 +409,7 @@ export default function Admin() {
             { id: 'expenses', label: 'Expenses', icon: DollarSign },
             { id: 'finance', label: 'Founder Splits', icon: DollarSign },
             { id: 'analytics', label: 'Analytics', icon: TrendingUp },
-            { id: 'notifications', label: 'Alerts', icon: Bell, badge: notifications.filter(n => !n.is_read).length },
+            { id: 'notifications', label: 'Alerts', icon: Bell, badge: notifications.length },
             { id: 'settings', label: 'Settings', icon: Settings }
           ].map(tab => {
             const Icon = tab.icon;
@@ -533,7 +567,7 @@ export default function Admin() {
                             <img src={car.image || '/vault-1.png'} className="w-10 h-8 object-cover rounded border border-white/5" />
                             <div>
                               <span className="font-bold text-white block">{car.name}</span>
-                              <span className="text-[10px] text-[#888888] uppercase tracking-wider">{car.brand} • {car.category}</span>
+                              <span className="text-[10px] text-[#888888] uppercase tracking-wider">{car.brand} • {car.category}{car.maxQtyPerCustomer ? ` • Limit: ${car.maxQtyPerCustomer}` : ''}</span>
                             </div>
                           </td>
                           <td className="p-4 font-mono text-[#888888]">{car.sku}</td>
@@ -977,32 +1011,54 @@ export default function Admin() {
                 <h3 className="text-xs font-black uppercase tracking-wider text-white">
                   System Alerts Feed
                 </h3>
-                <button
-                  onClick={handleMarkNotificationsRead}
-                  className="bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold text-[10px] px-3.5 py-2 rounded-xl uppercase tracking-wider transition-colors cursor-pointer"
-                >
-                  Mark All Read
-                </button>
+                {notifications.length > 0 && (
+                  <button
+                    onClick={handleMarkNotificationsRead}
+                    className="bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold text-[10px] px-3.5 py-2 rounded-xl uppercase tracking-wider transition-colors cursor-pointer"
+                  >
+                    Clear All Alerts
+                  </button>
+                )}
               </div>
 
               <div className="space-y-3">
-                {notifications.map(n => (
-                  <div key={n.id} className={`p-4 border rounded-xl flex gap-3 text-xs ${
-                    n.is_read 
-                      ? 'bg-[#141414] border-white/5 opacity-55' 
-                      : 'bg-[#ff5500]/5 border-[#ff5500]/20 text-[#ff5500]'
-                  }`}>
-                    <AlertTriangle className="shrink-0 mt-0.5" size={16} />
-                    <div>
-                      <span className="font-extrabold text-white block uppercase tracking-wide mb-0.5">{n.title}</span>
-                      <span className="text-[#888888] leading-relaxed block">{n.message}</span>
-                      <span className="text-[9px] text-[#555555] font-mono mt-1 block">
-                        {new Date(n.created_at).toLocaleString('en-IN')}
-                      </span>
-                    </div>
+                {notifications.length === 0 ? (
+                  <div className="text-center py-12 text-[#888888] text-xs">
+                    No active alerts.
                   </div>
-                ))}
+                ) : (
+                  notifications.map(n => (
+                    <div key={n.id} className="p-4 border rounded-xl flex gap-3 text-xs bg-[#ff5500]/5 border-[#ff5500]/20 text-[#ff5500] relative group">
+                      <AlertTriangle className="shrink-0 mt-0.5" size={16} />
+                      <div className="flex-1">
+                        <span className="font-extrabold text-white block uppercase tracking-wide mb-0.5">{n.title}</span>
+                        <span className="text-[#888888] leading-relaxed block">{n.message}</span>
+                        <span className="text-[9px] text-[#555555] font-mono mt-1 block">
+                          {new Date(n.created_at).toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteNotification(n.id)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity absolute top-3 right-3 text-[#888888] hover:text-white cursor-pointer w-6 h-6 rounded-full bg-white/5 flex items-center justify-center border border-white/5"
+                        title="Dismiss Alert"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))
+                )}
               </div>
+
+              {hasMoreNotifications && (
+                <div className="flex justify-center pt-2">
+                  <button
+                    onClick={loadMoreNotifications}
+                    className="bg-white/5 border border-white/10 hover:bg-white/10 active:bg-white/15 text-white font-bold text-[10px] px-4 py-2.5 rounded-xl uppercase tracking-wider transition-colors cursor-pointer"
+                  >
+                    Load More
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -1239,6 +1295,42 @@ export default function Admin() {
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">Description</label>
                 <textarea value={productForm.description} onChange={e => setProductForm(p => ({ ...p, description: e.target.value }))} rows="3" placeholder="Additional details..." className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none" />
+              </div>
+
+              {/* Purchase Limit Fields */}
+              <div className="bg-[#141414]/50 border border-white/5 rounded-xl p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="admin-prod-has-limit"
+                    checked={productForm.hasLimit}
+                    onChange={e => setProductForm(p => ({
+                      ...p,
+                      hasLimit: e.target.checked,
+                      maxQtyPerCustomer: e.target.checked ? (p.maxQtyPerCustomer || '1') : ''
+                    }))}
+                    className="accent-[#ff5500]"
+                  />
+                  <label htmlFor="admin-prod-has-limit" className="text-xs font-bold text-white uppercase tracking-wider cursor-pointer">
+                    Add purchase limit per customer
+                  </label>
+                </div>
+                {productForm.hasLimit && (
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">
+                      Max Quantity Allowed Per Customer
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={productForm.maxQtyPerCustomer}
+                      onChange={e => setProductForm(p => ({ ...p, maxQtyPerCustomer: e.target.value }))}
+                      placeholder="e.g. 1"
+                      className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ff5500]/40 font-mono"
+                      required
+                    />
+                  </div>
+                )}
               </div>
 
               <button type="submit" className="w-full bg-[#ff5500] hover:bg-[#ff6611] text-black font-extrabold py-3.5 rounded-xl uppercase tracking-wider shadow-lg transition-colors cursor-pointer">

@@ -93,9 +93,9 @@ export default function Policies() {
                 </section>
 
                 <section className="space-y-2">
-                  <h3 className="text-white font-bold uppercase tracking-wider text-xs md:text-sm">2. Product Reservations & Expirations</h3>
+                  <h3 className="text-white font-bold uppercase tracking-wider text-xs md:text-sm">2. Order Placement & Availability</h3>
                   <p>
-                    Adding items to your cart or vault queue reserves the models temporarily. A reservation timer will be shown to you. You must complete checkout, process the payment, and upload the payment receipt before the timer expires to secure your order. Expired reservations will be returned to the public marketplace.
+                    Adding items to your cart does not reserve the models. Orders are processed on a first-come, first-served basis. You must complete checkout, process the payment, and upload the payment receipt promptly. Stock is only secured and deducted once your payment screenshot is approved by the administrators.
                   </p>
                 </section>
 

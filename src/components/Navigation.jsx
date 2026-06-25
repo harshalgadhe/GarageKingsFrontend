@@ -61,6 +61,21 @@ export default function Navigation({ activeSection }) {
     window.dispatchEvent(new Event('gk_cart_updated'));
   };
 
+  const updateCartItemQty = (id, newQty) => {
+    const saved = localStorage.getItem('gk_cart');
+    const currentCart = saved ? JSON.parse(saved) : [];
+    let newCart;
+    if (newQty <= 0) {
+      newCart = currentCart.filter(item => item.id !== id);
+    } else {
+      newCart = currentCart.map(item => 
+        item.id === id ? { ...item, quantity: newQty } : item
+      );
+    }
+    localStorage.setItem('gk_cart', JSON.stringify(newCart));
+    window.dispatchEvent(new Event('gk_cart_updated'));
+  };
+
   const clearCart = () => {
     localStorage.removeItem('gk_cart');
     window.dispatchEvent(new Event('gk_cart_updated'));
@@ -251,7 +266,7 @@ export default function Navigation({ activeSection }) {
               </svg>
               {cart.length > 0 && (
                 <span className="absolute -top-1 -right-1 bg-[#ff5500] text-black text-[9px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center border border-black animate-pulse">
-                  {cart.length}
+                  {cart.reduce((sum, item) => sum + (item.quantity || 1), 0)}
                 </span>
               )}
             </button>
@@ -454,7 +469,7 @@ export default function Navigation({ activeSection }) {
                 <div className="flex items-center gap-2">
                   <ShoppingBag className="text-[#ff5500] w-5 h-5" />
                   <h3 className="text-xl font-black italic tracking-wider uppercase text-white font-grotesk">Your Vault Queue</h3>
-                  <span className="text-[10px] bg-white/5 px-2 py-0.5 rounded font-mono text-white/50">{cart.length} items</span>
+                  <span className="text-[10px] bg-white/5 px-2 py-0.5 rounded font-mono text-white/50">{cart.reduce((sum, item) => sum + (item.quantity || 1), 0)} items</span>
                 </div>
                 <button 
                   onClick={() => setIsCartOpen(false)} 
@@ -488,14 +503,33 @@ export default function Navigation({ activeSection }) {
                           <h4 className="text-xs font-bold text-white truncate mt-0.5">{item.name}</h4>
                         </div>
                         <div className="flex justify-between items-center mt-2">
-                          <span className="font-mono text-xs text-white/80 font-bold">₹{item.price}</span>
-                          <button
-                            onClick={() => removeFromCart(item.id)}
-                            className="text-[#888888] hover:text-red-400 p-1 transition-colors cursor-pointer"
-                            title="Remove item"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          <span className="font-mono text-xs text-white/80 font-bold">₹{Number(item.price) * (item.quantity || 1)}</span>
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center border border-white/10 rounded-lg bg-black/20 overflow-hidden">
+                              <button
+                                onClick={() => updateCartItemQty(item.id, (item.quantity || 1) - 1)}
+                                className="px-2 py-0.5 text-white/60 hover:text-white hover:bg-white/5 transition-colors cursor-pointer text-xs font-bold"
+                              >
+                                -
+                              </button>
+                              <span className="px-1.5 text-[10px] font-mono font-bold text-white text-center min-w-[16px]">
+                                {item.quantity || 1}
+                              </span>
+                              <button
+                                onClick={() => updateCartItemQty(item.id, (item.quantity || 1) + 1)}
+                                className="px-2 py-0.5 text-white/60 hover:text-white hover:bg-white/5 transition-colors cursor-pointer text-xs font-bold"
+                              >
+                                +
+                              </button>
+                            </div>
+                            <button
+                              onClick={() => removeFromCart(item.id)}
+                              className="text-[#888888] hover:text-red-400 p-1 transition-colors cursor-pointer"
+                              title="Remove item"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -509,7 +543,7 @@ export default function Navigation({ activeSection }) {
                   <div className="flex justify-between items-end">
                     <span className="text-xs font-bold text-[#888888] uppercase tracking-widest">Order Total</span>
                     <span className="font-mono text-xl text-[#ff5500] font-black">
-                      ₹{cart.reduce((sum, item) => sum + Number(item.price || 0), 0)}
+                      ₹{cart.reduce((sum, item) => sum + Number(item.price || 0) * (item.quantity || 1), 0)}
                     </span>
                   </div>
 
@@ -520,7 +554,7 @@ export default function Navigation({ activeSection }) {
                     }}
                     className="w-full bg-[#ff5500] hover:bg-[#ff6611] active:bg-[#e64d00] text-black font-black text-sm py-4 rounded-xl transition-all duration-200 uppercase tracking-widest hover:shadow-[0_0_30px_rgba(255,85,0,0.3)] cursor-pointer"
                   >
-                    Proceed to Reservation
+                    Proceed to Checkout
                   </button>
                 </div>
               ) : (
