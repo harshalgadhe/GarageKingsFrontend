@@ -35,6 +35,11 @@ export default function Account() {
           getCustomerOrders(),
           getCustomerProfile()
         ]);
+        if (!getCurrentUser()) {
+          setUser(null);
+          setLoading(false);
+          return;
+        }
         setDbOrders(data || []);
         if (prof) {
           const displayPhone = (prof.phone && prof.phone.startsWith('unknown_')) ? '' : (prof.phone || '');
@@ -54,7 +59,11 @@ export default function Account() {
         }
       } catch (err) {
         console.error("Failed to load customer details:", err);
-        setError("Unable to retrieve account details.");
+        if (!getCurrentUser()) {
+          setUser(null);
+        } else {
+          setError("Unable to retrieve account details.");
+        }
       } finally {
         setLoading(false);
       }
@@ -88,7 +97,11 @@ export default function Account() {
       }
       setProfileSuccess('Shipping profile updated successfully!');
     } catch (err) {
-      setProfileError(err.message || 'Failed to update profile.');
+      if (!getCurrentUser()) {
+        setUser(null);
+      } else {
+        setProfileError(err.message || 'Failed to update profile.');
+      }
     } finally {
       setProfileLoading(false);
     }
