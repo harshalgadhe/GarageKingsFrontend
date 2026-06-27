@@ -21,6 +21,7 @@ export default function Checkout() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const singleProductId = searchParams.get('product')
+  const urlQty = Math.max(1, parseInt(searchParams.get('qty') || '1', 10))
 
   const [product, setProduct] = useState(null)
   const [cartItems, setCartItems] = useState([])
@@ -112,7 +113,7 @@ export default function Checkout() {
 
   const totalPrice = isCart 
     ? cartItems.reduce((sum, item) => sum + Number(item.price || 0) * (item.quantity || 1), 0)
-    : Number(product?.price || 0)
+    : Number(product?.price || 0) * urlQty
   
   const advanceAmount = isPreOrder ? Math.round(totalPrice * advancePercent / 100) : totalPrice
 
@@ -147,6 +148,7 @@ export default function Checkout() {
         phone,
         address,
         price: product.price,
+        qty: urlQty,
         idempotencyKey,
         bookingType: isPreOrder ? 'pre_order' : 'standard',
         advanceAmount: advanceAmount
@@ -268,9 +270,14 @@ export default function Checkout() {
                   ) : (
                     product && (
                       <div className="flex justify-between items-center text-xs">
-                        <span className="text-white/80 truncate">{product.brand} {product.name}</span>
+                        <span className="text-white/80 truncate">
+                          {product.brand} {product.name}
+                          {urlQty > 1 && (
+                            <span className="ml-2 px-1.5 py-0.5 rounded-md bg-gk-orange/20 text-gk-orange font-black text-[9px]">×{urlQty}</span>
+                          )}
+                        </span>
                         {settings.showPrices && (
-                          <span className="font-mono text-white/60">₹{product.price}</span>
+                          <span className="font-mono text-white/60">₹{(Number(product.price) * urlQty).toLocaleString('en-IN')}</span>
                         )}
                       </div>
                     )
@@ -280,7 +287,7 @@ export default function Checkout() {
                 {settings.showPrices && (
                   <div className="border-t border-white/5 pt-3 flex justify-between items-center text-xs font-black">
                     <span className="text-white/40 uppercase tracking-wider">Total price</span>
-                    <span className="font-mono text-gk-orange text-sm">₹{totalPrice}</span>
+                    <span className="font-mono text-gk-orange text-sm">₹{totalPrice.toLocaleString('en-IN')}</span>
                   </div>
                 )}
               </div>

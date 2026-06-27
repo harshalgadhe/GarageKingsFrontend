@@ -5,7 +5,7 @@ import { getProduct, getCars, getGlobalSettings } from '../lib/db'
 import { logError } from '../lib/telemetry'
 import Navigation from '../components/Navigation'
 import Footer from '../components/Footer'
-import { ShoppingBag, ArrowLeft, Plus, Check } from 'lucide-react'
+import { ShoppingBag, ArrowLeft, Plus, Minus, Check } from 'lucide-react'
 
 export default function ProductDetail() {
   const { id } = useParams()
@@ -16,25 +16,8 @@ export default function ProductDetail() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const [addedToCart, setAddedToCart] = useState(false)
+  const [qty, setQty] = useState(1)
 
-  // Cart helper functions
-  const addToCartLocal = (prod) => {
-    const saved = localStorage.getItem('gk_cart')
-    const cart = saved ? JSON.parse(saved) : []
-    const existingIndex = cart.findIndex(item => item.id === prod.id)
-    let newCart
-    if (existingIndex > -1) {
-      newCart = cart.map((item, idx) => 
-        idx === existingIndex 
-          ? { ...item, quantity: (item.quantity || 1) + 1 }
-          : item
-      )
-    } else {
-      newCart = [...cart, { ...prod, quantity: 1 }]
-    }
-    localStorage.setItem('gk_cart', JSON.stringify(newCart))
-    window.dispatchEvent(new CustomEvent('gk_cart_updated', { detail: { open: false } }))
-  }
 
   useEffect(() => {
     async function loadProductData() {
@@ -73,16 +56,27 @@ export default function ProductDetail() {
 
   const handleAddToCart = () => {
     if (!product) return
-    addToCartLocal(product)
+    const cart = JSON.parse(localStorage.getItem('gk_cart') || '[]')
+    const existingIndex = cart.findIndex(item => item.id === product.id)
+    let newCart
+    if (existingIndex > -1) {
+      newCart = cart.map((item, idx) =>
+        idx === existingIndex
+          ? { ...item, quantity: (item.quantity || 1) + qty }
+          : item
+      )
+    } else {
+      newCart = [...cart, { ...product, quantity: qty }]
+    }
+    localStorage.setItem('gk_cart', JSON.stringify(newCart))
+    window.dispatchEvent(new CustomEvent('gk_cart_updated', { detail: { open: false } }))
     setAddedToCart(true)
-    setTimeout(() => {
-      navigate('/cart')
-    }, 800)
+    setTimeout(() => navigate('/cart'), 800)
   }
 
   const handleBuyNow = () => {
     if (!product) return
-    navigate(`/checkout?product=${product.id}`)
+    navigate(`/checkout?product=${product.id}&qty=${qty}`)
   }
 
   if (isLoading) {
@@ -218,11 +212,12 @@ export default function ProductDetail() {
             </div>
 
             {/* Price Display */}
-            <div className="mb-8 flex items-center justify-between border-t border-white/5 pt-8">
+            <div className="mb-6 flex items-center justify-between border-t border-white/5 pt-8">
               {settings.showPrices === true ? (
                 <div>
                   <div className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-1">Total Valuation</div>
-                  <div className="font-mono text-3xl font-black text-white">₹{product.price}</div>
+                  <div className="font-mono text-3xl font-black text-white">₹{(Number(product.price) * qty).toLocaleString('en-IN')}</div>
+                  {qty > 1 && <div className="text-xs text-white/40 mt-0.5">₹{Number(product.price).toLocaleString('en-IN')} × {qty}</div>}
                 </div>
               ) : (
                 <div>
@@ -231,6 +226,35 @@ export default function ProductDetail() {
                 </div>
               )}
             </div>
+
+            {/* Quantity Selector — only when in stock and prices shown */}
+            {settings.showPrices === true && !isSoldOut && (() => {
+              const maxAvail = Math.max(1, Number(product.availableStock ?? (Number(product.totalStock || 1) - Number(product.soldStock || 0))))
+              const maxAllowed = product.maxQtyPerCustomer ? Math.min(maxAvail, Number(product.maxQtyPerCustomer)) : maxAvail
+              return (
+                <div className="mb-8 flex items-center gap-4">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Quantity:</span>
+                  <div className="flex items-center gap-0 rounded-xl overflow-hidden border border-white/10 bg-black/30">
+                    <button
+                      onClick={() => setQty(q => Math.max(1, q - 1))}
+                      disabled={qty <= 1}
+                      className="w-9 h-9 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      <Minus size={14} />
+                    </button>
+                    <span className="w-10 text-center font-mono font-black text-sm text-white select-none">{qty}</span>
+                    <button
+                      onClick={() => setQty(q => Math.min(maxAllowed, q + 1))}
+                      disabled={qty >= maxAllowed}
+                      className="w-9 h-9 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      <Plus size={14} />
+                    </button>
+                  </div>
+                  <span className="text-[10px] text-white/30">{maxAvail} available{product.maxQtyPerCustomer ? ` · max ${product.maxQtyPerCustomer}/customer` : ''}</span>
+                </div>
+              )
+            })()}
 
             {/* Actions */}
             <div className="flex flex-col sm:flex-row gap-4">
