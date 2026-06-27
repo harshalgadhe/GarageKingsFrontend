@@ -109,6 +109,7 @@ export async function getCars(params = {}) {
     if (params.tag) queryParams.append('tag', params.tag);
     if (params.search) queryParams.append('search', params.search);
     if (params.inStock !== undefined) queryParams.append('inStock', params.inStock);
+    if (params.preBooking !== undefined) queryParams.append('preBooking', params.preBooking);
 
     const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
     const res = await fetch(`${API_BASE_URL}/products${queryString}`, {

@@ -15,16 +15,16 @@ export default function Marketplace() {
   const [error, setError] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [activeFilter, setActiveFilter] = useState('All')
   
   // Pagination & Filtering States
   const [page, setPage] = useState(1)
-  const [limit, setLimit] = useState(12)
+  const limit = 12
   const [totalPages, setTotalPages] = useState(1)
   const [totalItems, setTotalItems] = useState(0)
   const [brandFilter, setBrandFilter] = useState('All')
   const [scaleFilter, setScaleFilter] = useState('All')
   const [inStockOnly, setInStockOnly] = useState(false)
+  const [preBookingOnly, setPreBookingOnly] = useState(false)
 
   const navigate = useNavigate()
 
@@ -45,11 +45,11 @@ export default function Marketplace() {
           page,
           limit,
           paginated: true,
-          tag: activeFilter !== 'All' ? activeFilter : undefined,
           brand: brandFilter !== 'All' ? brandFilter : undefined,
           scale: scaleFilter !== 'All' ? scaleFilter : undefined,
           search: debouncedSearch.trim() || undefined,
-          inStock: inStockOnly ? true : undefined
+          inStock: inStockOnly ? true : undefined,
+          preBooking: preBookingOnly ? true : undefined
         }
         const [carData, settingsData] = await Promise.all([
           getCars(params),
@@ -67,7 +67,7 @@ export default function Marketplace() {
       }
     }
     load()
-  }, [page, limit, activeFilter, brandFilter, scaleFilter, debouncedSearch, inStockOnly])
+  }, [page, brandFilter, scaleFilter, debouncedSearch, inStockOnly, preBookingOnly])
 
   useEffect(() => {
     // Autofocus the search bar if requested via navigation
@@ -114,86 +114,75 @@ export default function Marketplace() {
       {/* Grid */}
       <div className="max-w-7xl mx-auto px-6 py-12 md:py-20">
         
-        {/* Horizontal Tags Filter Bar */}
-        {!error && !isLoading && cars.length > 0 && (
-          <div className="flex flex-wrap gap-2 justify-center items-center mb-10 bg-white/[0.02] border border-white/5 p-2 rounded-2xl max-w-2xl mx-auto backdrop-blur-md">
-            {['All', 'Hot', 'Trending', 'Rare', 'New Release', 'Exclusive'].map(filter => {
-              const isActive = activeFilter === filter;
+        {/* Horizontal Brand Selector (Pills) */}
+        {!error && !isLoading && (
+          <div className="flex flex-wrap gap-2 justify-center items-center mb-8 bg-white/[0.02] border border-white/5 p-2 rounded-2xl max-w-4xl mx-auto backdrop-blur-md">
+            {[
+              { label: 'All Brands', value: 'All' },
+              { label: 'Mini GT', value: 'Mini GT' },
+              { label: 'Hot Wheels', value: 'Hotwheels' },
+              { label: 'Solido', value: 'Solido' },
+              { label: 'Flame', value: 'Flame' },
+              { label: 'Coolcar', value: 'Coolcar' }
+            ].map(brand => {
+              const isActive = brandFilter === brand.value;
               return (
                 <button
-                  key={filter}
-                  onClick={() => setActiveFilter(filter)}
-                  className={`px-5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all relative cursor-pointer ${
+                  key={brand.value}
+                  onClick={() => { setBrandFilter(brand.value); setPage(1); }}
+                  className={`px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all relative cursor-pointer active:scale-95 ${
                     isActive 
-                      ? 'bg-gk-orange text-white shadow-[0_0_20px_rgba(225,6,0,0.3)]' 
-                      : 'text-white/50 hover:text-white hover:bg-white/5'
+                      ? 'bg-gk-orange text-white shadow-[0_0_20px_rgba(225,6,0,0.35)] border border-gk-orange' 
+                      : 'text-white/60 hover:text-white hover:bg-white/5 border border-transparent'
                   }`}
                 >
-                  {filter}
+                  {brand.label}
                 </button>
               );
             })}
           </div>
         )}
 
-        {/* Horizontal Brand, Scale, Availability Filters & Items per Page */}
+        {/* Sub-Filters: Scale, Availability & Pre-Booking */}
         {!error && !isLoading && (
-          <div className="flex flex-col md:flex-row gap-4 justify-between items-center mb-10 bg-white/[0.02] border border-white/5 p-4 rounded-2xl max-w-4xl mx-auto backdrop-blur-md">
-            <div className="flex flex-wrap gap-5 items-center w-full md:w-auto">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[9px] uppercase tracking-widest text-white/40 font-black">Brand</label>
-                <select 
-                  value={brandFilter}
-                  onChange={(e) => { setBrandFilter(e.target.value); setPage(1); }}
-                  className="bg-[#090909] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-gk-orange transition-all min-w-[130px]"
-                >
-                  <option value="All">All Brands</option>
-                  <option value="Mini GT">Mini GT</option>
-                  <option value="Hotwheels">Hot Wheels</option>
-                  <option value="Solido">Solido</option>
-                  <option value="Flame">Flame</option>
-                  <option value="Coolcar">Coolcar</option>
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[9px] uppercase tracking-widest text-white/40 font-black">Scale</label>
-                <select 
-                  value={scaleFilter}
-                  onChange={(e) => { setScaleFilter(e.target.value); setPage(1); }}
-                  className="bg-[#090909] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-gk-orange transition-all min-w-[100px]"
-                >
-                  <option value="All">All Scales</option>
-                  <option value="1:64">1:64</option>
-                  <option value="1:32">1:32</option>
-                </select>
-              </div>
-
-              <div 
-                className="flex items-center gap-2 mt-4 md:mt-0 select-none cursor-pointer" 
-                onClick={() => { setInStockOnly(!inStockOnly); setPage(1); }}
+          <div className="flex flex-wrap gap-6 items-center justify-center mb-10 bg-white/[0.01] border border-white/5 p-4 rounded-2xl max-w-2xl mx-auto backdrop-blur-md">
+            <div className="flex items-center gap-2">
+              <label className="text-[10px] uppercase tracking-widest text-white/40 font-black">Scale:</label>
+              <select 
+                value={scaleFilter}
+                onChange={(e) => { setScaleFilter(e.target.value); setPage(1); }}
+                className="bg-[#090909] border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-gk-orange transition-all min-w-[100px] cursor-pointer"
               >
-                <input 
-                  type="checkbox" 
-                  checked={inStockOnly} 
-                  onChange={() => {}} 
-                  className="accent-gk-orange cursor-pointer w-4.5 h-4.5"
-                />
-                <span className="text-xs font-bold text-white/70">In Stock Only</span>
-              </div>
+                <option value="All">All Scales</option>
+                <option value="1:64">1:64</option>
+                <option value="1:32">1:32</option>
+              </select>
             </div>
 
-            <div className="flex items-center gap-2 text-white/50 text-xs w-full md:w-auto justify-end">
-              <span>Items per page:</span>
-              <select 
-                value={limit}
-                onChange={(e) => { setLimit(parseInt(e.target.value, 10)); setPage(1); }}
-                className="bg-[#090909] border border-white/10 rounded-xl px-2 py-1.5 text-xs text-white focus:outline-none focus:border-gk-orange transition-all"
-              >
-                <option value={12}>12</option>
-                <option value={24}>24</option>
-                <option value={48}>48</option>
-              </select>
+            <div 
+              className="flex items-center gap-2 select-none cursor-pointer" 
+              onClick={() => { setInStockOnly(!inStockOnly); setPage(1); }}
+            >
+              <input 
+                type="checkbox" 
+                checked={inStockOnly} 
+                onChange={() => {}} 
+                className="accent-gk-orange cursor-pointer w-4 h-4"
+              />
+              <span className="text-xs font-bold text-white/70">In Stock Only</span>
+            </div>
+
+            <div 
+              className="flex items-center gap-2 select-none cursor-pointer" 
+              onClick={() => { setPreBookingOnly(!preBookingOnly); setPage(1); }}
+            >
+              <input 
+                type="checkbox" 
+                checked={preBookingOnly} 
+                onChange={() => {}} 
+                className="accent-gk-orange cursor-pointer w-4 h-4"
+              />
+              <span className="text-xs font-bold text-white/70">Pre-Booking Only</span>
             </div>
           </div>
         )}
