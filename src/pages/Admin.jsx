@@ -2,11 +2,15 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
   Plus, Trash2, Edit2, Save, X, Settings, Eye, EyeOff, LogOut, User, Search,
-  DollarSign, TrendingUp, Bell, FileText, Users, AlertTriangle, Layers, Calendar
+  DollarSign, TrendingUp, Bell, FileText, Users, AlertTriangle, Layers, Calendar, Receipt
 } from 'lucide-react';
 import { getSetupStatus, getCurrentUser, signOutCognito } from '../lib/auth';
-import { getCars, addCar, updateCar, deleteCar, uploadImageToStorage, getGlobalSettings, updateGlobalSettings } from '../lib/db';
+import { 
+  getCars, addCar, updateCar, deleteCar, uploadImageToStorage, getGlobalSettings, updateGlobalSettings,
+  getReceipts, addReceipt, deleteReceipt 
+} from '../lib/db';
 import Navigation from '../components/Navigation';
+import ReceiptModal from '../components/ReceiptModal';
 
 export default function Admin() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -81,6 +85,49 @@ export default function Admin() {
   const [shippingModalOrder, setShippingModalOrder] = useState(null);
   const [shippingForm, setShippingForm] = useState({ courierPartner: 'Delhivery', trackingNumber: '', shippingCost: 0, packagingCost: 0, dispatchDate: new Date().toISOString().split('T')[0] });
   const [orderFilter, setOrderFilter] = useState('all'); // 'all' | 'Verification Pending' | 'Confirmed' | 'Shipped' | 'Delivered' | 'Cancelled'
+  const [inventorySearchQuery, setInventorySearchQuery] = useState('');
+  const [orderSearchQuery, setOrderSearchQuery] = useState('');
+  const [receiptOrderId, setReceiptOrderId] = useState(null); // open ReceiptModal for this orderId
+  const [collectRemainingOrder, setCollectRemainingOrder] = useState(null); // { id, remainingAmount }
+  const [collectRemainingFile, setCollectRemainingFile] = useState(null);
+  const [collectRemainingLoading, setCollectRemainingLoading] = useState(false);
+
+  // Invoices & Telemetry state
+  const [receiptsList, setReceiptsList] = useState([]);
+  const [selectedReceipt, setSelectedReceipt] = useState(null);
+  const [isCreatingReceipt, setIsCreatingReceipt] = useState(false);
+  const [telemetryLogs, setTelemetryLogs] = useState([]);
+  const [expandedLogs, setExpandedLogs] = useState({});
+  const [manualReceiptForm, setManualReceiptForm] = useState({
+    receiptNumber: '',
+    customerName: '',
+    customerPhone: '',
+    customerInstagram: '',
+    customerAddress: '',
+    shippingCharges: 0,
+    advancePaid: 0,
+    footerNote: 'Thank you for choosing Garage Kings!',
+    items: [{ description: '', qty: 1, unitPrice: 0 }]
+  });
+
+  // Local drop settings form state
+  const [dropSettingsForm, setDropSettingsForm] = useState({
+    dropDate: '',
+    dropTime: '',
+    dropLabel: '',
+    dropDesc: ''
+  });
+
+  useEffect(() => {
+    if (globalSettings) {
+      setDropSettingsForm({
+        dropDate: globalSettings.dropDate || '',
+        dropTime: globalSettings.dropTime || '',
+        dropLabel: globalSettings.dropLabel || '',
+        dropDesc: globalSettings.dropDesc || ''
+      });
+    }
+  }, [globalSettings]);
 
   const groupedOrders = useMemo(() => {
     const groups = {};
@@ -102,6 +149,9 @@ export default function Admin() {
           customerEmail: item.customerEmail,
           customerName: item.customerName,
           instagramUsername: item.instagramUsername,
+          bookingType: item.bookingType || 'standard',
+          advanceAmount: item.advanceAmount || 0,
+          remainingAmount: item.remainingAmount || 0,
           items: []
         };
       }
@@ -114,6 +164,40 @@ export default function Admin() {
     });
     return Object.values(groups);
   }, [orders]);
+
+  const filteredCars = useMemo(() => {
+    if (inventorySearchQuery.trim() === '') return cars;
+    const q = inventorySearchQuery.toLowerCase();
+    return cars.filter(car => 
+      (car.name && car.name.toLowerCase().includes(q)) ||
+      (car.sku && car.sku.toLowerCase().includes(q)) ||
+      (car.brand && car.brand.toLowerCase().includes(q)) ||
+      (car.category && car.category.toLowerCase().includes(q))
+    );
+  }, [cars, inventorySearchQuery]);
+
+  const filteredGroupedOrders = useMemo(() => {
+    let result = groupedOrders;
+    if (orderFilter !== 'all') {
+      result = result.filter(o => o.status === orderFilter);
+    }
+    if (orderSearchQuery.trim() !== '') {
+      const q = orderSearchQuery.toLowerCase();
+      result = result.filter(o => {
+        return (
+          o.id.toLowerCase().includes(q) ||
+          (o.customerName && o.customerName.toLowerCase().includes(q)) ||
+          (o.customerEmail && o.customerEmail.toLowerCase().includes(q)) ||
+          (o.instagramUsername && o.instagramUsername.toLowerCase().includes(q)) ||
+          o.items.some(item => 
+            (item.productName && item.productName.toLowerCase().includes(q)) ||
+            (item.productBrand && item.productBrand.toLowerCase().includes(q))
+          )
+        );
+      });
+    }
+    return result;
+  }, [groupedOrders, orderFilter, orderSearchQuery]);
 
   const [isAddingExpense, setIsAddingExpense] = useState(false);
   const [expenseForm, setExpenseForm] = useState({ title: '', amount: '', category: 'Stock Purchase', paidBy: 'Harshal', date: new Date().toISOString().split('T')[0], notes: '' });
@@ -163,7 +247,8 @@ export default function Admin() {
         splitsRes,
         notificationsRes,
         cmsRes,
-        settingsRes
+        settingsRes,
+        receiptsData
       ] = await Promise.all([
         fetch(`${API_BASE_URL}/admin/products`, { credentials: 'include' }),
         fetch(`${API_BASE_URL}/admin/orders`, { credentials: 'include' }),
@@ -171,7 +256,8 @@ export default function Admin() {
         fetch(`${API_BASE_URL}/admin/splits`, { credentials: 'include' }),
         fetch(`${API_BASE_URL}/admin/notifications`, { credentials: 'include' }),
         fetch(`${API_BASE_URL}/admin/homepage-cms`, { credentials: 'include' }),
-        fetch(`${API_BASE_URL}/settings`, { credentials: 'include' })
+        fetch(`${API_BASE_URL}/settings`, { credentials: 'include' }),
+        getReceipts()
       ]);
 
       if (carsRes.ok) setCars(await carsRes.json());
@@ -185,6 +271,13 @@ export default function Admin() {
       }
       if (cmsRes.ok) setCmsData(await cmsRes.json());
       if (settingsRes.ok) setGlobalSettings(await settingsRes.json());
+      setReceiptsList(receiptsData || []);
+
+      // Fetch telemetry logs safely
+      const telemetryRes = await fetch(`${API_BASE_URL}/admin/telemetry/logs`, { credentials: 'include' }).catch(() => null);
+      if (telemetryRes && telemetryRes.ok) {
+        setTelemetryLogs(await telemetryRes.json());
+      }
       
       // Reset loaded metrics on refetches to ensure they represent fresh data when calculated next
       setKpis(null);
@@ -192,6 +285,37 @@ export default function Admin() {
     } catch (e) {
       setDbError('Error loading dashboard datasets.');
     }
+  };
+
+  const handleViewReceipt = (dbReceipt) => {
+    const mapped = {
+      receiptNumber: dbReceipt.receipt_number,
+      orderId: dbReceipt.id,
+      date: dbReceipt.created_at,
+      status: dbReceipt.pending_balance > 0 ? 'Verification Pending' : 'Delivered',
+      bookingType: dbReceipt.format_type === 'pre_order' ? 'pre_order' : 'standard',
+      customer: {
+        name: dbReceipt.customer_name || 'Walk-in Customer',
+        email: dbReceipt.customer_email || '',
+        phone: dbReceipt.customer_phone || '',
+        instagram: dbReceipt.customer_instagram || '',
+        address: dbReceipt.customer_address || ''
+      },
+      items: dbReceipt.items.map(i => ({
+        name: i.description,
+        qty: i.qty,
+        unitPrice: i.amount,
+        series: '',
+        scale: '1:64'
+      })),
+      subtotal: dbReceipt.items.reduce((sum, i) => sum + (Number(i.amount) * Number(i.qty)), 0),
+      shippingCharges: Number(dbReceipt.shipping_charges || 0),
+      totalAmount: Number(dbReceipt.total_amount),
+      advancePaid: Number(dbReceipt.advance_paid || 0),
+      pendingBalance: Number(dbReceipt.pending_balance || 0),
+      footerNote: dbReceipt.footer_note || ''
+    };
+    setSelectedReceipt(mapped);
   };
 
   const handleLogout = async () => {
@@ -471,6 +595,7 @@ export default function Admin() {
             { id: 'dashboard', label: 'Dashboard', icon: TrendingUp },
             { id: 'inventory', label: 'Inventory', icon: Layers },
             { id: 'orders', label: 'Orders', icon: FileText, badge: groupedOrders.filter(o => o.status === 'Verification Pending').length },
+            { id: 'receipts', label: 'Invoices', icon: Receipt },
             { id: 'expenses', label: 'Expenses', icon: DollarSign },
             { id: 'finance', label: 'Founder Splits', icon: DollarSign },
             { id: 'analytics', label: 'Analytics', icon: TrendingUp },
@@ -507,7 +632,7 @@ export default function Admin() {
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-wider text-red-400 hover:bg-red-500/10 hover:border-red-500/20 border border-transparent transition-all lg:w-full cursor-pointer"
           >
             <LogOut size={16} />
-            <span>Logout System</span>
+            <span>Sign Out</span>
           </button>
         </aside>
 
@@ -648,6 +773,18 @@ export default function Admin() {
                 </button>
               </div>
 
+              {/* Search Bar */}
+              <div className="flex items-center gap-2 bg-[#141414] border border-white/5 rounded-xl px-3.5 py-2.5 w-full max-w-md">
+                <Search size={14} className="text-zinc-500" />
+                <input
+                  type="text"
+                  placeholder="Search castings by name, SKU, brand, or category..."
+                  value={inventorySearchQuery}
+                  onChange={(e) => setInventorySearchQuery(e.target.value)}
+                  className="bg-transparent border-none text-xs text-white placeholder-zinc-600 focus:outline-none w-full"
+                />
+              </div>
+
               {/* Table list */}
               <div className="overflow-x-auto border border-white/5 rounded-2xl">
                 <table className="w-full text-left border-collapse text-xs">
@@ -661,7 +798,7 @@ export default function Admin() {
                     </tr>
                   </thead>
                   <tbody>
-                    {cars.map(car => {
+                    {filteredCars.map(car => {
                       const isLowStock = Number(car.availableStock) <= 3;
                       return (
                         <tr 
@@ -786,14 +923,26 @@ export default function Admin() {
                 </div>
               </div>
 
+              {/* Search Bar */}
+              <div className="flex items-center gap-2 bg-[#141414] border border-white/5 rounded-xl px-3.5 py-2.5 w-full max-w-md">
+                <Search size={14} className="text-zinc-500" />
+                <input
+                  type="text"
+                  placeholder="Search orders by customer name, ID, email, or casting..."
+                  value={orderSearchQuery}
+                  onChange={(e) => setOrderSearchQuery(e.target.value)}
+                  className="bg-transparent border-none text-xs text-white placeholder-zinc-600 focus:outline-none w-full"
+                />
+              </div>
+
               {/* ── ORDER LIST ─────────────────────── */}
               <div className="space-y-4">
-                {(orderFilter === 'all' ? groupedOrders : groupedOrders.filter(o => o.status === orderFilter)).length === 0 ? (
+                {filteredGroupedOrders.length === 0 ? (
                   <div className="text-center py-12 text-[#555555] text-xs font-bold uppercase tracking-widest">
-                    No orders with this status.
+                    No orders matching criteria.
                   </div>
                 ) : (
-                  (orderFilter === 'all' ? groupedOrders : groupedOrders.filter(o => o.status === orderFilter)).map(order => (
+                  filteredGroupedOrders.map(order => (
                     <div key={order.id} className={`bg-[#141414] border rounded-2xl p-5 space-y-4 ${
                       order.status === 'Verification Pending' ? 'border-amber-500/20' : 'border-white/5'
                     }`}>
@@ -808,6 +957,12 @@ export default function Admin() {
                           <span className="font-mono text-gk-orange font-bold text-xs">
                             ₹{Number(order.totalPrice).toLocaleString('en-IN')}
                           </span>
+                          {/* Pre-order badge */}
+                          {order.bookingType === 'pre_order' && (
+                            <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border bg-amber-500/10 text-amber-400 border-amber-500/30">
+                              PRE-ORDER
+                            </span>
+                          )}
                           <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border ${
                             order.status === 'Confirmed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
                             order.status === 'Shipped' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
@@ -887,6 +1042,24 @@ export default function Admin() {
                               <span className="text-[#666666] italic block mt-1">No file uploaded</span>
                             )}
                           </div>
+                          {/* Pre-order balance breakdown */}
+                          {order.bookingType === 'pre_order' && (
+                            <div className="bg-amber-500/5 border border-amber-500/15 rounded-lg p-2.5 space-y-1">
+                              <div className="text-[8px] font-black text-amber-400 uppercase tracking-wider">Pre-Order Payment</div>
+                              <div className="flex justify-between text-[10px]">
+                                <span className="text-white/40">Advance Paid</span>
+                                <span className="text-emerald-400 font-bold font-mono">₹{Number(order.advanceAmount || 0).toLocaleString('en-IN')}</span>
+                              </div>
+                              <div className="flex justify-between text-[10px]">
+                                <span className="text-white/40">Remaining Due</span>
+                                <span className={`font-bold font-mono ${Number(order.remainingAmount) > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                                  {Number(order.remainingAmount) > 0
+                                    ? `₹${Number(order.remainingAmount).toLocaleString('en-IN')}`
+                                    : 'PAID IN FULL ✓'}
+                                </span>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -916,6 +1089,15 @@ export default function Admin() {
                               className="bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold text-[10px] px-4 py-2 rounded-lg uppercase tracking-wider transition-colors cursor-pointer"
                             >
                               Approve Payment
+                            </button>
+                          )}
+                          {/* Pre-order: collect remaining payment */}
+                          {order.bookingType === 'pre_order' && Number(order.remainingAmount) > 0 && (
+                            <button
+                              onClick={() => setCollectRemainingOrder({ id: order.id, remainingAmount: order.remainingAmount })}
+                              className="bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 font-extrabold text-[10px] px-4 py-2 rounded-lg uppercase tracking-wider transition-colors cursor-pointer"
+                            >
+                              Collect Remaining ₹{Number(order.remainingAmount).toLocaleString('en-IN')}
                             </button>
                           )}
                           {order.status === 'Confirmed' && (
@@ -952,6 +1134,13 @@ export default function Admin() {
                           >
                             Cancel / Void
                           </button>
+                          {/* Generate Receipt button — always visible */}
+                          <button
+                            onClick={() => setReceiptOrderId(order.id)}
+                            className="ml-auto bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white font-extrabold text-[10px] px-4 py-2 rounded-lg uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1.5"
+                          >
+                            🧾 Generate Receipt
+                          </button>
                         </div>
                       )}
                     </div>
@@ -960,6 +1149,123 @@ export default function Admin() {
               </div>
             </div>
           )}
+
+
+
+          {/* Receipts / Invoices Tab */}
+          {adminTab === 'receipts' && (
+            <div className="space-y-6">
+              {/* Header block */}
+              <div className="flex justify-between items-center bg-[#141414] border border-white/5 rounded-2xl p-6">
+                <div>
+                  <h3 className="text-base font-black uppercase tracking-wider text-white">Invoice Hub</h3>
+                  <p className="text-[10px] text-[#888888] mt-0.5">Manage auto-generated billing records and create manual invoices.</p>
+                </div>
+                <button
+                  onClick={() => {
+                    const randomId = Math.floor(1000 + Math.random() * 9000);
+                    setManualReceiptForm({
+                      receiptNumber: `GK-INV-${new Date().getFullYear()}-${randomId}`,
+                      customerName: '',
+                      customerPhone: '',
+                      customerInstagram: '',
+                      customerAddress: '',
+                      shippingCharges: 0,
+                      advancePaid: 0,
+                      footerNote: 'Thank you for choosing Garage Kings!',
+                      items: [{ description: '', qty: 1, unitPrice: 0 }]
+                    });
+                    setIsCreatingReceipt(true);
+                  }}
+                  className="bg-[#ff5500] hover:bg-[#ff6611] text-black font-extrabold text-xs px-4 py-2.5 rounded-xl uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  <Plus size={14} strokeWidth={3} />
+                  New Invoice
+                </button>
+              </div>
+
+              {/* Invoices List */}
+              <div className="bg-[#141414] border border-white/5 rounded-2xl overflow-hidden">
+                <div className="p-4 border-b border-white/5 bg-black/10">
+                  <span className="text-[10px] font-mono tracking-[0.25em] text-[#ff5500] uppercase font-bold">Billing Archives</span>
+                </div>
+                <div className="divide-y divide-white/5">
+                  {receiptsList.length === 0 ? (
+                    <div className="p-8 text-center text-[#888888] text-xs">No invoices found. Click "New Invoice" to create one.</div>
+                  ) : (
+                    receiptsList.map(rec => {
+                      const totalQty = rec.items.reduce((sum, item) => sum + parseInt(item.qty, 10), 0);
+                      const isPreOrder = rec.format_type === 'pre_order';
+                      const balance = Number(rec.pending_balance);
+                      
+                      return (
+                        <div key={rec.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-white/[0.01] transition-colors">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-xs font-black text-white">{rec.receipt_number}</span>
+                              <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded border ${
+                                balance > 0 
+                                  ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' 
+                                  : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                              }`}>
+                                {balance > 0 ? `Unpaid: ₹${balance}` : 'Fully Paid'}
+                              </span>
+                              {isPreOrder && (
+                                <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded border bg-purple-500/10 text-purple-400 border-purple-500/20">
+                                  Pre-Order
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs font-bold text-white/80">{rec.customer_name || 'Instagram / Walk-in Customer'}</p>
+                            <div className="flex gap-3 text-[10px] text-white/40">
+                              {rec.customer_phone && <span>📞 {rec.customer_phone}</span>}
+                              {rec.customer_instagram && <span>📸 @{rec.customer_instagram}</span>}
+                              <span>📅 {new Date(rec.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center justify-between sm:justify-end gap-6 border-t sm:border-t-0 border-white/5 pt-2 sm:pt-0">
+                            <div className="text-right sm:space-y-0.5">
+                              <p className="text-[9px] text-white/40 uppercase font-mono">Invoice Total</p>
+                              <p className="text-sm font-black text-[#ff5500] font-mono">₹{Number(rec.total_amount).toLocaleString('en-IN')}</p>
+                              <p className="text-[8px] text-white/30 uppercase font-mono">{totalQty} Items</p>
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleViewReceipt(rec)}
+                                className="p-2 rounded-xl bg-white/5 border border-white/5 text-white/60 hover:text-white hover:bg-white/10 hover:border-white/10 transition-all cursor-pointer"
+                                title="View/Print Receipt"
+                              >
+                                <Eye size={14} />
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  if (!confirm(`Are you sure you want to delete invoice ${rec.receipt_number}?`)) return;
+                                  try {
+                                    await deleteReceipt(rec.id);
+                                    addNotification({ type: 'success', text: 'Invoice deleted successfully' });
+                                    loadAllData();
+                                  } catch (err) {
+                                    addNotification({ type: 'error', text: 'Failed to delete invoice' });
+                                  }
+                                }}
+                                className="p-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-all cursor-pointer"
+                                title="Delete Invoice"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
 
 
 
@@ -1229,6 +1535,109 @@ export default function Admin() {
                   </button>
                 </div>
               )}
+
+              <div className="h-[1px] bg-white/5 my-8" />
+
+              <div className="space-y-6">
+                <div className="flex justify-between items-center pb-3 border-b border-white/5">
+                  <div>
+                    <h3 className="text-xs font-black uppercase tracking-wider text-white">
+                      Error Telemetry Logs
+                    </h3>
+                    <p className="text-[10px] text-[#888888] mt-0.5">Captured runtime exceptions from frontend and backend services.</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={async () => {
+                        try {
+                          const res = await fetch(`${API_BASE_URL}/admin/telemetry/logs`, { credentials: 'include' });
+                          if (res.ok) setTelemetryLogs(await res.json());
+                        } catch (err) {
+                          console.error("Failed to refresh telemetry:", err);
+                        }
+                      }}
+                      className="bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold text-[10px] px-3.5 py-2 rounded-xl uppercase tracking-wider transition-colors cursor-pointer"
+                    >
+                      Refresh Logs
+                    </button>
+                    <button
+                      onClick={() => {
+                        throw new Error("Telemetry Test Error: This is a manual test error triggered by admin console.");
+                      }}
+                      className="bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-red-400 font-bold text-[10px] px-3.5 py-2 rounded-xl uppercase tracking-wider transition-colors cursor-pointer"
+                    >
+                      Trigger Test Error
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2" data-lenis-prevent="true">
+                  {telemetryLogs.length === 0 ? (
+                    <div className="text-center py-12 text-[#888888] text-xs">
+                      No telemetry logs captured yet.
+                    </div>
+                  ) : (
+                    telemetryLogs.map(log => (
+                      <div key={log.id} className="p-4 bg-[#141416] border border-white/5 rounded-xl text-xs space-y-2 relative group">
+                        <div className="flex justify-between items-start">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
+                              log.source === 'frontend' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
+                            }`}>
+                              {log.source}
+                            </span>
+                            <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
+                              log.level === 'error' ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                            }`}>
+                              {log.level}
+                            </span>
+                            {log.user_email && (
+                              <span className="text-[10px] text-white/40 font-bold">
+                                {log.user_email}
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[9px] text-white/30 font-mono">
+                            {new Date(log.created_at).toLocaleString('en-IN')}
+                          </span>
+                        </div>
+
+                        <div className="text-white font-bold leading-relaxed pr-8">
+                          {log.message}
+                        </div>
+
+                        {log.url && (
+                          <div className="text-[10px] text-white/40 font-mono truncate">
+                            URL: <span className="text-[#ff5500]/60">{log.url}</span>
+                          </div>
+                        )}
+
+                        {log.user_agent && (
+                          <div className="text-[9px] text-[#555555] font-mono truncate" title={log.user_agent}>
+                            UA: {log.user_agent}
+                          </div>
+                        )}
+
+                        {log.stack && (
+                          <div className="pt-1">
+                            <button
+                              onClick={() => setExpandedLogs(prev => ({ ...prev, [log.id]: !prev[log.id] }))}
+                              className="text-[10px] font-bold text-[#ff5500] hover:underline uppercase tracking-wider cursor-pointer bg-transparent border-0"
+                            >
+                              {expandedLogs[log.id] ? 'Hide Stack Trace' : 'View Stack Trace'}
+                            </button>
+                            {expandedLogs[log.id] && (
+                              <pre className="font-mono text-[9px] bg-black/50 border border-white/5 p-3 rounded-lg overflow-x-auto text-[#ee7777] mt-2 leading-relaxed max-w-full whitespace-pre-wrap break-all">
+                                {log.stack}
+                              </pre>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
@@ -1237,31 +1646,68 @@ export default function Admin() {
           {/* 10. SETTINGS TAB */}
           {adminTab === 'settings' && (
             <div className="space-y-8">
-              {/* CMS control panel */}
+              {/* Next Drop Timer Settings */}
               <div className="bg-[#141414] border border-white/5 rounded-2xl p-6 space-y-6">
                 <div>
                   <h4 className="text-xs font-black uppercase tracking-wider text-white">
-                    CMS Homepage Sections Visibility settings
+                    Next Curated Drop Countdown Settings
                   </h4>
-                  <p className="text-[10px] text-[#888888] mt-0.5">Toggle section display visibilities on landing views.</p>
+                  <p className="text-[10px] text-[#888888] mt-0.5">Configure target date, time, and custom labels for the countdown display.</p>
                 </div>
                 
-                <div className="space-y-3">
-                  {cmsData.sections?.map(sec => (
-                    <div key={sec.id} className="flex justify-between items-center bg-[#1c1c1c] border border-white/5 rounded-xl px-4 py-3">
-                      <span className="text-xs font-bold text-white uppercase tracking-wider">{sec.section_name}</span>
-                      <button
-                        onClick={() => handleToggleCmsSection(sec.section_name, sec.is_visible)}
-                        className={`text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border transition-colors cursor-pointer ${
-                          sec.is_visible 
-                            ? 'bg-[#ff5500]/10 border-[#ff5500]/30 text-[#ff5500]' 
-                            : 'bg-white/5 border-white/10 text-[#888888]'
-                        }`}
-                      >
-                        {sec.is_visible ? 'Visible' : 'Hidden'}
-                      </button>
-                    </div>
-                  ))}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Drop Date</label>
+                    <input
+                      type="date"
+                      value={dropSettingsForm.dropDate}
+                      onChange={(e) => setDropSettingsForm(prev => ({ ...prev, dropDate: e.target.value }))}
+                      className="w-full px-4 py-3 bg-[#1c1c1c] border border-white/5 rounded-xl text-xs text-white focus:outline-none focus:border-[#ff5500]/50"
+                    />
+                  </div>
+                  
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Drop Time (IST)</label>
+                    <input
+                      type="time"
+                      value={dropSettingsForm.dropTime}
+                      onChange={(e) => setDropSettingsForm(prev => ({ ...prev, dropTime: e.target.value }))}
+                      className="w-full px-4 py-3 bg-[#1c1c1c] border border-white/5 rounded-xl text-xs text-white focus:outline-none focus:border-[#ff5500]/50"
+                    />
+                  </div>
+                  
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Display Label</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Friday • 9 PM IST"
+                      value={dropSettingsForm.dropLabel}
+                      onChange={(e) => setDropSettingsForm(prev => ({ ...prev, dropLabel: e.target.value }))}
+                      className="w-full px-4 py-3 bg-[#1c1c1c] border border-white/5 rounded-xl text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ff5500]/50"
+                    />
+                  </div>
+                  
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Display Description</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Next Curated Drop Countdown"
+                      value={dropSettingsForm.dropDesc}
+                      onChange={(e) => setDropSettingsForm(prev => ({ ...prev, dropDesc: e.target.value }))}
+                      className="w-full px-4 py-3 bg-[#1c1c1c] border border-white/5 rounded-xl text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ff5500]/50"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-2 border-t border-white/5">
+                  <button
+                    onClick={async () => {
+                      await handleUpdateGlobalSettings(dropSettingsForm);
+                    }}
+                    className="bg-[#ff5500] hover:bg-[#ff6611] text-black font-extrabold text-[10px] px-5 py-2.5 rounded-xl uppercase tracking-wider transition-colors cursor-pointer"
+                  >
+                    Save Drop Settings
+                  </button>
                 </div>
               </div>
 
@@ -1301,7 +1747,7 @@ export default function Admin() {
       
       {/* 1. View screenshot Receipt modal */}
       {activeScreenshotOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
           <div className="w-full max-w-lg bg-[#0f0f0f] border border-white/5 rounded-2xl relative overflow-hidden shadow-2xl">
             {/* Top accent bar */}
             <div className="h-[2px] bg-gradient-to-r from-[#ff5500]/20 via-[#ff5500] to-[#ff5500]/20" />
@@ -1402,7 +1848,7 @@ export default function Admin() {
 
       {/* 2. Add/Edit Product Modal */}
       {isAddingProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
           <div className="w-full max-w-lg bg-[#0f0f0f] border border-white/5 rounded-2xl relative overflow-hidden shadow-2xl">
             <div className="h-[2px] bg-[#ff5500]" />
             <div className="p-6 border-b border-white/5 flex items-center justify-between">
@@ -1513,7 +1959,7 @@ export default function Admin() {
 
       {/* 3. Ship Order Modal */}
       {shippingModalOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
           <div className="w-full max-w-sm bg-[#0f0f0f] border border-white/5 rounded-2xl relative overflow-hidden shadow-2xl">
             <div className="h-[2px] bg-[#ff5500]" />
             <div className="p-6 border-b border-white/5 flex items-center justify-between">
@@ -1557,7 +2003,7 @@ export default function Admin() {
 
       {/* 4. Log Expense Modal */}
       {isAddingExpense && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
           <div className="w-full max-w-sm bg-[#0f0f0f] border border-white/5 rounded-2xl relative overflow-hidden shadow-2xl">
             <div className="h-[2px] bg-[#ff5500]" />
             <div className="p-6 border-b border-white/5 flex items-center justify-between">
@@ -1614,7 +2060,7 @@ export default function Admin() {
 
       {/* 5. Add Settlement Modal */}
       {isAddingSettlement && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
           <div className="w-full max-w-sm bg-[#0f0f0f] border border-white/5 rounded-2xl relative overflow-hidden shadow-2xl">
             <div className="h-[2px] bg-[#ff5500]" />
             <div className="p-6 border-b border-white/5 flex items-center justify-between">
@@ -1667,6 +2113,357 @@ export default function Admin() {
         </div>
       )}
 
-    </div>
+    {/* ── RECEIPT MODAL ─────────────────────────────────────── */}
+    {(receiptOrderId || selectedReceipt) && (
+      <ReceiptModal
+        orderId={receiptOrderId}
+        receiptData={selectedReceipt}
+        apiBaseUrl={API_BASE_URL}
+        onClose={() => {
+          setReceiptOrderId(null);
+          setSelectedReceipt(null);
+        }}
+      />
+    )}
+
+    {/* ── COLLECT REMAINING PAYMENT MODAL ─────────────────── */}
+    {collectRemainingOrder && (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+        <div className="w-full max-w-md bg-[#0f0f0f] border border-amber-500/20 rounded-2xl p-6 space-y-5 shadow-[0_0_80px_-15px_rgba(251,191,36,0.2)]">
+          <div className="h-[2px] bg-gradient-to-r from-amber-500/20 via-amber-400 to-amber-500/20 -mx-6 -mt-6 rounded-t-2xl" />
+          <div>
+            <div className="text-[9px] font-black text-amber-400 uppercase tracking-widest">Pre-Order Payment</div>
+            <h3 className="text-sm font-black text-white mt-1">Collect Remaining Balance</h3>
+            <p className="text-[10px] text-white/50 mt-1">
+              Upload the payment screenshot for the remaining ₹{Number(collectRemainingOrder.remainingAmount).toLocaleString('en-IN')}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">
+              Payment Screenshot
+            </label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setCollectRemainingFile(e.target.files[0])}
+              className="w-full text-xs text-white/70 file:mr-3 file:bg-amber-500/10 file:border file:border-amber-500/30 file:text-amber-400 file:font-bold file:text-[10px] file:px-3 file:py-1.5 file:rounded-lg file:uppercase file:tracking-wider file:cursor-pointer cursor-pointer"
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={async () => {
+                if (!collectRemainingFile) {
+                  alert('Please select a screenshot file first.');
+                  return;
+                }
+                setCollectRemainingLoading(true);
+                try {
+                  const formData = new FormData();
+                  formData.append('file', collectRemainingFile);
+                  const res = await fetch(`${API_BASE_URL}/admin/orders/${collectRemainingOrder.id}/collect-remaining`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    body: formData
+                  });
+                  if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.message || 'Failed.');
+                  }
+                  alert('Remaining payment recorded successfully!');
+                  setCollectRemainingOrder(null);
+                  setCollectRemainingFile(null);
+                  await loadAllData();
+                } catch (e) {
+                  alert('Error: ' + e.message);
+                } finally {
+                  setCollectRemainingLoading(false);
+                }
+              }}
+              disabled={collectRemainingLoading || !collectRemainingFile}
+              className="flex-1 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-black font-extrabold text-[10px] py-3 rounded-xl uppercase tracking-wider transition-colors cursor-pointer"
+            >
+              {collectRemainingLoading ? 'Submitting...' : 'Submit Payment Screenshot'}
+            </button>
+            <button
+              onClick={() => { setCollectRemainingOrder(null); setCollectRemainingFile(null); }}
+              className="w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 text-white/50 hover:text-white flex items-center justify-center border border-white/5 transition-colors cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    {/* ── CREATE MANUAL INVOICE MODAL ───────────────────────── */}
+    {isCreatingReceipt && (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+        <div className="w-full max-w-2xl bg-[#0f0f0f] border border-white/5 rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl relative max-h-[90vh] overflow-y-auto" data-lenis-prevent="true">
+          <div className="h-[2px] bg-gradient-to-r from-[#ff5500]/20 via-[#ff5500] to-[#ff5500]/20 -mx-8 -mt-8 rounded-t-3xl" />
+          
+          <div className="flex justify-between items-start">
+            <div>
+              <div className="text-[9px] font-black text-[#ff5500] uppercase tracking-widest">Manual Billing</div>
+              <h3 className="text-lg font-black text-white mt-1">Create Custom Invoice</h3>
+            </div>
+            <button 
+              onClick={() => setIsCreatingReceipt(false)} 
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 text-white/40 hover:text-white border border-white/5 transition-colors cursor-pointer"
+            >
+              <X size={14} />
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            {/* General Info */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Invoice Number</label>
+                <input
+                  type="text"
+                  value={manualReceiptForm.receiptNumber}
+                  onChange={(e) => setManualReceiptForm(prev => ({ ...prev, receiptNumber: e.target.value }))}
+                  className="w-full px-4 py-3 bg-[#141414] border border-white/5 rounded-xl text-xs text-white focus:outline-none focus:border-[#ff5500]/50 font-mono"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Customer Name *</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Rahul Sharma"
+                  value={manualReceiptForm.customerName}
+                  onChange={(e) => setManualReceiptForm(prev => ({ ...prev, customerName: e.target.value }))}
+                  className="w-full px-4 py-3 bg-[#141414] border border-white/5 rounded-xl text-xs text-white focus:outline-none focus:border-[#ff5500]/50"
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Phone</label>
+                <input
+                  type="text"
+                  placeholder="e.g. 9876543210"
+                  value={manualReceiptForm.customerPhone}
+                  onChange={(e) => setManualReceiptForm(prev => ({ ...prev, customerPhone: e.target.value }))}
+                  className="w-full px-4 py-3 bg-[#141414] border border-white/5 rounded-xl text-xs text-white focus:outline-none focus:border-[#ff5500]/50"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Instagram Username</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-3.5 text-xs text-white/30">@</span>
+                  <input
+                    type="text"
+                    placeholder="username"
+                    value={manualReceiptForm.customerInstagram}
+                    onChange={(e) => setManualReceiptForm(prev => ({ ...prev, customerInstagram: e.target.value }))}
+                    className="w-full pl-8 pr-4 py-3 bg-[#141414] border border-white/5 rounded-xl text-xs text-white focus:outline-none focus:border-[#ff5500]/50"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Shipping Address</label>
+              <textarea
+                placeholder="Full delivery address details..."
+                value={manualReceiptForm.customerAddress}
+                onChange={(e) => setManualReceiptForm(prev => ({ ...prev, customerAddress: e.target.value }))}
+                className="w-full px-4 py-3 bg-[#141414] border border-white/5 rounded-xl text-xs text-white focus:outline-none focus:border-[#ff5500]/50 h-20 resize-none"
+              />
+            </div>
+
+            {/* Line Items */}
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Line Items *</label>
+                <button
+                  type="button"
+                  onClick={() => setManualReceiptForm(prev => ({
+                    ...prev,
+                    items: [...prev.items, { description: '', qty: 1, unitPrice: 0 }]
+                  }))}
+                  className="text-[10px] text-[#ff5500] hover:text-[#ff6611] font-bold uppercase tracking-wider flex items-center gap-1 bg-transparent border-none cursor-pointer"
+                >
+                  <Plus size={10} /> Add Item
+                </button>
+              </div>
+
+              <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1 font-sans">
+                {manualReceiptForm.items.map((item, idx) => (
+                  <div key={idx} className="flex gap-2 items-center">
+                    <input
+                      type="text"
+                      placeholder="Casting Name / Description"
+                      value={item.description}
+                      onChange={(e) => {
+                        const newItems = [...manualReceiptForm.items];
+                        newItems[idx].description = e.target.value;
+                        setManualReceiptForm(prev => ({ ...prev, items: newItems }));
+                      }}
+                      className="flex-1 px-3 py-2 bg-[#141414] border border-white/5 rounded-lg text-xs text-white focus:outline-none focus:border-[#ff5500]/50"
+                      required
+                    />
+                    <input
+                      type="number"
+                      placeholder="Qty"
+                      min="1"
+                      value={item.qty}
+                      onChange={(e) => {
+                        const newItems = [...manualReceiptForm.items];
+                        newItems[idx].qty = parseInt(e.target.value, 10) || 1;
+                        setManualReceiptForm(prev => ({ ...prev, items: newItems }));
+                      }}
+                      className="w-16 px-3 py-2 bg-[#141414] border border-white/5 rounded-lg text-xs text-white text-center focus:outline-none focus:border-[#ff5500]/50"
+                      required
+                    />
+                    <input
+                      type="number"
+                      placeholder="Price"
+                      min="0"
+                      value={item.unitPrice}
+                      onChange={(e) => {
+                        const newItems = [...manualReceiptForm.items];
+                        newItems[idx].unitPrice = parseFloat(e.target.value) || 0;
+                        setManualReceiptForm(prev => ({ ...prev, items: newItems }));
+                      }}
+                      className="w-24 px-3 py-2 bg-[#141414] border border-white/5 rounded-lg text-xs text-white focus:outline-none focus:border-[#ff5500]/50 font-mono"
+                      required
+                    />
+                    {manualReceiptForm.items.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newItems = manualReceiptForm.items.filter((_, i) => i !== idx);
+                          setManualReceiptForm(prev => ({ ...prev, items: newItems }));
+                        }}
+                        className="p-2 text-[#888888] hover:text-red-400 bg-transparent border-none cursor-pointer"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Financial Details & Footer Note */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-white/5 pt-4">
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Shipping Charges (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={manualReceiptForm.shippingCharges}
+                    onChange={(e) => setManualReceiptForm(prev => ({ ...prev, shippingCharges: parseFloat(e.target.value) || 0 }))}
+                    className="w-full px-4 py-3 bg-[#141414] border border-white/5 rounded-xl text-xs text-white focus:outline-none focus:border-[#ff5500]/50 font-mono"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Advance Paid (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={manualReceiptForm.advancePaid}
+                    onChange={(e) => setManualReceiptForm(prev => ({ ...prev, advancePaid: parseFloat(e.target.value) || 0 }))}
+                    className="w-full px-4 py-3 bg-[#141414] border border-white/5 rounded-xl text-xs text-white focus:outline-none focus:border-[#ff5500]/50 font-mono"
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Footer Note</label>
+                  <textarea
+                    placeholder="Note printed at the bottom of the invoice..."
+                    value={manualReceiptForm.footerNote}
+                    onChange={(e) => setManualReceiptForm(prev => ({ ...prev, footerNote: e.target.value }))}
+                    className="w-full px-4 py-3 bg-[#141414] border border-white/5 rounded-xl text-xs text-white focus:outline-none focus:border-[#ff5500]/50 h-28 resize-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Calculations Preview */}
+            <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl flex justify-between items-center text-xs font-mono">
+              <span className="text-white/40 uppercase">Invoice Preview Total</span>
+              <div className="text-right">
+                <span className="text-white/60">Subtotal + Shipping: </span>
+                <span className="font-bold text-[#ff5500]">
+                  ₹{(
+                    manualReceiptForm.items.reduce((sum, item) => sum + (Number(item.qty) * Number(item.unitPrice)), 0) + 
+                    Number(manualReceiptForm.shippingCharges)
+                  ).toLocaleString('en-IN')}
+                </span>
+                <span className="text-white/40 text-[10px] block">
+                  Balance: ₹{Math.max(0, 
+                    (manualReceiptForm.items.reduce((sum, item) => sum + (Number(item.qty) * Number(item.unitPrice)), 0) + 
+                    Number(manualReceiptForm.shippingCharges)) - Number(manualReceiptForm.advancePaid)
+                  ).toLocaleString('en-IN')}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-3 border-t border-white/5 pt-4 justify-end">
+            <button
+              type="button"
+              onClick={() => setIsCreatingReceipt(false)}
+              className="px-5 py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white/80 hover:text-white text-xs font-black uppercase tracking-wider transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                if (!manualReceiptForm.customerName) {
+                  alert('Customer name is required');
+                  return;
+                }
+                const invalidItem = manualReceiptForm.items.some(item => !item.description || item.unitPrice <= 0);
+                if (invalidItem) {
+                  alert('Please complete all line item fields with valid prices');
+                  return;
+                }
+                
+                try {
+                  const payload = {
+                    receiptNumber: manualReceiptForm.receiptNumber,
+                    customerId: 'dummy',
+                    customerName: manualReceiptForm.customerName,
+                    customerPhone: manualReceiptForm.customerPhone || null,
+                    customerInstagram: manualReceiptForm.customerInstagram || null,
+                    customerAddress: manualReceiptForm.customerAddress || null,
+                    shippingCharges: Number(manualReceiptForm.shippingCharges),
+                    advancePaid: Number(manualReceiptForm.advancePaid),
+                    footerNote: manualReceiptForm.footerNote || null,
+                    items: manualReceiptForm.items.map(i => ({
+                      description: i.description,
+                      qty: Number(i.qty),
+                      amount: Number(i.unitPrice)
+                    }))
+                  };
+                  
+                  await addReceipt(payload);
+                  alert('Manual invoice generated successfully!');
+                  setIsCreatingReceipt(false);
+                  loadAllData();
+                } catch (err) {
+                  console.error(err);
+                  alert('Failed to create manual invoice: ' + err.message);
+                }
+              }}
+              className="px-5 py-3 rounded-xl bg-[#ff5500] hover:bg-[#ff6611] text-black text-xs font-black uppercase tracking-wider hover:shadow-[0_0_20px_rgba(255,85,0,0.25)] transition-all cursor-pointer border-none"
+            >
+              Generate Invoice
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+
+  </div>
   );
 }

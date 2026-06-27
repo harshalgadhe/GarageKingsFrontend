@@ -205,45 +205,47 @@ const TechnicalArchive = forwardRef(function TechnicalArchive(props, ref) {
                   whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.7, delay: idx * 0.1, ease: [0.22, 1, 0.36, 1] }}
-                  className="flex gap-6 items-center justify-between group transition-all duration-700 text-left bg-transparent border-none py-1"
+                  className="flex flex-col sm:flex-row gap-4 sm:gap-6 items-start sm:items-center justify-between group transition-all duration-700 text-left bg-white/[0.01] sm:bg-transparent border border-white/5 sm:border-none p-4 sm:p-0 rounded-2xl sm:rounded-none"
                 >
-                  {/* Small Image */}
-                  <div className="relative w-20 aspect-square rounded-xl border border-white/[0.02] bg-[#111111] p-2 flex items-center justify-center overflow-hidden shrink-0 shadow-md">
-                    <div 
-                      className="absolute inset-0 opacity-50 group-hover:opacity-85 transition-opacity duration-700 pointer-events-none" 
-                      style={{ background: `radial-gradient(circle at center, ${item.colorGlow} 0%, transparent 70%)` }}
-                    />
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      className="max-h-[90%] max-w-[90%] object-contain filter drop-shadow-[0_8px_12px_rgba(0,0,0,0.8)] select-none pointer-events-none group-hover:scale-104 group-hover:-translate-y-1 transition-transform duration-700 ease-out"
-                    />
-                  </div>
+                  <div className="flex gap-4 items-center flex-1 min-w-0 w-full">
+                    {/* Small Image */}
+                    <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl border border-white/[0.02] bg-[#111111] p-2 flex items-center justify-center overflow-hidden shrink-0 shadow-md">
+                      <div 
+                        className="absolute inset-0 opacity-50 group-hover:opacity-85 transition-opacity duration-700 pointer-events-none" 
+                        style={{ background: `radial-gradient(circle at center, ${item.colorGlow} 0%, transparent 70%)` }}
+                      />
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="max-h-[90%] max-w-[90%] object-contain filter drop-shadow-[0_8px_12px_rgba(0,0,0,0.8)] select-none pointer-events-none group-hover:scale-104 group-hover:-translate-y-1 transition-transform duration-700 ease-out"
+                      />
+                    </div>
 
-                  {/* Info details */}
-                  <div className="flex-1 min-w-0 pr-2">
-                    <h4 className="text-lg font-bold tracking-normal text-[#F7F7F7] uppercase font-grotesk leading-tight truncate block">
-                      {item.name}
-                    </h4>
-                    <span className="text-[9px] font-mono uppercase tracking-widest text-zinc-500 block mt-1">
-                      {item.brand} • {item.scale} • {item.finish}
-                    </span>
+                    {/* Info details */}
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-base sm:text-lg font-bold tracking-normal text-[#F7F7F7] uppercase font-grotesk leading-tight truncate block">
+                        {item.name}
+                      </h4>
+                      <span className="text-[9px] font-mono uppercase tracking-widest text-zinc-500 block mt-1">
+                        {item.brand} • {item.scale} • {item.finish}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Price & Action */}
-                  <div className="text-right shrink-0 flex flex-col items-end gap-1.5 pl-2">
-                    <span className="text-sm font-bold text-gk-gold font-mono tracking-tight">{item.price}</span>
+                  <div className="w-full sm:w-auto text-left sm:text-right shrink-0 flex sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-3 border-t border-white/5 sm:border-none pt-3 sm:pt-0">
+                    <span className="text-base sm:text-sm font-bold text-gk-gold font-mono tracking-tight">{item.price}</span>
                     <div className="flex gap-2">
                       <button
                         onClick={() => window.open("https://www.instagram.com/garagekingsindia/", '_blank')}
-                        className="px-2 py-1.5 rounded-lg border border-zinc-800 hover:border-zinc-500 text-[#F7F7F7] font-bold uppercase tracking-wider text-[8px] transition-all duration-300 hover:bg-white/[0.01] cursor-pointer"
+                        className="px-3 py-2 sm:px-2 sm:py-1.5 rounded-lg border border-zinc-800 hover:border-zinc-500 text-[#F7F7F7] font-bold uppercase tracking-wider text-[9px] sm:text-[8px] transition-all duration-300 hover:bg-white/[0.01] cursor-pointer"
                         title="Order via Instagram DM"
                       >
                         Instagram
                       </button>
                       <button
                         onClick={() => window.open("https://chat.whatsapp.com/EX1NbXHU63ZCQ4qhFVCubb", '_blank')}
-                        className="px-2 py-1.5 rounded-lg border border-emerald-800/60 hover:border-emerald-500 text-emerald-400 font-bold uppercase tracking-wider text-[8px] transition-all duration-300 hover:bg-emerald-500/5 cursor-pointer"
+                        className="px-3 py-2 sm:px-2 sm:py-1.5 rounded-lg border border-emerald-800/60 hover:border-emerald-500 text-emerald-400 font-bold uppercase tracking-wider text-[9px] sm:text-[8px] transition-all duration-300 hover:bg-emerald-500/5 cursor-pointer"
                         title="Join WhatsApp"
                       >
                         WhatsApp

@@ -5,7 +5,7 @@ import { BRAND } from '../data/content'
 import { scrollToSection, useLenis } from '../providers/SmoothScroll'
 import { getCurrentUser, signOutCognito } from '../lib/auth'
 import AuthModal from './AuthModal'
-import { LogOut, User, X, Settings, Trash2, ShoppingBag, ShoppingCart } from 'lucide-react'
+import { LogOut, User, X, Settings, Trash2, ShoppingBag, ShoppingCart, Home } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import ReserveModal from './checkout/ReserveModal'
 
@@ -18,6 +18,14 @@ const links = [
   { id: 'releases', label: 'Next Drop' },
 ]
 
+const mobileLinks = [
+  { id: 'hero', label: 'Home', type: 'anchor' },
+  { id: 'gallery', label: 'Collections', type: 'anchor' },
+  { id: 'archive', label: 'Drops', type: 'anchor' },
+  { id: 'releases', label: 'Next Drop', type: 'anchor' },
+  { id: 'marketplace', label: 'Marketplace', type: 'route', path: '/marketplace' },
+]
+
 export default function Navigation({ activeSection }) {
   const lenisRef = useLenis()
   const navigate = useNavigate()
@@ -25,10 +33,8 @@ export default function Navigation({ activeSection }) {
   const [activeTab, setActiveTab] = useState('hero')
   const [user, setUser] = useState(null)
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
-  const [isCartOpen, setIsCartOpen] = useState(false)
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false)
   const [cart, setCart] = useState([])
-  const [checkoutCart, setCheckoutCart] = useState(null)
 
   useEffect(() => {
     const handleUserUpdate = () => {
@@ -45,7 +51,7 @@ export default function Navigation({ activeSection }) {
       const saved = localStorage.getItem('gk_cart');
       setCart(saved ? JSON.parse(saved) : []);
       if (e?.detail?.open) {
-        setIsCartOpen(true);
+        navigate('/cart');
       }
     };
     loadCart();
@@ -98,14 +104,14 @@ export default function Navigation({ activeSection }) {
     window.location.href = '/account'
   }
 
-  // Lock body scroll when mobile menu or cart drawer is open
+  // Lock body scroll when mobile menu is open
   useEffect(() => {
-    if (isOpen || isCartOpen) {
+    if (isOpen) {
       document.body.style.overflow = 'hidden'
     } else {
       document.body.style.overflow = 'unset'
     }
-  }, [isOpen, isCartOpen])
+  }, [isOpen])
 
   // Hash Scroll Effect for single-page cross-navigation
   useEffect(() => {
@@ -191,9 +197,8 @@ export default function Navigation({ activeSection }) {
             </ul>
           </nav>
 
-          {/* Header Quick Actions Icons */}
-          <div className="flex items-center gap-2 sm:gap-3 relative z-[80]">
-            <div className="relative">
+          <div className="hidden lg:flex items-center gap-2 sm:gap-3 relative z-[80]">
+            <div className="relative hidden lg:block">
               <button 
                 type="button"
                 onClick={handleProfileClick}
@@ -257,7 +262,7 @@ export default function Navigation({ activeSection }) {
             
             <button 
               type="button"
-              onClick={() => setIsCartOpen(true)}
+              onClick={() => navigate('/cart')}
               className="p-2.5 rounded-xl bg-white/5 border border-white/5 hover:border-[var(--color-gk-orange)]/30 hover:bg-[var(--color-gk-orange)]/5 text-white/80 hover:text-white transition-all cursor-pointer group relative"
               title="Your Vault Queue"
             >
@@ -294,121 +299,223 @@ export default function Navigation({ activeSection }) {
             animate={{ opacity: 1, backdropFilter: "blur(20px)" }}
             exit={{ opacity: 0, backdropFilter: "blur(0px)" }}
             transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed inset-0 z-[60] bg-[#050505]/95 flex flex-col items-center justify-center"
+            className="fixed inset-0 z-[60] bg-[#050505]/98 flex flex-col justify-between"
           >
-            <nav className="flex flex-col gap-6 items-center w-full px-6">
-              {links.map((link, i) => (
-                <motion.button
-                  key={link.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 20 }}
-                  transition={{ duration: 0.4, delay: i * 0.04 + 0.1, ease: [0.22, 1, 0.36, 1] }}
-                  type="button"
-                  onClick={() => handleNavClick(link.id)}
-                  className="group relative flex items-center justify-center w-full"
-                >
-                  <span className={`text-3xl font-black tracking-tighter uppercase transition-colors duration-300 ${
-                    activeSection === link.id ? 'text-[var(--color-gk-orange)]' : 'text-white/40 group-hover:text-white'
-                  }`}>
-                    {link.label}
-                  </span>
-                </motion.button>
-              ))}
-              
-              <MotionLink
-                to="/marketplace"
-                onClick={() => setIsOpen(false)}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 20 }}
-                transition={{ duration: 0.4, delay: links.length * 0.04 + 0.1, ease: [0.22, 1, 0.36, 1] }}
-                className="flex items-center gap-2 text-3xl font-black uppercase tracking-tighter text-white/40 hover:text-white transition-colors"
-              >
-                Marketplace
-              </MotionLink>
+            {/* Scrollable Container */}
+            <div className="flex-1 overflow-y-auto px-6 pt-24 pb-8 flex flex-col justify-between min-h-0" data-lenis-prevent="true">
+              <div className="flex-1 flex flex-col justify-center max-w-md mx-auto w-full space-y-8">
+                {/* Explore Navigation */}
+                <div className="flex flex-col gap-4 w-full">
+                  <div className="text-[10px] font-mono tracking-[0.25em] text-[var(--color-gk-orange)]/60 uppercase pl-1 font-bold">
+                    EXPLORE VAULT
+                  </div>
+                  <nav className="flex flex-col gap-3 w-full">
+                    {mobileLinks.map((link, i) => {
+                      const isActive = link.type === 'anchor' 
+                        ? activeSection === link.id 
+                        : window.location.pathname === link.path;
+                      
+                      return (
+                        <motion.div
+                          key={link.id}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -20 }}
+                          transition={{ duration: 0.35, delay: i * 0.05, ease: [0.23, 1, 0.32, 1] }}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsOpen(false);
+                              if (link.type === 'anchor') {
+                                handleNavClick(link.id);
+                              } else {
+                                navigate(link.path);
+                              }
+                            }}
+                            className="flex items-baseline gap-4 w-full text-left group cursor-pointer py-1.5"
+                          >
+                            <span className="font-mono text-xs text-[var(--color-gk-orange)]/50 group-hover:text-[var(--color-gk-orange)] transition-colors">
+                              {String(i + 1).padStart(2, '0')}
+                            </span>
+                            <span className={`text-2xl font-black uppercase tracking-wider transition-colors duration-300 ${
+                              isActive ? 'text-[var(--color-gk-orange)]' : 'text-white/60 group-hover:text-white'
+                            }`}>
+                              {link.label}
+                            </span>
+                          </button>
+                        </motion.div>
+                      );
+                    })}
+                  </nav>
+                </div>
 
-              {user ? (
-                <>
-                  <MotionLink
-                    to="/account"
-                    onClick={() => setIsOpen(false)}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 20 }}
-                    transition={{ duration: 0.4, delay: (links.length + 1) * 0.04 + 0.1, ease: [0.22, 1, 0.36, 1] }}
-                    className="flex items-center gap-2 text-3xl font-black uppercase tracking-tighter text-gk-yellow hover:text-yellow-400 transition-colors"
-                  >
-                    My Account
-                  </MotionLink>
-                  
-                  {(user.roles?.includes('admin') || user.roles?.includes('owner')) && (
-                    <MotionLink
-                      to="/admin"
-                      onClick={() => setIsOpen(false)}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 20 }}
-                      transition={{ duration: 0.4, delay: (links.length + 1.5) * 0.04 + 0.1, ease: [0.22, 1, 0.36, 1] }}
-                      className="flex items-center gap-2 text-3xl font-black uppercase tracking-tighter text-purple-400 hover:text-purple-300 transition-colors"
-                    >
-                      Admin Console
-                    </MotionLink>
-                  )}
-                  
-                  <motion.button
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 20 }}
-                    transition={{ duration: 0.4, delay: (links.length + 2) * 0.04 + 0.1, ease: [0.22, 1, 0.36, 1] }}
-                    onClick={handleLogout}
-                    className="flex items-center gap-2 text-3xl font-black uppercase tracking-tighter text-red-500 hover:text-red-400 transition-colors cursor-pointer bg-transparent border-none"
-                  >
-                    Sign Out
-                  </motion.button>
-                </>
-              ) : (
-                <motion.button
+                {/* Collector Portal */}
+                <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 20 }}
-                  transition={{ duration: 0.4, delay: (links.length + 1) * 0.04 + 0.1, ease: [0.22, 1, 0.36, 1] }}
-                  onClick={handleProfileClick}
-                  className="flex items-center gap-2 text-3xl font-black uppercase tracking-tighter text-white/40 hover:text-white transition-colors cursor-pointer bg-transparent border-none"
+                  transition={{ duration: 0.4, delay: 0.25, ease: [0.23, 1, 0.32, 1] }}
+                  className="w-full p-5 rounded-2xl bg-white/[0.02] border border-white/5 backdrop-blur-md"
                 >
-                  Collector Log In
-                </motion.button>
-              )}
-            </nav>
+                  <div className="text-[9px] font-mono tracking-[0.25em] text-white/30 uppercase mb-4 font-bold">
+                    COLLECTOR PORTAL
+                  </div>
+                  {user ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-gk-yellow/10 border border-gk-yellow/20 flex items-center justify-center text-gk-yellow shrink-0">
+                          <User size={18} strokeWidth={2.2} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-white truncate">{user.displayName || user.email}</p>
+                          <p className="text-[10px] text-white/40 truncate">{user.email}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/5">
+                        <button
+                          onClick={() => {
+                            setIsOpen(false);
+                            navigate('/account');
+                          }}
+                          className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-[10px] font-black uppercase tracking-wider text-white transition-all cursor-pointer border border-white/5 active:scale-[0.98]"
+                        >
+                          <User size={12} className="text-gk-yellow" />
+                          Account
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsOpen(false);
+                            navigate('/cart');
+                          }}
+                          className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-[#ff5500]/10 border border-[#ff5500]/20 hover:bg-[#ff5500]/20 text-[10px] font-black uppercase tracking-wider text-[#ff5500] transition-all cursor-pointer relative active:scale-[0.98]"
+                        >
+                          <ShoppingCart size={12} />
+                          Queue
+                          {cart.length > 0 && (
+                            <span className="absolute -top-1 -right-1 bg-[#ff5500] text-black text-[8px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center border border-black animate-pulse">
+                              {cart.reduce((sum, item) => sum + (item.quantity || 1), 0)}
+                            </span>
+                          )}
+                        </button>
+                      </div>
+                      
+                      {(user.roles?.includes('admin') || user.roles?.includes('owner')) && (
+                        <button
+                          onClick={() => {
+                            setIsOpen(false);
+                            navigate('/admin');
+                          }}
+                          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-[10px] font-black uppercase tracking-wider text-purple-400 hover:bg-purple-500/20 transition-all cursor-pointer active:scale-[0.98]"
+                        >
+                          <Settings size={12} />
+                          Admin Console
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => {
+                          setIsOpen(false);
+                          handleLogout();
+                        }}
+                        className="w-full py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-[10px] font-black uppercase tracking-wider text-red-400 hover:bg-red-500/20 transition-all cursor-pointer text-center active:scale-[0.98]"
+                      >
+                        Sign Out
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <p className="text-[11px] text-white/50 leading-relaxed font-medium">
+                        Sign in to access your reserved castings, check drops, and manage your collection details.
+                      </p>
+                      <button
+                        onClick={() => {
+                          setIsOpen(false);
+                          setIsAuthModalOpen(true);
+                        }}
+                        className="w-full py-3.5 rounded-xl bg-[var(--color-gk-orange)] hover:bg-gk-orange/90 text-white font-black text-xs uppercase tracking-widest transition-all cursor-pointer hover:shadow-[0_0_25px_rgba(255,85,0,0.25)] text-center border-none active:scale-[0.98]"
+                      >
+                        Log In to Vault
+                      </button>
+                    </div>
+                  )}
+                </motion.div>
+              </div>
+              
+              {/* Footer Section */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.4, delay: 0.35 }}
+                className="max-w-md mx-auto w-full flex items-center justify-between border-t border-white/5 pt-5 mt-8 shrink-0"
+              >
+                <span className="text-[9px] font-mono tracking-widest text-white/30 uppercase">
+                  © 2026 {BRAND.name}
+                </span>
+                <div className="flex gap-4">
+                  <a
+                    href="https://instagram.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[9px] font-mono tracking-wider uppercase text-white/40 hover:text-white transition-colors"
+                  >
+                    Instagram
+                  </a>
+                  <a
+                    href="https://twitter.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[9px] font-mono tracking-wider uppercase text-white/40 hover:text-white transition-colors"
+                  >
+                    Twitter
+                  </a>
+                </div>
+              </motion.div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
        {/* 📱 Persistent Glassmorphic Mobile Bottom Navigation */}
       {createPortal(
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#111111]/85 backdrop-blur-lg border-t border-[#2A2A2A] px-4 py-3 flex justify-between items-center text-white/50 shadow-[0_-10px_30px_rgba(0,0,0,0.85)] pb-[calc(12px+env(safe-area-inset-bottom))]">
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#111111]/90 backdrop-blur-xl border-t border-[#222222] px-2 py-2.5 flex justify-between items-center text-white/50 shadow-[0_-10px_35px_rgba(0,0,0,0.9)] pb-[calc(10px+env(safe-area-inset-bottom))]">
           <button 
             onClick={() => handleNavClick('hero')} 
-            className={`flex flex-col items-center gap-1 flex-1 py-1 transition-colors cursor-pointer ${
-              activeTab === 'hero' ? 'text-[var(--color-gk-orange)]' : 'hover:text-white'
+            className={`flex flex-col items-center gap-1 flex-1 py-1 transition-all cursor-pointer active:scale-90 ${
+              window.location.pathname === '/' ? 'text-[var(--color-gk-orange)]' : 'hover:text-white'
             }`}
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-            </svg>
-            <span className="text-[9px] font-bold uppercase tracking-wider">Home</span>
+            <Home className="w-5 h-5" strokeWidth={2.2} />
+            <span className="text-[9px] font-black uppercase tracking-wider">Home</span>
           </button>
           
           <button 
-            onClick={() => handleNavClick('vault')} 
-            className={`flex flex-col items-center gap-1 flex-1 py-1 transition-colors cursor-pointer ${
-              activeTab === 'vault' ? 'text-[var(--color-gk-orange)]' : 'hover:text-white'
+            onClick={() => navigate('/marketplace')} 
+            className={`flex flex-col items-center gap-1 flex-1 py-1 transition-all cursor-pointer active:scale-90 ${
+              window.location.pathname === '/marketplace' ? 'text-[var(--color-gk-orange)]' : 'hover:text-white'
             }`}
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-            </svg>
-            <span className="text-[9px] font-bold uppercase tracking-wider">Shop</span>
+            <ShoppingBag className="w-5 h-5" strokeWidth={2.2} />
+            <span className="text-[9px] font-black uppercase tracking-wider">Shop</span>
+          </button>
+
+          <button 
+            onClick={() => navigate('/cart')} 
+            className={`flex flex-col items-center gap-1 flex-1 py-1 transition-all cursor-pointer active:scale-90 relative ${
+              window.location.pathname === '/cart' ? 'text-[var(--color-gk-orange)]' : 'hover:text-white'
+            }`}
+          >
+            <div className="relative">
+              <ShoppingCart className="w-5 h-5" strokeWidth={2.2} />
+              {cart.length > 0 && (
+                <span className="absolute -top-1.5 -right-2 bg-[#ff5500] text-black text-[8px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center border border-black animate-pulse">
+                  {cart.reduce((sum, item) => sum + (item.quantity || 1), 0)}
+                </span>
+              )}
+            </div>
+            <span className="text-[9px] font-black uppercase tracking-wider">Cart</span>
           </button>
 
           <button 
@@ -419,14 +526,12 @@ export default function Navigation({ activeSection }) {
                 setIsAuthModalOpen(true);
               }
             }}
-            className={`flex flex-col items-center gap-1 flex-1 py-1 transition-colors cursor-pointer ${
-              activeTab === 'account' ? 'text-[var(--color-gk-orange)]' : 'hover:text-white'
+            className={`flex flex-col items-center gap-1 flex-1 py-1 transition-all cursor-pointer active:scale-90 ${
+              window.location.pathname === '/account' || window.location.pathname === '/admin' ? 'text-[var(--color-gk-orange)]' : 'hover:text-white'
             }`}
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-            <span className="text-[9px] font-bold uppercase tracking-wider">Account</span>
+            <User className="w-5 h-5" strokeWidth={2.2} />
+            <span className="text-[9px] font-black uppercase tracking-wider">Account</span>
           </button>
         </div>,
         document.body
@@ -442,152 +547,6 @@ export default function Navigation({ activeSection }) {
               setIsAuthModalOpen(false);
               window.location.reload();
             }}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* 🛒 Collector Cart Modal Overlay */}
-      <AnimatePresence>
-        {isCartOpen && (
-          <motion.div 
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[120] flex items-center justify-end bg-black/85 backdrop-blur-md pointer-events-auto"
-            onClick={() => setIsCartOpen(false)}
-          >
-            <motion.div 
-              initial={{ x: '100%' }} 
-              animate={{ x: 0 }} 
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-              className="w-full max-w-md h-full bg-[#0a0a0d] border-l border-white/10 p-6 sm:p-8 flex flex-col justify-between shadow-[0_0_50px_rgba(0,0,0,0.9)] relative"
-              onClick={e => e.stopPropagation()}
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between pb-6 border-b border-white/5 flex-shrink-0">
-                <div className="flex items-center gap-2">
-                  <ShoppingBag className="text-[#ff5500] w-5 h-5" />
-                  <h3 className="text-xl font-black italic tracking-wider uppercase text-white font-grotesk">Your Vault Queue</h3>
-                  <span className="text-[10px] bg-white/5 px-2 py-0.5 rounded font-mono text-white/50">{cart.reduce((sum, item) => sum + (item.quantity || 1), 0)} items</span>
-                </div>
-                <button 
-                  onClick={() => setIsCartOpen(false)} 
-                  className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 text-white/40 hover:text-white border border-white/5 transition-colors cursor-pointer"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-
-              {/* Drawer Body (Scrollable items) */}
-              <div className="flex-1 overflow-y-auto py-6 space-y-4 min-h-0" data-lenis-prevent>
-                {cart.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-center space-y-4 py-12">
-                    <div className="w-16 h-16 rounded-full bg-white/[0.02] border border-white/10 flex items-center justify-center mb-4">
-                      <ShoppingCart className="w-6 h-6 text-white/30" />
-                    </div>
-                    <h4 className="text-base font-bold text-white uppercase tracking-wide">Queue is empty</h4>
-                    <p className="text-xs text-white/40 max-w-xs leading-relaxed font-medium">
-                      You currently have no castings reserved in your cart. Active drops can be secured instantly via direct checkout on the marketplace.
-                    </p>
-                  </div>
-                ) : (
-                  cart.map(item => (
-                    <div key={item.id} className="flex gap-4 p-3 bg-white/[0.02] border border-white/5 rounded-xl hover:border-white/10 transition-colors">
-                      <div className="w-16 h-16 rounded-lg bg-black/20 overflow-hidden flex-shrink-0 border border-white/5">
-                        <img src={item.image || '/vault-1.png'} alt={item.name} className="w-full h-full object-cover" />
-                      </div>
-                      <div className="flex-1 min-w-0 flex flex-col justify-between">
-                        <div>
-                          <div className="text-[8px] font-black uppercase tracking-widest text-[#ff5500] truncate">{item.brand}</div>
-                          <h4 className="text-xs font-bold text-white truncate mt-0.5">{item.name}</h4>
-                        </div>
-                        <div className="flex justify-between items-center mt-2">
-                          <span className="font-mono text-xs text-white/80 font-bold">₹{Number(item.price) * (item.quantity || 1)}</span>
-                          <div className="flex items-center gap-2">
-                            <div className="flex items-center border border-white/10 rounded-lg bg-black/20 overflow-hidden">
-                              <button
-                                onClick={() => updateCartItemQty(item.id, (item.quantity || 1) - 1)}
-                                className="px-2 py-0.5 text-white/60 hover:text-white hover:bg-white/5 transition-colors cursor-pointer text-xs font-bold"
-                              >
-                                -
-                              </button>
-                              <span className="px-1.5 text-[10px] font-mono font-bold text-white text-center min-w-[16px]">
-                                {item.quantity || 1}
-                              </span>
-                              <button
-                                onClick={() => updateCartItemQty(item.id, (item.quantity || 1) + 1)}
-                                className="px-2 py-0.5 text-white/60 hover:text-white hover:bg-white/5 transition-colors cursor-pointer text-xs font-bold"
-                              >
-                                +
-                              </button>
-                            </div>
-                            <button
-                              onClick={() => removeFromCart(item.id)}
-                              className="text-[#888888] hover:text-red-400 p-1 transition-colors cursor-pointer"
-                              title="Remove item"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              {/* Drawer Footer */}
-              {cart.length > 0 ? (
-                <div className="pt-6 border-t border-white/5 bg-black/40 space-y-4 flex-shrink-0">
-                  <div className="flex justify-between items-end">
-                    <span className="text-xs font-bold text-[#888888] uppercase tracking-widest">Order Total</span>
-                    <span className="font-mono text-xl text-[#ff5500] font-black">
-                      ₹{cart.reduce((sum, item) => sum + Number(item.price || 0) * (item.quantity || 1), 0)}
-                    </span>
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      setCheckoutCart(cart);
-                      setIsCartOpen(false);
-                    }}
-                    className="w-full bg-[#ff5500] hover:bg-[#ff6611] active:bg-[#e64d00] text-black font-black text-sm py-4 rounded-xl transition-all duration-200 uppercase tracking-widest hover:shadow-[0_0_30px_rgba(255,85,0,0.3)] cursor-pointer"
-                  >
-                    Proceed to Checkout
-                  </button>
-                </div>
-              ) : (
-                <div className="pt-6 border-t border-white/5 space-y-3 flex-shrink-0">
-                  <Link 
-                    to="/marketplace" 
-                    onClick={() => setIsCartOpen(false)}
-                    className="w-full py-4 rounded-xl bg-[var(--color-gk-orange)] hover:bg-gk-orange/90 hover:shadow-[0_0_30px_rgba(225,91,44,0.3)] text-center text-white font-black text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    Explore Marketplace
-                  </Link>
-                  <button 
-                    onClick={() => setIsCartOpen(false)}
-                    className="w-full py-3 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 text-white/60 hover:text-white text-xs font-bold uppercase tracking-wider transition-all cursor-pointer"
-                  >
-                    Continue Browsing
-                  </button>
-                </div>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Aggregate Checkout Modal */}
-      <AnimatePresence>
-        {checkoutCart && (
-          <ReserveModal 
-            cartItems={checkoutCart} 
-            onClose={() => {
-              setCheckoutCart(null);
-              clearCart();
-            }} 
           />
         )}
       </AnimatePresence>

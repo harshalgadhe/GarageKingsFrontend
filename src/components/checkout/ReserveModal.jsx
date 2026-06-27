@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import PaymentInstructions from './PaymentInstructions';
 import ScreenshotUploader from './ScreenshotUploader';
 import { getCurrentUser } from '../../lib/auth';
+import { logError } from '../../lib/telemetry';
 
 const generateUUID = () => {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -18,8 +19,11 @@ export default function ReserveModal({ product, cartItems, onClose }) {
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [idempotencyKey, setIdempotencyKey] = useState('');
+  const [isPreOrder, setIsPreOrder] = useState(false);
+  const [advancePercent, setAdvancePercent] = useState(50); // % of total as advance
   
   const [orderId, setOrderId] = useState('');
+  const [orderMeta, setOrderMeta] = useState({ bookingType: 'standard', advanceAmount: 0, remainingAmount: 0 });
   const [expiresAt, setExpiresAt] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -37,6 +41,7 @@ export default function ReserveModal({ product, cartItems, onClose }) {
   const totalPrice = isCart 
     ? cartItems.reduce((sum, item) => sum + Number(item.price || 0) * (item.quantity || 1), 0)
     : Number(product?.price || 0);
+  const advanceAmount = isPreOrder ? Math.round(totalPrice * advancePercent / 100) : totalPrice;
 
   // Generate unique idempotency key once per modal mount and lock/unlock body scroll
   useEffect(() => {
@@ -55,7 +60,7 @@ export default function ReserveModal({ product, cartItems, onClose }) {
           setSettings(data);
         }
       } catch (e) {
-        console.error("Error fetching UPI settings:", e);
+        logError("Failed to fetch UPI payment settings", e.stack);
       }
     }
     fetchSettings();
@@ -78,7 +83,7 @@ export default function ReserveModal({ product, cartItems, onClose }) {
             }
           }
         } catch (e) {
-          console.warn("Failed to load user profile for checkout prefill:", e);
+          logError("Failed to load user profile for checkout prefill: " + e.message, e.stack, 'warning');
         }
       }
       loadProfile();
@@ -111,7 +116,9 @@ export default function ReserveModal({ product, cartItems, onClose }) {
         phone,
         address,
         instagram: '',
-        idempotencyKey
+        idempotencyKey,
+        bookingType: isPreOrder ? 'pre_order' : 'standard',
+        advanceAmount: advanceAmount
       } : {
         productId: product.id,
         name,
@@ -119,14 +126,14 @@ export default function ReserveModal({ product, cartItems, onClose }) {
         phone,
         address,
         price: product.price,
-        idempotencyKey
+        idempotencyKey,
+        bookingType: isPreOrder ? 'pre_order' : 'standard',
+        advanceAmount: advanceAmount
       };
 
       const response = await fetch(endpoint, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       });
 
@@ -136,16 +143,26 @@ export default function ReserveModal({ product, cartItems, onClose }) {
       }
 
       setOrderId(data.orderId);
+      setOrderMeta({
+        bookingType: data.bookingType || 'standard',
+        advanceAmount: data.advanceAmount || advanceAmount,
+        remainingAmount: data.remainingAmount || 0
+      });
       setStep(2);
     } catch (err) {
-      setError(err.message || 'Failed to place order.');
+      const isNetworkOrJsError = err instanceof TypeError || err.message?.includes('Failed to fetch') || !err.message;
+      const friendlyMsg = isNetworkOrJsError 
+        ? 'An unexpected network error occurred while securing your reservation. Please verify your connection and try again.' 
+        : err.message;
+      setError(friendlyMsg);
+      logError(err.message || 'Order Placement Failed', err.stack);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-hidden">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-hidden">
       {/* Modal box */}
       <div className="w-full max-w-lg bg-[#0f0f0f] border border-white/5 rounded-2xl relative flex flex-col max-h-[90vh] shadow-[0_0_80px_-15px_rgba(255,85,0,0.2)]">
         {/* Top orange bar */}
@@ -175,7 +192,7 @@ export default function ReserveModal({ product, cartItems, onClose }) {
             <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] transition-all duration-300 ${step === 1 ? 'bg-[#ff5500] text-black font-black' : step > 1 ? 'bg-[#ff5500]/20 text-[#ff5500] border border-[#ff5500]/30' : 'bg-white/5 text-white/40 border border-white/10'}`}>
               {step > 1 ? '✓' : '1'}
             </div>
-            <span className={step === 1 ? 'text-white font-bold' : step > 1 ? 'text-[#ff5500]' : 'text-white/30'}>Shipping</span>
+            <span className={`hidden sm:inline ${step === 1 ? 'text-white font-bold' : step > 1 ? 'text-[#ff5500]' : 'text-white/30'}`}>Shipping</span>
           </div>
           
           <div className={`h-[1px] grow mx-3 transition-colors duration-300 ${step > 1 ? 'bg-[#ff5500]/30' : 'bg-white/5'}`} />
@@ -184,7 +201,7 @@ export default function ReserveModal({ product, cartItems, onClose }) {
             <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] transition-all duration-300 ${step === 2 ? 'bg-[#ff5500] text-black font-black' : step > 2 ? 'bg-[#ff5500]/20 text-[#ff5500] border border-[#ff5500]/30' : 'bg-white/5 text-white/40 border border-white/10'}`}>
               {step > 2 ? '✓' : '2'}
             </div>
-            <span className={step === 2 ? 'text-white font-bold' : step > 2 ? 'text-[#ff5500]' : 'text-white/30'}>UPI Pay</span>
+            <span className={`hidden sm:inline ${step === 2 ? 'text-white font-bold' : step > 2 ? 'text-[#ff5500]' : 'text-white/30'}`}>UPI Pay</span>
           </div>
           
           <div className={`h-[1px] grow mx-3 transition-colors duration-300 ${step > 2 ? 'bg-[#ff5500]/30' : 'bg-white/5'}`} />
@@ -193,7 +210,7 @@ export default function ReserveModal({ product, cartItems, onClose }) {
             <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] transition-all duration-300 ${step === 3 ? 'bg-[#ff5500] text-black font-black' : step > 3 ? 'bg-[#ff5500]/20 text-[#ff5500] border border-[#ff5500]/30' : 'bg-white/5 text-white/40 border border-white/10'}`}>
               {step > 3 ? '✓' : '3'}
             </div>
-            <span className={step === 3 ? 'text-white font-bold' : step > 3 ? 'text-[#ff5500]' : 'text-white/30'}>Upload</span>
+            <span className={`hidden sm:inline ${step === 3 ? 'text-white font-bold' : step > 3 ? 'text-[#ff5500]' : 'text-white/30'}`}>Upload</span>
           </div>
           
           <div className={`h-[1px] grow mx-3 transition-colors duration-300 ${step > 3 ? 'bg-[#ff5500]/30' : 'bg-white/5'}`} />
@@ -202,7 +219,7 @@ export default function ReserveModal({ product, cartItems, onClose }) {
             <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] transition-all duration-300 ${step === 4 ? 'bg-[#ff5500] text-black font-black' : 'bg-white/5 text-white/40 border border-white/10'}`}>
               4
             </div>
-            <span className={step === 4 ? 'text-white font-bold' : 'text-white/30'}>Complete</span>
+            <span className={`hidden sm:inline ${step === 4 ? 'text-white font-bold' : 'text-white/30'}`}>Complete</span>
           </div>
         </div>
 
@@ -292,29 +309,78 @@ export default function ReserveModal({ product, cartItems, onClose }) {
                 />
               </div>
 
+              {/* Pre-order toggle */}
+              <div className="bg-[#141414] border border-white/5 rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-xs font-bold text-white">Pre-Order Booking</div>
+                    <div className="text-[10px] text-white/40 mt-0.5">Pay a partial amount now, rest when stock arrives</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsPreOrder(v => !v)}
+                    className={`relative w-10 h-5 rounded-full transition-colors duration-200 flex-shrink-0 ${isPreOrder ? 'bg-[#ff5500]' : 'bg-white/10'}`}
+                  >
+                    <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform duration-200 ${isPreOrder ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  </button>
+                </div>
+                {isPreOrder && (
+                  <div className="space-y-2 pt-1 border-t border-white/5">
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="text-white/60">Advance amount to pay now</span>
+                      <span className="text-[#ff5500] font-bold font-mono">₹{advanceAmount}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] text-white/40 flex-shrink-0">25%</span>
+                      <input
+                        type="range"
+                        min={25}
+                        max={75}
+                        step={5}
+                        value={advancePercent}
+                        onChange={(e) => setAdvancePercent(Number(e.target.value))}
+                        className="flex-1 accent-[#ff5500]"
+                      />
+                      <span className="text-[10px] text-white/40 flex-shrink-0">75%</span>
+                    </div>
+                    <div className="text-[9px] text-white/30 text-center">
+                      Remaining ₹{totalPrice - advanceAmount} due before dispatch
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-[#ff5500] hover:bg-[#ff6611] active:bg-[#e64d00] disabled:bg-[#ff5500]/50 text-black font-extrabold text-xs py-3.5 px-4 rounded-xl transition-all duration-200 uppercase tracking-wider mt-2 shadow-[0_4px_20px_-4px_rgba(255,85,0,0.3)]"
+                className="w-full bg-[#ff5500] hover:bg-[#ff6611] active:bg-[#e64d00] disabled:bg-[#ff5500]/50 text-black font-extrabold text-xs py-3.5 px-4 rounded-xl transition-all duration-200 uppercase tracking-wider mt-2 shadow-[0_4px_20px_-4px_rgba(255,85,0,0.3)] cursor-pointer"
               >
-                {loading ? 'Processing...' : 'Place Order & Go to Pay'}
+                {loading ? 'Processing...' : isPreOrder ? 'Place Pre-Order & Go to Pay' : 'Place Order & Go to Pay'}
               </button>
             </form>
           )}
 
           {step === 2 && (
             <div className="space-y-5">
+              {/* Pre-order notice */}
+              {isPreOrder && (
+                <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                  <div className="text-[10px] font-black text-amber-400 uppercase tracking-wider">Pre-Order Mode</div>
+                  <div className="text-[10px] text-amber-300/70 mt-0.5">
+                    Pay only the advance amount now. The remaining ₹{totalPrice - advanceAmount} will be collected before dispatch.
+                  </div>
+                </div>
+              )}
               <PaymentInstructions 
                 upiId={settings.companyUpiId}
                 upiQrImage={settings.upiQrImage}
-                price={totalPrice}
+                price={isPreOrder ? advanceAmount : totalPrice}
               />
-
               <button
                 onClick={() => setStep(3)}
                 className="w-full bg-[#ff5500] hover:bg-[#ff6611] active:bg-[#e64d00] text-black font-extrabold text-xs py-3.5 px-4 rounded-xl transition-all duration-200 uppercase tracking-wider mt-2 shadow-[0_4px_20px_-4px_rgba(255,85,0,0.3)] cursor-pointer"
               >
-                I Have Paid, Proceed to Upload Receipt
+                {isPreOrder ? `I've Paid ₹${advanceAmount} Advance — Upload Receipt` : 'I Have Paid, Proceed to Upload Receipt'}
               </button>
             </div>
           )}
@@ -324,9 +390,15 @@ export default function ReserveModal({ product, cartItems, onClose }) {
               <div className="bg-[#141414] border border-white/5 rounded-xl p-4 space-y-2">
                 <div className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">Order Summary</div>
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-white/60">Amount to Transfer:</span>
-                  <span className="font-mono text-[#ff5500] font-bold">₹{totalPrice}</span>
+                  <span className="text-white/60">{isPreOrder ? 'Advance to Transfer:' : 'Amount to Transfer:'}</span>
+                  <span className="font-mono text-[#ff5500] font-bold">₹{isPreOrder ? advanceAmount : totalPrice}</span>
                 </div>
+                {isPreOrder && (
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-white/60">Remaining (due later):</span>
+                    <span className="font-mono text-amber-400/80">₹{totalPrice - advanceAmount}</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-white/60">Order ID:</span>
                   <span className="font-mono text-white/80">{orderId}</span>
@@ -355,15 +427,24 @@ export default function ReserveModal({ product, cartItems, onClose }) {
               
               <div className="space-y-2">
                 <h3 className="text-lg font-black text-white uppercase tracking-wider">
-                  Order Placed
+                  {isPreOrder ? 'Pre-Order Placed!' : 'Order Placed'}
                 </h3>
                 <p className="text-xs text-[#888888] leading-relaxed max-w-sm mx-auto">
-                  Your UPI screenshot is uploaded and pending verification by our founders. We will verify it on a first-come, first-served basis. We will notify you once verified.
+                  {isPreOrder
+                    ? `Your advance payment screenshot is uploaded. We will verify and reserve your item. You'll be notified to pay the remaining ₹${totalPrice - advanceAmount} when stock is ready to ship.`
+                    : 'Your UPI screenshot is uploaded and pending verification by our founders. We will verify it on a first-come, first-served basis. We will notify you once verified.'}
                 </p>
               </div>
 
               <div className="bg-[#141414] border border-white/5 rounded-xl p-4 max-w-sm mx-auto text-left space-y-2 font-mono text-[10px] text-[#888888]">
                 <div><span className="text-white">ORDER ID:</span> {orderId}</div>
+                {isPreOrder && (
+                  <>
+                    <div><span className="text-amber-400">TYPE:</span> PRE-ORDER</div>
+                    <div><span className="text-white">ADVANCE PAID:</span> ₹{advanceAmount}</div>
+                    <div><span className="text-amber-400">REMAINING DUE:</span> ₹{totalPrice - advanceAmount}</div>
+                  </>
+                )}
                 {isCart ? (
                   <div>
                     <span className="text-white">ITEMS:</span>
@@ -377,7 +458,7 @@ export default function ReserveModal({ product, cartItems, onClose }) {
                   <div><span className="text-white">CASTING:</span> {product?.brand} {product?.name}</div>
                 )}
                 <div><span className="text-white">TOTAL PRICE:</span> ₹{totalPrice}</div>
-                <div><span className="text-white">STATUS:</span> VERIFICATION PENDING</div>
+                <div><span className="text-white">STATUS:</span> {isPreOrder ? 'PRE-ORDER - ADVANCE PENDING VERIFICATION' : 'VERIFICATION PENDING'}</div>
               </div>
 
               <button

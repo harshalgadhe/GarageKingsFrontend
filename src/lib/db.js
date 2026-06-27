@@ -99,20 +99,44 @@ export async function updateGlobalSettings(settings) {
   return await res.json();
 }
 
-// Master Products (Casting Cars) endpoints
-export async function getCars() {
+export async function getCars(params = {}) {
   try {
-    const res = await fetch(`${API_BASE_URL}/products`, {
+    const queryParams = new URLSearchParams();
+    if (params.page) queryParams.append('page', params.page);
+    if (params.limit) queryParams.append('limit', params.limit);
+    if (params.brand) queryParams.append('brand', params.brand);
+    if (params.scale) queryParams.append('scale', params.scale);
+    if (params.tag) queryParams.append('tag', params.tag);
+    if (params.search) queryParams.append('search', params.search);
+    if (params.inStock !== undefined) queryParams.append('inStock', params.inStock);
+
+    const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
+    const res = await fetch(`${API_BASE_URL}/products${queryString}`, {
       headers: getAuthHeaders()
     });
     if (!res.ok) throw new Error("Failed to fetch castings");
     const data = await res.json();
+    if (params.paginated) {
+      return data;
+    }
     return data.products || data;
   } catch (err) {
     console.error("Error fetching cars:", err);
-    return [];
+    return params.paginated ? { products: [], total: 0 } : [];
+  }
+}export async function getProduct(id) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/products/${id}`, {
+      headers: getAuthHeaders()
+    });
+    if (!res.ok) throw new Error("Failed to fetch product details");
+    return await res.json();
+  } catch (err) {
+    console.error(`Error fetching product ${id}:`, err);
+    return null;
   }
 }
+
 
 export async function addCar(car) {
   const res = await fetch(`${API_BASE_URL}/products`, {

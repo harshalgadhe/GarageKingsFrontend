@@ -7,6 +7,9 @@ import Marketplace from './pages/Marketplace'
 import Setup from './pages/Setup'
 import Help from './pages/Help'
 import Policies from './pages/Policies'
+import ProductDetail from './pages/ProductDetail'
+import Cart from './pages/Cart'
+import Checkout from './pages/Checkout'
 
 export default function App() {
   return (
@@ -20,6 +23,9 @@ export default function App() {
           <Route path="/setup" element={<Setup />} />
           <Route path="/help" element={<Help />} />
           <Route path="/policies" element={<Policies />} />
+          <Route path="/product/:id" element={<ProductDetail />} />
+          <Route path="/cart" element={<Cart />} />
+          <Route path="/checkout" element={<Checkout />} />
         </Routes>
       </SmoothScrollProvider>
     </Router>

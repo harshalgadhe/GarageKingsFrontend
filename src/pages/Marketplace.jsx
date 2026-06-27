@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getCars, isFirebaseConfigured, getGlobalSettings } from '../lib/db'
+import { logError } from '../lib/telemetry'
 import Navigation from '../components/Navigation'
 import { useNavigate } from 'react-router-dom'
 import { Search, ShoppingCart, Trash2, ShoppingBag, X } from 'lucide-react'
@@ -13,74 +14,62 @@ export default function Marketplace() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [activeFilter, setActiveFilter] = useState('All')
-  const [checkoutCar, setCheckoutCar] = useState(null)
   
-  // Cart State (Persisted in LocalStorage)
-  const [cart, setCart] = useState(() => {
-    const saved = localStorage.getItem('gk_cart');
-    return saved ? JSON.parse(saved) : [];
-  });
+  // Pagination & Filtering States
+  const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(12)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalItems, setTotalItems] = useState(0)
+  const [brandFilter, setBrandFilter] = useState('All')
+  const [scaleFilter, setScaleFilter] = useState('All')
+  const [inStockOnly, setInStockOnly] = useState(false)
 
   const navigate = useNavigate()
 
-  const saveCart = (newCart, openDrawer = false) => {
-    setCart(newCart);
-    localStorage.setItem('gk_cart', JSON.stringify(newCart));
-    window.dispatchEvent(new CustomEvent('gk_cart_updated', { detail: { open: openDrawer } }));
-  };
-
-  const addToCart = (car) => {
-    const existingIndex = cart.findIndex(item => item.id === car.id);
-    let newCart;
-    if (existingIndex > -1) {
-      newCart = cart.map((item, idx) => 
-        idx === existingIndex 
-          ? { ...item, quantity: (item.quantity || 1) + 1 }
-          : item
-      );
-    } else {
-      newCart = [...cart, { ...car, quantity: 1 }];
-    }
-    saveCart(newCart, true);
-  };
-
-  const removeFromCart = (carId) => {
-    const newCart = cart.filter(item => item.id !== carId);
-    saveCart(newCart, false);
-  };
-
-  const clearCart = () => {
-    saveCart([], false);
-  };
-
-  const handleBuyClick = (car) => {
-    setCheckoutCar(car);
-  };
-
+  // Debounce search query changes to prevent database thrashing
   useEffect(() => {
-    const syncCart = () => {
-      const saved = localStorage.getItem('gk_cart');
-      setCart(saved ? JSON.parse(saved) : []);
-    };
-    window.addEventListener('gk_cart_updated', syncCart);
-    return () => window.removeEventListener('gk_cart_updated', syncCart);
-  }, []);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery)
+      setPage(1)
+    }, 400)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
 
   useEffect(() => {
     async function load() {
+      setIsLoading(true)
       try {
-        const [carData, settingsData] = await Promise.all([getCars(), getGlobalSettings()])
-        setCars(carData)
+        const params = {
+          page,
+          limit,
+          paginated: true,
+          tag: activeFilter !== 'All' ? activeFilter : undefined,
+          brand: brandFilter !== 'All' ? brandFilter : undefined,
+          scale: scaleFilter !== 'All' ? scaleFilter : undefined,
+          search: debouncedSearch.trim() || undefined,
+          inStock: inStockOnly ? true : undefined
+        }
+        const [carData, settingsData] = await Promise.all([
+          getCars(params),
+          getGlobalSettings()
+        ])
+        setCars(carData.products || [])
+        setTotalPages(carData.totalPages || 1)
+        setTotalItems(carData.total || 0)
         setSettings({ showPrices: settingsData?.showPrices === true })
       } catch (err) {
-        setError(err.message)
+        setError("Unable to retrieve catalog listings. Please verify your connection or try again shortly.")
+        logError(err.message || 'Catalog Load Failed', err.stack);
       } finally {
         setIsLoading(false)
       }
     }
     load()
+  }, [page, limit, activeFilter, brandFilter, scaleFilter, debouncedSearch, inStockOnly])
 
+  useEffect(() => {
     // Autofocus the search bar if requested via navigation
     if (window.location.search.includes('focus=true')) {
       setTimeout(() => {
@@ -91,28 +80,6 @@ export default function Marketplace() {
       }, 350);
     }
   }, [])
-
-  const filteredCars = useMemo(() => {
-    let result = cars;
-    
-    // Apply tag filter
-    if (activeFilter !== 'All') {
-      result = result.filter(car => car.tags && car.tags.includes(activeFilter));
-    }
-    
-    // Apply search query filter
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(car =>
-        (car.name && car.name.toLowerCase().includes(query)) ||
-        (car.brand && car.brand.toLowerCase().includes(query)) ||
-        (car.carBrand && car.carBrand.toLowerCase().includes(query)) ||
-        (car.lane && car.lane.toLowerCase().includes(query))
-      );
-    }
-    
-    return result;
-  }, [cars, activeFilter, searchQuery])
 
   return (
     <div className="min-h-[100svh] bg-gk-black text-white selection:bg-gk-yellow selection:text-black pt-16">
@@ -169,6 +136,68 @@ export default function Marketplace() {
           </div>
         )}
 
+        {/* Horizontal Brand, Scale, Availability Filters & Items per Page */}
+        {!error && !isLoading && (
+          <div className="flex flex-col md:flex-row gap-4 justify-between items-center mb-10 bg-white/[0.02] border border-white/5 p-4 rounded-2xl max-w-4xl mx-auto backdrop-blur-md">
+            <div className="flex flex-wrap gap-5 items-center w-full md:w-auto">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[9px] uppercase tracking-widest text-white/40 font-black">Brand</label>
+                <select 
+                  value={brandFilter}
+                  onChange={(e) => { setBrandFilter(e.target.value); setPage(1); }}
+                  className="bg-[#090909] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-gk-orange transition-all min-w-[130px]"
+                >
+                  <option value="All">All Brands</option>
+                  <option value="Mini GT">Mini GT</option>
+                  <option value="Hotwheels">Hot Wheels</option>
+                  <option value="Solido">Solido</option>
+                  <option value="Flame">Flame</option>
+                  <option value="Coolcar">Coolcar</option>
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[9px] uppercase tracking-widest text-white/40 font-black">Scale</label>
+                <select 
+                  value={scaleFilter}
+                  onChange={(e) => { setScaleFilter(e.target.value); setPage(1); }}
+                  className="bg-[#090909] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-gk-orange transition-all min-w-[100px]"
+                >
+                  <option value="All">All Scales</option>
+                  <option value="1:64">1:64</option>
+                  <option value="1:32">1:32</option>
+                </select>
+              </div>
+
+              <div 
+                className="flex items-center gap-2 mt-4 md:mt-0 select-none cursor-pointer" 
+                onClick={() => { setInStockOnly(!inStockOnly); setPage(1); }}
+              >
+                <input 
+                  type="checkbox" 
+                  checked={inStockOnly} 
+                  onChange={() => {}} 
+                  className="accent-gk-orange cursor-pointer w-4.5 h-4.5"
+                />
+                <span className="text-xs font-bold text-white/70">In Stock Only</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 text-white/50 text-xs w-full md:w-auto justify-end">
+              <span>Items per page:</span>
+              <select 
+                value={limit}
+                onChange={(e) => { setLimit(parseInt(e.target.value, 10)); setPage(1); }}
+                className="bg-[#090909] border border-white/10 rounded-xl px-2 py-1.5 text-xs text-white focus:outline-none focus:border-gk-orange transition-all"
+              >
+                <option value={12}>12</option>
+                <option value={24}>24</option>
+                <option value={48}>48</option>
+              </select>
+            </div>
+          </div>
+        )}
+
         {error ? (
           <div className="text-center py-20 md:py-32">
             <div className="inline-block bg-red-500/20 border border-red-500/50 text-red-200 p-6 rounded-2xl max-w-lg">
@@ -184,134 +213,151 @@ export default function Marketplace() {
             </div>
           </div>
         ) : cars.length === 0 ? (
-          <div className="text-center py-20 md:py-32 text-white/50">The marketplace is currently empty.</div>
-        ) : filteredCars.length === 0 ? (
-          <div className="text-center py-20 md:py-32 text-white/50">No items found matching "{searchQuery}".</div>
+          <div className="text-center py-20 md:py-32 text-white/50">No items found matching your filters.</div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredCars.map((car, index) => {
-              const isSoldOut = car.availableStock !== undefined 
-                ? car.availableStock <= 0 
-                : (Number(car.totalStock || 0) - Number(car.soldStock || 0) <= 0);
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {cars.map((car, index) => {
+                const isSoldOut = car.availableStock !== undefined 
+                  ? car.availableStock <= 0 
+                  : (Number(car.totalStock || 0) - Number(car.soldStock || 0) <= 0);
 
-              return (
-                <motion.div
-                  key={car.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="group relative flex flex-col rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 overflow-hidden hover:bg-white/10 transition-colors duration-500"
-                >
-                  {/* Image */}
-                  <div className="aspect-[4/3] bg-black/10 overflow-hidden relative" onContextMenu={(e) => e.preventDefault()}>
-                    <div className="absolute inset-0 z-30" />
-                    <img
-                      src={car.image || '/vault-1.png'}
-                      alt={car.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-[0.22,1,0.36,1] pointer-events-none select-none"
-                      style={{ WebkitUserDrag: 'none' }}
-                    />
-                    {isSoldOut && (
-                      <div className="absolute inset-0 bg-black/60 backdrop-blur-[1.5px] z-25 flex items-center justify-center pointer-events-none">
-                        <span className="px-4 py-2 border border-red-500/40 bg-red-950/20 rounded-xl text-red-500 font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-red-500/5 select-none">
-                          Sold Out
-                        </span>
+                return (
+                  <motion.div
+                    key={car.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    onClick={() => navigate(`/product/${car.id}`)}
+                    className="group relative flex flex-col rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 overflow-hidden hover:bg-white/10 transition-colors duration-500 cursor-pointer"
+                  >
+                    {/* Image */}
+                    <div className="aspect-[4/3] bg-black/10 overflow-hidden relative" onContextMenu={(e) => e.preventDefault()}>
+                      <div className="absolute inset-0 z-30" />
+                      <img
+                        src={car.image || '/brand-logo.png'}
+                        alt={car.name}
+                        onError={(e) => {
+                          e.target.src = '/brand-logo.png';
+                          e.target.className = "w-full h-full object-contain p-6 bg-zinc-950/80 transition-transform duration-700 ease-[0.22,1,0.36,1] pointer-events-none select-none";
+                        }}
+                        className={car.image ? "w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-[0.22,1,0.36,1] pointer-events-none select-none" : "w-full h-full object-contain p-6 bg-zinc-950/80 transition-transform duration-700 ease-[0.22,1,0.36,1] pointer-events-none select-none"}
+                        style={{ WebkitUserDrag: 'none' }}
+                      />
+                      {isSoldOut && (
+                        <div className="absolute inset-0 bg-black/60 backdrop-blur-[1.5px] z-25 flex items-center justify-center pointer-events-none">
+                          <span className="px-4 py-2 border border-red-500/40 bg-red-950/20 rounded-xl text-red-500 font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-red-500/5 select-none">
+                            Sold Out
+                          </span>
+                        </div>
+                      )}
+                      <div className="absolute top-4 right-4 z-20 px-3 py-1 rounded-full bg-black/80 backdrop-blur-md border border-white/10 text-[10px] font-black uppercase tracking-widest text-gk-yellow pointer-events-none shadow-xl">
+                        {car.lane}
                       </div>
-                    )}
-                    <div className="absolute top-4 right-4 z-20 px-3 py-1 rounded-full bg-black/80 backdrop-blur-md border border-white/10 text-[10px] font-black uppercase tracking-widest text-gk-yellow pointer-events-none shadow-xl">
-                      {car.lane}
                     </div>
-                  </div>
 
-                  {/* Content */}
-                  <div className="p-6 flex flex-col grow">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="text-xs font-semibold uppercase tracking-wider text-white/40">{car.grade}</div>
-                      {car.scale && <div className="text-[10px] font-bold uppercase tracking-wider text-white/30 bg-white/5 px-2 py-0.5 rounded">{car.scale}</div>}
-                    </div>
-                    
-                    {(car.brand || car.carBrand) && (
-                      <div className="text-[10px] font-black uppercase tracking-widest text-gk-orange mb-1">
-                        {car.carBrand ? `${car.brand} • ${car.carBrand}` : car.brand}
+                    {/* Content */}
+                    <div className="p-6 flex flex-col grow">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="text-xs font-semibold uppercase tracking-wider text-white/40">{car.grade}</div>
+                        {car.scale && <div className="text-[10px] font-bold uppercase tracking-wider text-white/30 bg-white/5 px-2 py-0.5 rounded">{car.scale}</div>}
                       </div>
-                    )}
-                    
-                    {car.tags && car.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mb-2.5">
-                        {car.tags.map(tag => {
-                          let colorClass = 'bg-white/10 text-white/70 border-white/10';
-                          if (tag === 'Hot') colorClass = 'bg-[#E10600]/15 text-[#E10600] border-[#E10600]/30 shadow-[0_0_10px_rgba(225,6,0,0.15)]';
-                          if (tag === 'Trending') colorClass = 'bg-purple-500/15 text-purple-400 border-purple-500/30 shadow-[0_0_10px_rgba(168,85,247,0.15)]';
-                          if (tag === 'Rare') colorClass = 'bg-amber-500/15 text-amber-400 border-amber-500/30 shadow-[0_0_10px_rgba(245,158,11,0.15)]';
-                          return (
-                            <span key={tag} className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider border ${colorClass}`}>
-                              {tag}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    )}
-                    
-                    <h3 className="text-xl font-bold leading-tight mb-3 group-hover:text-gk-orange transition-colors">{car.name}</h3>
+                      
+                      {(car.brand || car.carBrand) && (
+                        <div className="text-[10px] font-black uppercase tracking-widest text-gk-orange mb-1">
+                          {car.carBrand ? `${car.brand} • ${car.carBrand}` : car.brand}
+                        </div>
+                      )}
+                      
+                      {car.tags && car.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mb-2.5">
+                          {car.tags.map(tag => {
+                            let colorClass = 'bg-white/10 text-white/70 border-white/10';
+                            if (tag === 'Hot') colorClass = 'bg-[#E10600]/15 text-[#E10600] border-[#E10600]/30 shadow-[0_0_10px_rgba(225,6,0,0.15)]';
+                            if (tag === 'Trending') colorClass = 'bg-purple-500/15 text-purple-400 border-purple-500/30 shadow-[0_0_10px_rgba(168,85,247,0.15)]';
+                            if (tag === 'Rare') colorClass = 'bg-amber-500/15 text-amber-400 border-amber-500/30 shadow-[0_0_10px_rgba(245,158,11,0.15)]';
+                            return (
+                              <span key={tag} className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider border ${colorClass}`}>
+                                {tag}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
+                      
+                      <h3 className="text-xl font-bold leading-tight mb-3 group-hover:text-gk-orange transition-colors">{car.name}</h3>
 
-                    {car.description && (
-                      <p className="text-sm text-white/50 line-clamp-3 mb-4">{car.description}</p>
-                    )}
-                    
-                    <div className="mt-auto pt-4 border-t border-white/10 flex items-center justify-between gap-4 w-full">
-                      {isSoldOut ? (
-                        <button
-                          disabled
-                          className="w-full py-3.5 rounded-xl bg-zinc-900 border border-white/5 text-zinc-600 font-black text-xs uppercase tracking-widest cursor-not-allowed text-center"
-                        >
-                          Sold Out
-                        </button>
-                      ) : settings.showPrices === true ? (
-                        <>
+                      {car.description && (
+                        <p className="text-sm text-white/50 line-clamp-3 mb-4">{car.description}</p>
+                      )}
+                      
+                      <div className="mt-auto pt-4 border-t border-white/10 flex items-center justify-between w-full">
+                        {isSoldOut ? (
+                          <div className="text-red-500 font-bold text-xs uppercase tracking-wider">
+                            Sold Out
+                          </div>
+                        ) : settings.showPrices === true ? (
                           <div>
                             <div className="text-[9px] uppercase tracking-wider text-white/40 mb-0.5">Price</div>
-                            <div className="font-mono text-base text-white font-medium">{car.currency || '₹'}{car.price}</div>
+                            <div className="font-mono text-base text-white font-bold">{car.currency || '₹'}{car.price}</div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => addToCart(car)}
-                              className="px-3 py-2 rounded-xl border border-white/10 hover:border-gk-orange/30 hover:bg-gk-orange/5 text-white/80 hover:text-white font-black text-[10px] uppercase tracking-wider transition-all active:scale-[0.98] cursor-pointer"
-                            >
-                              Add to Cart
-                            </button>
-                            <button
-                              onClick={() => handleBuyClick(car)}
-                              className="px-3.5 py-2 rounded-xl bg-gk-orange hover:bg-orange-500 text-white font-black text-[10px] uppercase tracking-wider transition-all hover:shadow-[0_0_20px_rgba(225,6,0,0.4)] active:scale-[0.98] cursor-pointer"
-                            >
-                              Buy Now
-                            </button>
+                        ) : (
+                          <div className="text-xs uppercase tracking-wider text-gk-orange font-bold">
+                            DM for Price
                           </div>
-                        </>
-                      ) : (
-                        <>
-                          <div className="text-xs uppercase tracking-wider text-gk-orange font-bold">DM for Price</div>
-                          <button
-                            onClick={() => handleBuyClick(car)}
-                            className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:border-gk-orange/30 hover:bg-gk-orange/5 text-white font-black text-xs uppercase tracking-wider transition-all cursor-pointer"
-                          >
-                            Inquire
-                          </button>
-                        </>
-                      )}
+                        )}
+                        <div className="text-[10px] font-bold text-white/40 uppercase tracking-wider group-hover:text-gk-orange transition-colors">
+                          View Details →
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex justify-center items-center gap-2 mt-12 bg-white/[0.01] border border-white/5 p-3 rounded-2xl max-w-md mx-auto backdrop-blur-md">
+                <button
+                  disabled={page === 1}
+                  onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                  className="px-3.5 py-2.5 rounded-xl border border-white/10 hover:border-gk-orange/30 bg-white/5 hover:bg-gk-orange/5 text-white font-black text-[10px] uppercase tracking-wider transition-all disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+                >
+                  ← Prev
+                </button>
+                
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => {
+                    const isActive = page === p;
+                    return (
+                      <button
+                        key={p}
+                        onClick={() => setPage(p)}
+                        className={`w-9 h-9 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          isActive 
+                            ? 'bg-gk-orange text-white font-black shadow-[0_0_15px_rgba(225,6,0,0.3)] border border-gk-orange' 
+                            : 'text-white/50 hover:text-white hover:bg-white/5 border border-white/5'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  disabled={page === totalPages}
+                  onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
+                  className="px-3.5 py-2.5 rounded-xl border border-white/10 hover:border-gk-orange/30 bg-white/5 hover:bg-gk-orange/5 text-white font-black text-[10px] uppercase tracking-wider transition-all disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+                >
+                  Next →
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
-      {/* Checkout Modals */}
-      <AnimatePresence>
-        {checkoutCar && (
-          <ReserveModal product={checkoutCar} onClose={() => setCheckoutCar(null)} />
-        )}
-      </AnimatePresence>
       <Footer />
     </div>
   )
