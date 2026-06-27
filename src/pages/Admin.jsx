@@ -1093,12 +1093,32 @@ export default function Admin() {
                           )}
                           {/* Pre-order: collect remaining payment */}
                           {order.bookingType === 'pre_order' && Number(order.remainingAmount) > 0 && (
-                            <button
-                              onClick={() => setCollectRemainingOrder({ id: order.id, remainingAmount: order.remainingAmount })}
-                              className="bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 font-extrabold text-[10px] px-4 py-2 rounded-lg uppercase tracking-wider transition-colors cursor-pointer"
-                            >
-                              Collect Remaining ₹{Number(order.remainingAmount).toLocaleString('en-IN')}
-                            </button>
+                            <>
+                              <button
+                                onClick={() => setCollectRemainingOrder({ id: order.id, remainingAmount: order.remainingAmount })}
+                                className="bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 font-extrabold text-[10px] px-4 py-2 rounded-lg uppercase tracking-wider transition-colors cursor-pointer"
+                              >
+                                Collect Remaining ₹{Number(order.remainingAmount).toLocaleString('en-IN')}
+                              </button>
+
+                              {order.status === 'Pre-Order' && (
+                                <button
+                                  onClick={async () => {
+                                    if (!confirm('Request remaining payment from the customer? This will notify them to pay the remaining balance.')) return;
+                                    const res = await fetch(`${API_BASE_URL}/admin/orders/${order.id}`, {
+                                      method: 'PATCH',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      credentials: 'include',
+                                      body: JSON.stringify({ status: 'Awaiting Stock' })
+                                    });
+                                    if (res.ok) await loadAllData();
+                                  }}
+                                  className="bg-orange-500 hover:bg-orange-600 text-black font-extrabold text-[10px] px-4 py-2 rounded-lg uppercase tracking-wider transition-colors cursor-pointer"
+                                >
+                                  🔔 Request Remaining Payment
+                                </button>
+                              )}
+                            </>
                           )}
                           {order.status === 'Confirmed' && (
                             <button

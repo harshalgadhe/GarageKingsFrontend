@@ -20,6 +20,13 @@ export default function Account() {
   const [profileSuccess, setProfileSuccess] = useState('');
   const [profileError, setProfileError] = useState('');
 
+  // Remaining Payment Upload State
+  const [uploadingOrderId, setUploadingOrderId] = useState(null);
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploadLoading, setUploadLoading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const [uploadSuccess, setUploadSuccess] = useState('');
+
   useEffect(() => {
     const currentUser = getCurrentUser();
     if (!currentUser) {
@@ -107,6 +114,48 @@ export default function Account() {
     }
   };
 
+  const handleUploadRemainingPayment = async (orderId) => {
+    if (!uploadFile) {
+      setUploadError('Please select a payment receipt image first.');
+      return;
+    }
+    setUploadLoading(true);
+    setUploadError('');
+    setUploadSuccess('');
+
+    const formData = new FormData();
+    formData.append('file', uploadFile);
+
+    const API_BASE_URL = import.meta.env.PROD 
+      ? '/api/v1' 
+      : (import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1');
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/orders/${orderId}/submit-remaining-payment`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json();
+        throw new Error(errJson.message || 'Failed to submit remaining payment.');
+      }
+
+      setUploadSuccess('Remaining payment screenshot submitted successfully! Admin will verify shortly.');
+      setUploadFile(null);
+      setUploadingOrderId(null);
+
+      // Reload orders
+      const updatedOrders = await getCustomerOrders();
+      setDbOrders(updatedOrders || []);
+    } catch (err) {
+      setUploadError(err.message || 'Error uploading receipt.');
+    } finally {
+      setUploadLoading(false);
+    }
+  };
+
   const handleLogout = async () => {
     await signOutCognito();
     window.location.href = '/account';
@@ -126,6 +175,9 @@ export default function Account() {
           createdAt: item.createdAt,
           expiresAt: item.expiresAt,
           screenshotUrl: item.screenshotUrl,
+          bookingType: item.bookingType,
+          advanceAmount: item.advanceAmount,
+          remainingAmount: item.remainingAmount,
           items: []
         };
       }
@@ -317,16 +369,83 @@ export default function Account() {
                           ))}
                         </div>
 
-                        <div className="flex justify-between items-center pt-4 border-t border-white/5 text-xs">
-                          <span className="text-zinc-500 font-mono flex items-center gap-1.5">
+                        <div className="flex justify-between items-start pt-4 border-t border-white/5 text-xs">
+                          <span className="text-zinc-500 font-mono flex items-center gap-1.5 mt-1">
                             <Calendar size={14} />
                             {new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                           </span>
-                          <div>
-                            <span className="text-zinc-500 mr-2">Total Paid</span>
-                            <span className="font-bold text-gk-orange font-mono text-sm">₹{parseFloat(order.totalPrice).toLocaleString('en-IN')}</span>
+                          
+                          <div className="text-right space-y-1">
+                            {order.bookingType === 'pre_order' ? (
+                              <>
+                                <div className="text-zinc-500">
+                                  Total Amount: <span className="font-mono text-white ml-1">₹{parseFloat(order.totalPrice).toLocaleString('en-IN')}</span>
+                                </div>
+                                <div className="text-zinc-500">
+                                  Advance Paid: <span className="font-mono text-emerald-400 font-bold ml-1">₹{parseFloat(order.advanceAmount || 0).toLocaleString('en-IN')}</span>
+                                </div>
+                                {Number(order.remainingAmount) > 0 && (
+                                  <div className="text-zinc-500">
+                                    Remaining Balance: <span className="font-mono text-amber-400 font-bold ml-1">₹{parseFloat(order.remainingAmount).toLocaleString('en-IN')}</span>
+                                  </div>
+                                )}
+                              </>
+                            ) : (
+                              <div>
+                                <span className="text-zinc-500 mr-2">Total Paid</span>
+                                <span className="font-bold text-gk-orange font-mono text-sm">₹{parseFloat(order.totalPrice).toLocaleString('en-IN')}</span>
+                              </div>
+                            )}
                           </div>
                         </div>
+
+                        {/* Customer Remaining Payment Action */}
+                        {order.bookingType === 'pre_order' && order.status === 'Awaiting Stock' && (
+                          <div className="mt-4 pt-4 border-t border-white/5 space-y-4 bg-amber-500/[0.02] border border-amber-500/10 rounded-xl p-4">
+                            <div>
+                              <div className="text-xs font-bold text-amber-400">⚠️ Remaining Balance Requested</div>
+                              <p className="text-[10px] text-zinc-500 mt-0.5 leading-relaxed">
+                                Stock has arrived! Please complete your remaining payment of <span className="text-white font-mono font-bold">₹{parseFloat(order.remainingAmount).toLocaleString('en-IN')}</span> using UPI and upload the receipt screenshot below.
+                              </p>
+                            </div>
+
+                            {uploadSuccess && uploadingOrderId === order.id && (
+                              <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-[10px] text-emerald-400 font-bold uppercase tracking-wider animate-pulse">
+                                {uploadSuccess}
+                              </div>
+                            )}
+
+                            {uploadError && uploadingOrderId === order.id && (
+                              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-[10px] text-red-400 font-bold uppercase tracking-wider">
+                                {uploadError}
+                              </div>
+                            )}
+
+                            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                              <input 
+                                type="file" 
+                                accept="image/*"
+                                onChange={(e) => {
+                                  if (e.target.files && e.target.files[0]) {
+                                    setUploadFile(e.target.files[0]);
+                                    setUploadingOrderId(order.id);
+                                    setUploadError('');
+                                    setUploadSuccess('');
+                                  }
+                                }}
+                                className="text-xs text-zinc-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-[10px] file:font-black file:uppercase file:tracking-wider file:bg-white/5 file:text-white hover:file:bg-white/10 file:cursor-pointer"
+                              />
+
+                              <button
+                                onClick={() => handleUploadRemainingPayment(order.id)}
+                                disabled={uploadLoading && uploadingOrderId === order.id}
+                                className="bg-[#ff5500] hover:bg-orange-600 disabled:opacity-50 text-black font-extrabold text-[10px] uppercase tracking-widest px-4 py-2.5 rounded-lg transition-colors cursor-pointer w-full sm:w-auto flex-shrink-0"
+                              >
+                                {uploadLoading && uploadingOrderId === order.id ? 'Submitting...' : 'Upload Receipt'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

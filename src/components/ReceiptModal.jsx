@@ -48,21 +48,57 @@ export default function ReceiptModal({ orderId, receiptData, onClose, apiBaseUrl
     <div id="gk-receipt-root-portal">
       <style>{`
         @media print {
-          body > *:not(#gk-receipt-root-portal) { display: none !important; }
-          #gk-receipt-root-portal { display: block !important; }
-          #gk-receipt-root {
-            position: absolute !important; left: 0 !important; top: 0 !important;
-            width: 100% !important; height: auto !important;
+          html, body {
             background: white !important;
-            color: black !important; padding: 32px !important;
-            border-radius: 0 !important; border: none !important;
+            color: black !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          body > *:not(#gk-receipt-root-portal) { display: none !important; }
+          #gk-receipt-root-portal {
+            display: block !important;
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            height: auto !important;
+            background: white !important;
+            color: black !important;
+          }
+          #gk-receipt-root {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            height: auto !important;
+            background: white !important;
+            color: black !important;
+            padding: 24px !important;
+            border-radius: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
+            max-height: none !important;
+            overflow: visible !important;
           }
           .no-print { display: none !important; }
-          #gk-receipt-root .text-white { color: #111 !important; }
-          #gk-receipt-root .text-white\\/40, #gk-receipt-root .text-white\\/50, #gk-receipt-root .text-white\\/60 { color: #555 !important; }
-          #gk-receipt-root .bg-white\\/\\[0\\.02\\] { background: #f9fafb !important; }
-          #gk-receipt-root .border-white\\/5 { border-color: #e5e7eb !important; }
-          #gk-receipt-root .bg-white\\/\\[0\\.03\\] { background: #f3f4f6 !important; }
+          #gk-receipt-root * {
+            color: black !important;
+            background-color: transparent !important;
+            border-color: #e5e7eb !important;
+            box-shadow: none !important;
+            text-shadow: none !important;
+          }
+          #gk-receipt-root .text-\[\#ff5500\\] {
+            color: #e64a19 !important;
+          }
+          #gk-receipt-root .text-emerald-400 {
+            color: #1b5e20 !important;
+          }
+          #gk-receipt-root .text-amber-400 {
+            color: #e65100 !important;
+          }
         }
       `}</style>
 

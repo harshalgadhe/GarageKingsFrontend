@@ -115,6 +115,16 @@ export default function Checkout() {
     ? cartItems.reduce((sum, item) => sum + Number(item.price || 0) * (item.quantity || 1), 0)
     : Number(product?.price || 0) * urlQty
   
+  const canPreOrder = isCart 
+    ? cartItems.some(item => item.isPrebook === true || item.is_prebook === true)
+    : !!(product && (product.isPrebook === true || product.is_prebook === true))
+
+  useEffect(() => {
+    if (!canPreOrder) {
+      setIsPreOrder(false)
+    }
+  }, [canPreOrder])
+
   const advanceAmount = isPreOrder ? Math.round(totalPrice * advancePercent / 100) : totalPrice
 
   const handleReserve = async (e) => {
@@ -351,8 +361,8 @@ export default function Checkout() {
                 />
               </div>
 
-              {/* Pre-order toggle (only if prices are visible) */}
-              {settings.showPrices && (
+              {/* Pre-order toggle (only if prices are visible and products allow pre-order) */}
+              {settings.showPrices && canPreOrder && (
                 <div className="bg-black/30 border border-white/5 rounded-2xl p-5 space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
