@@ -1592,14 +1592,6 @@ export default function Admin() {
                     >
                       Refresh Logs
                     </button>
-                    <button
-                      onClick={() => {
-                        throw new Error("Telemetry Test Error: This is a manual test error triggered by admin console.");
-                      }}
-                      className="bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-red-400 font-bold text-[10px] px-3.5 py-2 rounded-xl uppercase tracking-wider transition-colors cursor-pointer"
-                    >
-                      Trigger Test Error
-                    </button>
                   </div>
                 </div>
 
