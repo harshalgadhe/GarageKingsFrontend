@@ -13,7 +13,7 @@ export default function Footer() {
             <img
               src="/brand-logo.png"
               alt={BRAND.name}
-              className="h-10 w-10 rounded-full object-cover ring-1 ring-gk-orange/30"
+              className="h-10 w-10 object-contain"
             />
             <div>
               <span className="block text-sm font-black tracking-tight text-white">{BRAND.name}</span>

@@ -158,7 +158,7 @@ export default function Navigation({ activeSection }) {
             <img
               src="/brand-logo.png"
               alt={BRAND.name}
-              className="h-10 w-10 md:h-12 md:w-12 rounded-full object-cover ring-1 ring-gk-yellow/30 shadow-[0_0_15px_rgba(216,198,163,0.15)]"
+              className="h-10 w-10 md:h-12 md:w-12 object-contain"
             />
             <span className="text-left">
               <span className="block text-[8px] md:text-[9px] font-black uppercase tracking-[0.25em] text-gk-yellow">
