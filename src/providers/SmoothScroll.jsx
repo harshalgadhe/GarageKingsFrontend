@@ -1,5 +1,6 @@
 import Lenis from 'lenis'
 import { createContext, useContext, useEffect, useRef } from 'react'
+import { useLocation } from 'react-router-dom'
 
 const LenisContext = createContext(null)
 
@@ -9,6 +10,8 @@ export function useLenis() {
 
 export function SmoothScrollProvider({ children }) {
   const lenisRef = useRef(null)
+  const location = useLocation()
+
   useEffect(() => {
     const lenis = new Lenis({
       duration: 1.35,
@@ -36,6 +39,15 @@ export function SmoothScrollProvider({ children }) {
       lenisRef.current = null
     }
   }, [])
+
+  useEffect(() => {
+    // Scroll to top immediately on page/route change
+    const lenis = lenisRef.current
+    if (lenis) {
+      lenis.scrollTo(0, { immediate: true })
+    }
+    window.scrollTo(0, 0)
+  }, [location.pathname])
 
   return (
     <LenisContext.Provider value={lenisRef}>{children}</LenisContext.Provider>
