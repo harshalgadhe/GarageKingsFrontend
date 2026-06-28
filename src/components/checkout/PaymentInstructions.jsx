@@ -30,10 +30,6 @@ export default function PaymentInstructions({ upiId, upiQrImage, price }) {
             src={qrUrl} 
             alt="UPI QR Code" 
             className="w-full h-full object-contain"
-            onError={(e) => {
-              e.target.style.display = 'none';
-              e.target.parentNode.innerHTML = `<span class="text-black font-extrabold text-xs text-center uppercase tracking-tighter">Scan QR<br/>to Pay</span>`;
-            }}
           />
         </div>
         <p className="text-[9px] text-[#666666] uppercase tracking-wider text-center">
