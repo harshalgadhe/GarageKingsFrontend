@@ -2357,7 +2357,7 @@ export default function Admin() {
                     <span></span>
                   </div>
 
-                  <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
+                  <div className="space-y-2 pr-1">
                     {manualReceiptForm.items.map((item, idx) => (
                       <div key={idx} className="grid grid-cols-[1fr_56px_80px_28px] gap-2 items-center">
                         <div className="relative flex-1">
@@ -2390,8 +2390,8 @@ export default function Admin() {
                                 .filter(c => {
                                   const searchQ = (itemSearchQueries[idx] || '').toLowerCase().trim();
                                   const matchesSearch = !searchQ || 
-                                    c.brand.toLowerCase().includes(searchQ) || 
-                                    c.name.toLowerCase().includes(searchQ) || 
+                                    (c.brand || '').toLowerCase().includes(searchQ) || 
+                                    (c.name || '').toLowerCase().includes(searchQ) || 
                                     (c.scale && c.scale.toLowerCase().includes(searchQ));
                                   return Number(c.availableStock) > 0 && matchesSearch;
                                 })
@@ -2404,7 +2404,7 @@ export default function Admin() {
                                     onClick={() => {
                                       const newItems = [...manualReceiptForm.items];
                                       newItems[idx].productId = c.id;
-                                      newItems[idx].description = `${c.brand} ${c.name}`;
+                                      newItems[idx].description = `${c.brand || ''} ${c.name || ''}`.trim();
                                       newItems[idx].unitPrice = Number(c.price);
                                       newItems[idx].maxQty = Number(c.availableStock);
                                       if (newItems[idx].qty > newItems[idx].maxQty) {
@@ -2420,7 +2420,7 @@ export default function Admin() {
                                     }}
                                     className="px-3 py-2 text-xs text-white/80 hover:bg-[#ff5500] hover:text-white cursor-pointer flex justify-between items-center transition-colors"
                                   >
-                                    <span>{c.brand} - {c.name} ({c.scale})</span>
+                                    <span>{c.brand || 'No Brand'} - {c.name || 'Unnamed Casting'} ({c.scale || 'N/A'})</span>
                                     <span className="text-[10px] opacity-60">Stock: {c.availableStock} | ₹{c.price}</span>
                                   </div>
                                 ))}
@@ -2428,8 +2428,8 @@ export default function Admin() {
                                 const searchQ = (itemSearchQueries[idx] || '').toLowerCase().trim();
                                 return Number(c.availableStock) > 0 && (
                                   !searchQ || 
-                                  c.brand.toLowerCase().includes(searchQ) || 
-                                  c.name.toLowerCase().includes(searchQ) || 
+                                  (c.brand || '').toLowerCase().includes(searchQ) || 
+                                  (c.name || '').toLowerCase().includes(searchQ) || 
                                   (c.scale && c.scale.toLowerCase().includes(searchQ))
                                 );
                               }).length === 0 && (
