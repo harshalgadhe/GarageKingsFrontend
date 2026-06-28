@@ -88,18 +88,22 @@ export default function Checkout() {
 
         // Prefill profile information
         const user = getCurrentUser()
-        if (user) {
-          setEmail(user.email || '')
-          setName(user.displayName || '')
+        if (!user) {
+          // Force login
+          window.location.href = `/login?returnTo=${encodeURIComponent(window.location.pathname + window.location.search)}`
+          return
+        }
+        
+        setEmail(user.email || '')
+        setName(user.displayName || '')
 
-          const res = await fetch(`${API_BASE_URL}/profile/my`)
-          if (res.ok) {
-            const prof = await res.json()
-            if (prof) {
-              if (prof.fullName) setName(prof.fullName)
-              if (prof.phone && !prof.phone.startsWith('unknown_')) setPhone(prof.phone)
-              if (prof.address) setAddress(prof.address)
-            }
+        const res = await fetch(`${API_BASE_URL}/profile/my`)
+        if (res.ok) {
+          const prof = await res.json()
+          if (prof) {
+            if (prof.fullName) setName(prof.fullName)
+            if (prof.phone && !prof.phone.startsWith('unknown_')) setPhone(prof.phone)
+            if (prof.address) setAddress(prof.address)
           }
         }
       } catch (e) {
