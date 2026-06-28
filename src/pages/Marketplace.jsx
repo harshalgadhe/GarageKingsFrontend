@@ -21,7 +21,10 @@ export default function Marketplace() {
   const limit = 12
   const [totalPages, setTotalPages] = useState(1)
   const [totalItems, setTotalItems] = useState(0)
-  const [brandFilter, setBrandFilter] = useState('All')
+  const [brandFilter, setBrandFilter] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('brand') || 'All';
+  })
   const [scaleFilter, setScaleFilter] = useState('All')
   const [inStockOnly, setInStockOnly] = useState(false)
   const [preBookingOnly, setPreBookingOnly] = useState(false)
@@ -120,10 +123,13 @@ export default function Marketplace() {
             {[
               { label: 'All Brands', value: 'All' },
               { label: 'Mini GT', value: 'Mini GT' },
+              { label: 'Kaido House', value: 'Kaido House' },
               { label: 'Hot Wheels', value: 'Hotwheels' },
+              { label: 'Takara Tomy', value: 'Takara Tomy' },
+              { label: 'POP Race', value: 'POP Race' },
+              { label: 'Cool Car', value: 'COOLCAR' },
               { label: 'Solido', value: 'Solido' },
-              { label: 'Flame', value: 'Flame' },
-              { label: 'Coolcar', value: 'Coolcar' }
+              { label: 'Flame', value: 'Flame' }
             ].map(brand => {
               const isActive = brandFilter === brand.value;
               return (

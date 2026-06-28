@@ -157,7 +157,14 @@ const LookbookGallery = forwardRef(function LookbookGallery(props, ref) {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.15 }}
                 transition={{ duration: 0.7, delay: idx * 0.1, ease: [0.22, 1, 0.36, 1] }}
-                className="bg-[#151515] rounded-xl border border-white/[0.02] p-4 flex flex-col justify-between h-[310px] group hover:border-white/10 transition-all duration-500 relative overflow-hidden"
+                onClick={() => {
+                  if (item.id && item.id.length === 36) {
+                    navigate(`/product/${item.id}`)
+                  } else {
+                    navigate('/marketplace')
+                  }
+                }}
+                className="bg-[#151515] rounded-xl border border-white/[0.02] p-4 flex flex-col justify-between h-[310px] group hover:border-white/10 transition-all duration-500 relative overflow-hidden cursor-pointer hover:bg-zinc-900"
               >
                 {/* Image Container: 70% of Card Height */}
                 <div className="relative w-full h-[155px] bg-zinc-950/20 rounded-lg flex items-center justify-center overflow-hidden mb-4 shrink-0">
@@ -181,21 +188,9 @@ const LookbookGallery = forwardRef(function LookbookGallery(props, ref) {
                   </div>
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-zinc-900/60">
                     <span className="text-xs font-bold text-gk-gold font-mono tracking-tight">{item.price}</span>
-                    <div className="flex gap-2 items-center">
-                      <button 
-                        onClick={() => window.open("https://www.instagram.com/garagekingsindia/", '_blank')}
-                        className="text-[9px] font-bold uppercase tracking-wider text-gk-orange hover:text-white transition-colors cursor-pointer"
-                      >
-                        Insta
-                      </button>
-                      <span className="text-zinc-700 text-[9px] select-none">•</span>
-                      <button 
-                        onClick={() => window.open("https://chat.whatsapp.com/EX1NbXHU63ZCQ4qhFVCubb", '_blank')}
-                        className="text-[9px] font-bold uppercase tracking-wider text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
-                      >
-                        WhatsApp
-                      </button>
-                    </div>
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-gk-orange group-hover:translate-x-1 transition-transform duration-300">
+                      View Model →
+                    </span>
                   </div>
                 </div>
               </motion.div>

@@ -67,11 +67,23 @@ export default function ReceiptModal({ orderId, receiptData, onClose, apiBaseUrl
             background: white !important;
             color: black !important;
           }
+          #gk-receipt-backdrop {
+            background: white !important;
+            position: relative !important;
+            inset: auto !important;
+            padding: 0 !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            display: block !important;
+            width: 100% !important;
+            height: auto !important;
+          }
           #gk-receipt-root {
             position: absolute !important;
             left: 0 !important;
             top: 0 !important;
             width: 100% !important;
+            max-width: 100% !important;
             height: auto !important;
             background: white !important;
             color: black !important;
@@ -104,12 +116,13 @@ export default function ReceiptModal({ orderId, receiptData, onClose, apiBaseUrl
 
       {/* Backdrop */}
       <div
+        id="gk-receipt-backdrop"
         className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md"
         onClick={(e) => e.target === e.currentTarget && onClose()}
       >
         <div
           id="gk-receipt-root"
-          className="w-full max-w-2xl bg-[#0a0a0a] border border-white/8 rounded-2xl flex flex-col max-h-[92vh] shadow-[0_0_120px_-20px_rgba(255,85,0,0.25)] overflow-hidden"
+          className="w-full max-w-2xl bg-[#0a0a0a] border border-white/8 rounded-2xl flex flex-col h-[96vh] md:h-[94vh] shadow-[0_0_120px_-20px_rgba(255,85,0,0.25)] overflow-hidden"
         >
           {/* Orange accent bar */}
           <div className="h-[2px] bg-gradient-to-r from-[#ff5500]/20 via-[#ff5500] to-[#ff5500]/20 flex-shrink-0" />

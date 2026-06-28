@@ -13,15 +13,15 @@ const MotionLink = motion.create(Link)
 
 const links = [
   { id: 'hero', label: 'Home' },
+  { id: 'archive', label: 'Brands' },
   { id: 'gallery', label: 'Collections' },
-  { id: 'archive', label: 'Drops' },
   { id: 'releases', label: 'Next Drop' },
 ]
 
 const mobileLinks = [
   { id: 'hero', label: 'Home', type: 'anchor' },
+  { id: 'archive', label: 'Brands', type: 'anchor' },
   { id: 'gallery', label: 'Collections', type: 'anchor' },
-  { id: 'archive', label: 'Drops', type: 'anchor' },
   { id: 'releases', label: 'Next Drop', type: 'anchor' },
   { id: 'marketplace', label: 'Marketplace', type: 'route', path: '/marketplace' },
 ]

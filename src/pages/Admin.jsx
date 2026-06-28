@@ -4,7 +4,7 @@ import {
   Plus, Trash2, Edit2, Save, X, Settings, Eye, EyeOff, LogOut, User, Search,
   DollarSign, TrendingUp, Bell, FileText, Users, AlertTriangle, Layers, Calendar, Receipt
 } from 'lucide-react';
-import { getSetupStatus, getCurrentUser, signOutCognito } from '../lib/auth';
+import { getCurrentUser, signOutCognito } from '../lib/auth';
 import { 
   getCars, addCar, updateCar, deleteCar, uploadImageToStorage, getGlobalSettings, updateGlobalSettings,
   getReceipts, addReceipt, deleteReceipt 
@@ -39,7 +39,7 @@ export default function Admin() {
       if (res.ok) {
         setKpis(await res.json());
       } else {
-        alert("Failed to load KPIs");
+        showToast("Failed to load KPIs", "error");
       }
     } catch (e) {
       console.error("Error loading KPIs:", e);
@@ -55,7 +55,7 @@ export default function Admin() {
       if (res.ok) {
         setAnalytics(await res.json());
       } else {
-        alert("Failed to load Analytics");
+        showToast("Failed to load Analytics", "error");
       }
     } catch (e) {
       console.error("Error loading Analytics:", e);
@@ -96,8 +96,23 @@ export default function Admin() {
   const [receiptsList, setReceiptsList] = useState([]);
   const [selectedReceipt, setSelectedReceipt] = useState(null);
   const [isCreatingReceipt, setIsCreatingReceipt] = useState(false);
+  const [previewInvoiceData, setPreviewInvoiceData] = useState(null);
   const [telemetryLogs, setTelemetryLogs] = useState([]);
+  const [toast, setToast] = useState(null); // { message: '', type: 'success' | 'error' | 'warning' }
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+  };
   const [expandedLogs, setExpandedLogs] = useState({});
+  const [activeSearchIdx, setActiveSearchIdx] = useState(null);
+  const [itemSearchQueries, setItemSearchQueries] = useState({});
   const [manualReceiptForm, setManualReceiptForm] = useState({
     receiptNumber: '',
     customerName: '',
@@ -106,8 +121,9 @@ export default function Admin() {
     customerAddress: '',
     shippingCharges: 0,
     advancePaid: 0,
+    formatType: 'standard',
     footerNote: 'Thank you for choosing Garage Kings!',
-    items: [{ description: '', qty: 1, unitPrice: 0 }]
+    items: [{ productId: '', description: '', qty: 1, unitPrice: 0, maxQty: 0 }]
   });
 
   // Local drop settings form state
@@ -213,12 +229,6 @@ export default function Admin() {
   useEffect(() => {
     async function checkSetupAndLoad() {
       try {
-        const setup = await getSetupStatus();
-        if (setup && setup.isSetupRequired) {
-          navigate('/setup');
-          return;
-        }
-
         const activeSession = getCurrentUser();
         setUser(activeSession);
         if (activeSession) {
@@ -230,7 +240,7 @@ export default function Admin() {
           }
         }
       } catch (err) {
-        console.error("Setup validation failed:", err);
+        console.error("Session validation failed:", err);
       } finally {
         setIsLoading(false);
       }
@@ -332,7 +342,7 @@ export default function Admin() {
       const url = await uploadImageToStorage(file);
       setProductForm(prev => ({ ...prev, image: url }));
     } catch (err) {
-      alert("Image archival upload failed: " + err.message);
+      showToast("Image archival upload failed: " + err.message, "error");
     } finally {
       setUploadingImage(false);
     }
@@ -351,7 +361,7 @@ export default function Admin() {
       setEditingProductId(null);
       await loadAllData();
     } catch (err) {
-      alert(err.message);
+      showToast(err.message, "error");
     }
   };
 
@@ -380,7 +390,7 @@ export default function Admin() {
       await deleteCar(id);
       await loadAllData();
     } catch (err) {
-      alert(err.message);
+      showToast(err.message, "error");
     }
   };
 
@@ -397,7 +407,7 @@ export default function Admin() {
       if (!res.ok) throw new Error("Verification confirmation failed.");
       await loadAllData();
     } catch (err) {
-      alert(err.message);
+      showToast(err.message, "error");
     }
   };
 
@@ -413,7 +423,7 @@ export default function Admin() {
       if (!res.ok) throw new Error("Order cancellation failed.");
       await loadAllData();
     } catch (err) {
-      alert(err.message);
+      showToast(err.message, "error");
     }
   };
 
@@ -433,7 +443,7 @@ export default function Admin() {
       setShippingModalOrder(null);
       await loadAllData();
     } catch (err) {
-      alert(err.message);
+      showToast(err.message, "error");
     }
   };
 
@@ -451,7 +461,7 @@ export default function Admin() {
       setIsAddingExpense(false);
       await loadAllData();
     } catch (err) {
-      alert(err.message);
+      showToast(err.message, "error");
     }
   };
 
@@ -465,7 +475,7 @@ export default function Admin() {
       if (!res.ok) throw new Error("Failed to delete expense log.");
       await loadAllData();
     } catch (err) {
-      alert(err.message);
+      showToast(err.message, "error");
     }
   };
 
@@ -483,7 +493,7 @@ export default function Admin() {
       setIsAddingSettlement(false);
       await loadAllData();
     } catch (err) {
-      alert(err.message);
+      showToast(err.message, "error");
     }
   };
 
@@ -498,7 +508,7 @@ export default function Admin() {
       if (!res.ok) throw new Error("Failed to update section visibility");
       await loadAllData();
     } catch (err) {
-      alert(err.message);
+      showToast(err.message, "error");
     }
   };
 
@@ -507,7 +517,7 @@ export default function Admin() {
       await updateGlobalSettings(updates);
       await loadAllData();
     } catch (err) {
-      alert(err.message);
+      showToast(err.message, "error");
     }
   };
 
@@ -1000,7 +1010,7 @@ export default function Admin() {
                               <button
                                 onClick={() => {
                                   navigator.clipboard.writeText(order.instagramUsername);
-                                  alert('Instagram handle copied to clipboard.');
+                                  showToast('Instagram handle copied to clipboard.', 'success');
                                 }}
                                 className="text-[9px] font-bold text-[#ff5500] hover:underline uppercase cursor-pointer bg-transparent border-0 p-0"
                               >
@@ -1192,9 +1202,11 @@ export default function Admin() {
                       customerAddress: '',
                       shippingCharges: 0,
                       advancePaid: 0,
+                      formatType: 'standard',
                       footerNote: 'Thank you for choosing Garage Kings!',
-                      items: [{ description: '', qty: 1, unitPrice: 0 }]
+                      items: [{ productId: '', description: '', qty: 1, unitPrice: 0, maxQty: 0 }]
                     });
+                    setPreviewInvoiceData(null);
                     setIsCreatingReceipt(true);
                   }}
                   className="bg-[#ff5500] hover:bg-[#ff6611] text-black font-extrabold text-xs px-4 py-2.5 rounded-xl uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1.5"
@@ -1264,10 +1276,10 @@ export default function Admin() {
                                   if (!confirm(`Are you sure you want to delete invoice ${rec.receipt_number}?`)) return;
                                   try {
                                     await deleteReceipt(rec.id);
-                                    addNotification({ type: 'success', text: 'Invoice deleted successfully' });
+                                    showToast('Invoice deleted successfully', 'success');
                                     loadAllData();
                                   } catch (err) {
-                                    addNotification({ type: 'error', text: 'Failed to delete invoice' });
+                                    showToast('Failed to delete invoice', 'error');
                                   }
                                 }}
                                 className="p-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-all cursor-pointer"
@@ -1824,7 +1836,7 @@ export default function Admin() {
                       setActiveScreenshotOrder(null);
                       await loadAllData();
                     } catch (err) {
-                      alert(err.message);
+                      showToast(err.message, "error");
                     }
                   }}
                   className="w-full bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-black font-extrabold text-xs py-3 rounded-xl uppercase tracking-wider transition-all shadow-[0_4px_20px_-4px_rgba(52,211,153,0.4)] cursor-pointer"
@@ -1847,7 +1859,7 @@ export default function Admin() {
                       setActiveScreenshotOrder(null);
                       await loadAllData();
                     } catch (err) {
-                      alert(err.message);
+                      showToast(err.message, "error");
                     }
                   }}
                   className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 font-extrabold text-xs py-2.5 rounded-xl uppercase tracking-wider border border-red-500/20 transition-all cursor-pointer"
@@ -2175,7 +2187,7 @@ export default function Admin() {
             <button
               onClick={async () => {
                 if (!collectRemainingFile) {
-                  alert('Please select a screenshot file first.');
+                  showToast('Please select a screenshot file first.', 'warning');
                   return;
                 }
                 setCollectRemainingLoading(true);
@@ -2191,12 +2203,12 @@ export default function Admin() {
                     const err = await res.json();
                     throw new Error(err.message || 'Failed.');
                   }
-                  alert('Remaining payment recorded successfully!');
+                  showToast('Remaining payment recorded successfully!', 'success');
                   setCollectRemainingOrder(null);
                   setCollectRemainingFile(null);
                   await loadAllData();
                 } catch (e) {
-                  alert('Error: ' + e.message);
+                  showToast('Error: ' + e.message, 'error');
                 } finally {
                   setCollectRemainingLoading(false);
                 }
@@ -2217,272 +2229,427 @@ export default function Admin() {
       </div>
     )}
     {/* ── CREATE MANUAL INVOICE MODAL ───────────────────────── */}
-    {isCreatingReceipt && (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
-        <div className="w-full max-w-2xl bg-[#0f0f0f] border border-white/5 rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl relative max-h-[90vh] overflow-y-auto" data-lenis-prevent="true">
-          <div className="h-[2px] bg-gradient-to-r from-[#ff5500]/20 via-[#ff5500] to-[#ff5500]/20 -mx-8 -mt-8 rounded-t-3xl" />
-          
-          <div className="flex justify-between items-start">
-            <div>
-              <div className="text-[9px] font-black text-[#ff5500] uppercase tracking-widest">Manual Billing</div>
-              <h3 className="text-lg font-black text-white mt-1">Create Custom Invoice</h3>
-            </div>
-            <button 
-              onClick={() => setIsCreatingReceipt(false)} 
-              className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 text-white/40 hover:text-white border border-white/5 transition-colors cursor-pointer"
-            >
-              <X size={14} />
-            </button>
-          </div>
+    {isCreatingReceipt && (() => {
+      const isPreBook = manualReceiptForm.formatType === 'pre_order';
+      const lineSubtotal = manualReceiptForm.items.reduce((s, i) => s + Number(i.qty) * Number(i.unitPrice), 0);
+      const grandTotal = lineSubtotal + Number(manualReceiptForm.shippingCharges || 0);
+      const advancePaid = isPreBook ? Number(manualReceiptForm.advancePaid || 0) : grandTotal;
+      const pendingBalance = isPreBook ? Math.max(0, grandTotal - advancePaid) : 0;
+      const fmtM = (n) => Number(n || 0).toLocaleString('en-IN');
 
-          <div className="space-y-4">
-            {/* General Info */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Invoice Number</label>
-                <input
-                  type="text"
-                  value={manualReceiptForm.receiptNumber}
-                  onChange={(e) => setManualReceiptForm(prev => ({ ...prev, receiptNumber: e.target.value }))}
-                  className="w-full px-4 py-3 bg-[#141414] border border-white/5 rounded-xl text-xs text-white focus:outline-none focus:border-[#ff5500]/50 font-mono"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Customer Name *</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Rahul Sharma"
-                  value={manualReceiptForm.customerName}
-                  onChange={(e) => setManualReceiptForm(prev => ({ ...prev, customerName: e.target.value }))}
-                  className="w-full px-4 py-3 bg-[#141414] border border-white/5 rounded-xl text-xs text-white focus:outline-none focus:border-[#ff5500]/50"
-                  required
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Phone</label>
-                <input
-                  type="text"
-                  placeholder="e.g. 9876543210"
-                  value={manualReceiptForm.customerPhone}
-                  onChange={(e) => setManualReceiptForm(prev => ({ ...prev, customerPhone: e.target.value }))}
-                  className="w-full px-4 py-3 bg-[#141414] border border-white/5 rounded-xl text-xs text-white focus:outline-none focus:border-[#ff5500]/50"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Instagram Username</label>
-                <div className="relative">
-                  <span className="absolute left-4 top-3.5 text-xs text-white/30">@</span>
-                  <input
-                    type="text"
-                    placeholder="username"
-                    value={manualReceiptForm.customerInstagram}
-                    onChange={(e) => setManualReceiptForm(prev => ({ ...prev, customerInstagram: e.target.value }))}
-                    className="w-full pl-8 pr-4 py-3 bg-[#141414] border border-white/5 rounded-xl text-xs text-white focus:outline-none focus:border-[#ff5500]/50"
-                  />
-                </div>
-              </div>
-            </div>
+      return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+          <div className="w-full max-w-3xl bg-[#0f0f0f] border border-white/5 rounded-3xl shadow-2xl relative flex flex-col max-h-[92vh] overflow-hidden">
+            {/* Top accent */}
+            <div className="h-[2px] bg-gradient-to-r from-[#ff5500]/20 via-[#ff5500] to-[#ff5500]/20 flex-shrink-0" />
 
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Shipping Address</label>
-              <textarea
-                placeholder="Full delivery address details..."
-                value={manualReceiptForm.customerAddress}
-                onChange={(e) => setManualReceiptForm(prev => ({ ...prev, customerAddress: e.target.value }))}
-                className="w-full px-4 py-3 bg-[#141414] border border-white/5 rounded-xl text-xs text-white focus:outline-none focus:border-[#ff5500]/50 h-20 resize-none"
-              />
-            </div>
-
-            {/* Line Items */}
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Line Items *</label>
+            {/* Header */}
+            <div className="flex justify-between items-center px-6 py-4 border-b border-white/5 flex-shrink-0">
+              <div>
+                <div className="text-[9px] font-black text-[#ff5500] uppercase tracking-widest">Manual Billing</div>
+                <h3 className="text-base font-black text-white mt-0.5">Create Custom Invoice</h3>
+              </div>
+              <div className="flex items-center gap-2">
                 <button
-                  type="button"
-                  onClick={() => setManualReceiptForm(prev => ({
-                    ...prev,
-                    items: [...prev.items, { description: '', qty: 1, unitPrice: 0 }]
-                  }))}
-                  className="text-[10px] text-[#ff5500] hover:text-[#ff6611] font-bold uppercase tracking-wider flex items-center gap-1 bg-transparent border-none cursor-pointer"
+                  onClick={() => setIsCreatingReceipt(false)}
+                  className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 text-white/40 hover:text-white border border-white/5 transition-colors cursor-pointer"
                 >
-                  <Plus size={10} /> Add Item
+                  <X size={14} />
                 </button>
               </div>
+            </div>
 
-              <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1 font-sans">
-                {manualReceiptForm.items.map((item, idx) => (
-                  <div key={idx} className="flex gap-2 items-center">
+            {/* Scrollable content */}
+            <div className="overflow-y-auto flex-1 min-h-0" data-lenis-prevent="true">
+              <div className="p-6 space-y-5">
+                {/* Pre-Order Toggle */}
+                <div className="bg-amber-500/[0.04] border border-amber-500/10 rounded-2xl p-4 flex items-center justify-between gap-4">
+                  <div>
+                    <div className="text-xs font-bold text-white">Pre-Order Booking</div>
+                    <div className="text-[10px] text-white/40 mt-0.5">Enable for partial advance payment invoices. Shows advance paid &amp; pending balance on the receipt.</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setManualReceiptForm(prev => ({ ...prev, formatType: prev.formatType === 'pre_order' ? 'standard' : 'pre_order' }))}
+                    className={`relative w-11 h-6 rounded-full transition-colors duration-200 flex-shrink-0 cursor-pointer border-0 ${
+                      isPreBook ? 'bg-[#ff5500]' : 'bg-white/10'
+                    }`}
+                  >
+                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform duration-200 ${isPreBook ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                </div>
+
+                {/* Invoice Number + Customer Name */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Invoice Number</label>
                     <input
                       type="text"
-                      placeholder="Casting Name / Description"
-                      value={item.description}
-                      onChange={(e) => {
-                        const newItems = [...manualReceiptForm.items];
-                        newItems[idx].description = e.target.value;
-                        setManualReceiptForm(prev => ({ ...prev, items: newItems }));
-                      }}
-                      className="flex-1 px-3 py-2 bg-[#141414] border border-white/5 rounded-lg text-xs text-white focus:outline-none focus:border-[#ff5500]/50"
-                      required
+                      value={manualReceiptForm.receiptNumber}
+                      onChange={(e) => setManualReceiptForm(prev => ({ ...prev, receiptNumber: e.target.value }))}
+                      className="w-full px-4 py-3 bg-[#141414] border border-white/5 rounded-xl text-xs text-white focus:outline-none focus:border-[#ff5500]/50 font-mono"
                     />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Customer Name *</label>
                     <input
-                      type="number"
-                      placeholder="Qty"
-                      min="1"
-                      value={item.qty}
-                      onChange={(e) => {
-                        const newItems = [...manualReceiptForm.items];
-                        newItems[idx].qty = parseInt(e.target.value, 10) || 1;
-                        setManualReceiptForm(prev => ({ ...prev, items: newItems }));
-                      }}
-                      className="w-16 px-3 py-2 bg-[#141414] border border-white/5 rounded-lg text-xs text-white text-center focus:outline-none focus:border-[#ff5500]/50"
+                      type="text"
+                      placeholder="e.g. Rahul Sharma"
+                      value={manualReceiptForm.customerName}
+                      onChange={(e) => setManualReceiptForm(prev => ({ ...prev, customerName: e.target.value }))}
+                      className="w-full px-4 py-3 bg-[#141414] border border-white/5 rounded-xl text-xs text-white focus:outline-none focus:border-[#ff5500]/50"
                       required
                     />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Phone</label>
                     <input
-                      type="number"
-                      placeholder="Price"
-                      min="0"
-                      value={item.unitPrice}
-                      onChange={(e) => {
-                        const newItems = [...manualReceiptForm.items];
-                        newItems[idx].unitPrice = parseFloat(e.target.value) || 0;
-                        setManualReceiptForm(prev => ({ ...prev, items: newItems }));
-                      }}
-                      className="w-24 px-3 py-2 bg-[#141414] border border-white/5 rounded-lg text-xs text-white focus:outline-none focus:border-[#ff5500]/50 font-mono"
-                      required
+                      type="text"
+                      placeholder="9876543210"
+                      value={manualReceiptForm.customerPhone}
+                      onChange={(e) => setManualReceiptForm(prev => ({ ...prev, customerPhone: e.target.value }))}
+                      className="w-full px-4 py-3 bg-[#141414] border border-white/5 rounded-xl text-xs text-white focus:outline-none focus:border-[#ff5500]/50"
                     />
-                    {manualReceiptForm.items.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const newItems = manualReceiptForm.items.filter((_, i) => i !== idx);
-                          setManualReceiptForm(prev => ({ ...prev, items: newItems }));
-                        }}
-                        className="p-2 text-[#888888] hover:text-red-400 bg-transparent border-none cursor-pointer"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Instagram Handle</label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-3.5 text-xs text-white/30">@</span>
+                      <input
+                        type="text"
+                        placeholder="username"
+                        value={manualReceiptForm.customerInstagram}
+                        onChange={(e) => setManualReceiptForm(prev => ({ ...prev, customerInstagram: e.target.value }))}
+                        className="w-full pl-8 pr-4 py-3 bg-[#141414] border border-white/5 rounded-xl text-xs text-white focus:outline-none focus:border-[#ff5500]/50"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Shipping / Delivery Address</label>
+                  <textarea
+                    placeholder="Full delivery address..."
+                    value={manualReceiptForm.customerAddress}
+                    onChange={(e) => setManualReceiptForm(prev => ({ ...prev, customerAddress: e.target.value }))}
+                    className="w-full px-4 py-3 bg-[#141414] border border-white/5 rounded-xl text-xs text-white focus:outline-none focus:border-[#ff5500]/50 h-16 resize-none"
+                  />
+                </div>
+
+                {/* Line Items */}
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Line Items *</label>
+                    <button
+                      type="button"
+                      onClick={() => setManualReceiptForm(prev => ({ ...prev, items: [...prev.items, { productId: '', description: '', qty: 1, unitPrice: 0, maxQty: 0 }] }))}
+                      className="text-[10px] text-[#ff5500] hover:text-[#ff6611] font-bold uppercase tracking-wider flex items-center gap-1 bg-transparent border-none cursor-pointer"
+                    >
+                      <Plus size={10} /> Add Item
+                    </button>
+                  </div>
+
+                  {/* Column headers */}
+                  <div className="grid grid-cols-[1fr_56px_80px_28px] gap-2 px-2 text-[9px] font-black text-white/30 uppercase tracking-widest">
+                    <span>Casting Selection (From Inventory)</span>
+                    <span className="text-center">Qty</span>
+                    <span className="text-right">Unit Price ₹</span>
+                    <span></span>
+                  </div>
+
+                  <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
+                    {manualReceiptForm.items.map((item, idx) => (
+                      <div key={idx} className="grid grid-cols-[1fr_56px_80px_28px] gap-2 items-center">
+                        <div className="relative flex-1">
+                          <input
+                            type="text"
+                            placeholder="Type brand/name..."
+                            value={itemSearchQueries[idx] !== undefined ? itemSearchQueries[idx] : item.description}
+                            onFocus={() => setActiveSearchIdx(idx)}
+                            onBlur={() => {
+                              setTimeout(() => {
+                                setActiveSearchIdx(null);
+                                setItemSearchQueries(prev => {
+                                  const copy = { ...prev };
+                                  delete copy[idx];
+                                  return copy;
+                                });
+                              }, 200);
+                            }}
+                            onChange={(e) => {
+                              const q = e.target.value;
+                              setItemSearchQueries(prev => ({ ...prev, [idx]: q }));
+                              setActiveSearchIdx(idx);
+                            }}
+                            className="w-full px-3 py-2 bg-[#141414] border border-white/5 rounded-lg text-xs text-white focus:outline-none focus:border-[#ff5500]/50"
+                            required
+                          />
+                          {activeSearchIdx === idx && (
+                            <div className="absolute left-0 right-0 top-full mt-1 max-h-[220px] overflow-y-auto bg-[#1a1a1a] border border-white/10 rounded-lg shadow-2xl z-50 divide-y divide-white/5">
+                              {cars
+                                .filter(c => {
+                                  const searchQ = (itemSearchQueries[idx] || '').toLowerCase().trim();
+                                  const matchesSearch = !searchQ || 
+                                    c.brand.toLowerCase().includes(searchQ) || 
+                                    c.name.toLowerCase().includes(searchQ) || 
+                                    (c.scale && c.scale.toLowerCase().includes(searchQ));
+                                  return Number(c.availableStock) > 0 && matchesSearch;
+                                })
+                                .map(c => (
+                                  <div
+                                    key={c.id}
+                                    onMouseDown={(e) => {
+                                      e.preventDefault();
+                                    }}
+                                    onClick={() => {
+                                      const newItems = [...manualReceiptForm.items];
+                                      newItems[idx].productId = c.id;
+                                      newItems[idx].description = `${c.brand} ${c.name}`;
+                                      newItems[idx].unitPrice = Number(c.price);
+                                      newItems[idx].maxQty = Number(c.availableStock);
+                                      if (newItems[idx].qty > newItems[idx].maxQty) {
+                                        newItems[idx].qty = newItems[idx].maxQty;
+                                      }
+                                      setManualReceiptForm(prev => ({ ...prev, items: newItems }));
+                                      setItemSearchQueries(prev => {
+                                        const copy = { ...prev };
+                                        delete copy[idx];
+                                        return copy;
+                                      });
+                                      setActiveSearchIdx(null);
+                                    }}
+                                    className="px-3 py-2 text-xs text-white/80 hover:bg-[#ff5500] hover:text-white cursor-pointer flex justify-between items-center transition-colors"
+                                  >
+                                    <span>{c.brand} - {c.name} ({c.scale})</span>
+                                    <span className="text-[10px] opacity-60">Stock: {c.availableStock} | ₹{c.price}</span>
+                                  </div>
+                                ))}
+                              {cars.filter(c => {
+                                const searchQ = (itemSearchQueries[idx] || '').toLowerCase().trim();
+                                return Number(c.availableStock) > 0 && (
+                                  !searchQ || 
+                                  c.brand.toLowerCase().includes(searchQ) || 
+                                  c.name.toLowerCase().includes(searchQ) || 
+                                  (c.scale && c.scale.toLowerCase().includes(searchQ))
+                                );
+                              }).length === 0 && (
+                                <div className="px-3 py-2 text-xs text-white/40 italic text-center">
+                                  No matching items
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <input
+                          type="number"
+                          min="1"
+                          max={item.maxQty || undefined}
+                          value={item.qty}
+                          onChange={(e) => {
+                            const newItems = [...manualReceiptForm.items];
+                            newItems[idx].qty = Math.min(
+                              item.maxQty || 999,
+                              parseInt(e.target.value, 10) || 1
+                            );
+                            setManualReceiptForm(prev => ({ ...prev, items: newItems }));
+                          }}
+                          className="w-full px-3 py-2 bg-[#141414] border border-white/5 rounded-lg text-xs text-white text-center focus:outline-none focus:border-[#ff5500]/50"
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          value={item.unitPrice}
+                          onChange={(e) => {
+                            const newItems = [...manualReceiptForm.items];
+                            newItems[idx].unitPrice = parseFloat(e.target.value) || 0;
+                            setManualReceiptForm(prev => ({ ...prev, items: newItems }));
+                          }}
+                          className="w-full px-3 py-2 bg-[#141414] border border-white/5 rounded-lg text-xs text-white font-mono focus:outline-none focus:border-[#ff5500]/50"
+                        />
+                        {manualReceiptForm.items.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => setManualReceiptForm(prev => ({ ...prev, items: prev.items.filter((_, i) => i !== idx) }))}
+                            className="p-1 text-white/30 hover:text-red-400 bg-transparent border-none cursor-pointer"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Financials */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-white/5 pt-4">
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Shipping Charges (₹)</label>
+                      <input
+                        type="number" min="0"
+                        value={manualReceiptForm.shippingCharges}
+                        onChange={(e) => setManualReceiptForm(prev => ({ ...prev, shippingCharges: parseFloat(e.target.value) || 0 }))}
+                        className="w-full px-4 py-3 bg-[#141414] border border-white/5 rounded-xl text-xs text-white focus:outline-none focus:border-[#ff5500]/50 font-mono"
+                      />
+                    </div>
+
+                    {/* Pre-Order: Advance Paid */}
+                    {isPreBook && (
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">Advance Paid (₹) *</label>
+                        <input
+                          type="number" min="0" max={grandTotal}
+                          value={manualReceiptForm.advancePaid}
+                          onChange={(e) => setManualReceiptForm(prev => ({ ...prev, advancePaid: parseFloat(e.target.value) || 0 }))}
+                          className="w-full px-4 py-3 bg-amber-500/[0.05] border border-amber-500/20 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500/50 font-mono"
+                        />
+                      </div>
                     )}
                   </div>
-                ))}
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Footer Note</label>
+                    <textarea
+                      value={manualReceiptForm.footerNote}
+                      onChange={(e) => setManualReceiptForm(prev => ({ ...prev, footerNote: e.target.value }))}
+                      className="w-full px-4 py-3 bg-[#141414] border border-white/5 rounded-xl text-xs text-white focus:outline-none focus:border-[#ff5500]/50 resize-none"
+                      rows={isPreBook ? 4 : 6}
+                    />
+                  </div>
+                </div>
+
+                {/* Live Totals Strip */}
+                <div className="bg-black/40 border border-white/5 rounded-2xl p-4">
+                  <div className="grid grid-cols-3 gap-3 text-center text-[10px]">
+                    <div>
+                      <div className="text-white/40 uppercase tracking-wider mb-1">Subtotal</div>
+                      <div className="font-mono font-bold text-white text-sm">₹{fmtM(lineSubtotal)}</div>
+                    </div>
+                    <div>
+                      <div className="text-white/40 uppercase tracking-wider mb-1">Grand Total</div>
+                      <div className="font-mono font-bold text-[#ff5500] text-sm">₹{fmtM(grandTotal)}</div>
+                    </div>
+                    <div>
+                      <div className="text-white/40 uppercase tracking-wider mb-1">{isPreBook ? 'Balance Due' : 'Fully Paid'}</div>
+                      <div className={`font-mono font-bold text-sm ${isPreBook && pendingBalance > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                        {isPreBook ? `₹${fmtM(pendingBalance)}` : '✓ Paid'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
               </div>
             </div>
 
-            {/* Financial Details & Footer Note */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-white/5 pt-4">
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Shipping Charges (₹)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={manualReceiptForm.shippingCharges}
-                    onChange={(e) => setManualReceiptForm(prev => ({ ...prev, shippingCharges: parseFloat(e.target.value) || 0 }))}
-                    className="w-full px-4 py-3 bg-[#141414] border border-white/5 rounded-xl text-xs text-white focus:outline-none focus:border-[#ff5500]/50 font-mono"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Advance Paid (₹)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={manualReceiptForm.advancePaid}
-                    onChange={(e) => setManualReceiptForm(prev => ({ ...prev, advancePaid: parseFloat(e.target.value) || 0 }))}
-                    className="w-full px-4 py-3 bg-[#141414] border border-white/5 rounded-xl text-xs text-white focus:outline-none focus:border-[#ff5500]/50 font-mono"
-                  />
-                </div>
-              </div>
-              
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Footer Note</label>
-                  <textarea
-                    placeholder="Note printed at the bottom of the invoice..."
-                    value={manualReceiptForm.footerNote}
-                    onChange={(e) => setManualReceiptForm(prev => ({ ...prev, footerNote: e.target.value }))}
-                    className="w-full px-4 py-3 bg-[#141414] border border-white/5 rounded-xl text-xs text-white focus:outline-none focus:border-[#ff5500]/50 h-28 resize-none"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Calculations Preview */}
-            <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl flex justify-between items-center text-xs font-mono">
-              <span className="text-white/40 uppercase">Invoice Preview Total</span>
-              <div className="text-right">
-                <span className="text-white/60">Subtotal + Shipping: </span>
-                <span className="font-bold text-[#ff5500]">
-                  ₹{(
-                    manualReceiptForm.items.reduce((sum, item) => sum + (Number(item.qty) * Number(item.unitPrice)), 0) + 
-                    Number(manualReceiptForm.shippingCharges)
-                  ).toLocaleString('en-IN')}
-                </span>
-                <span className="text-white/40 text-[10px] block">
-                  Balance: ₹{Math.max(0, 
-                    (manualReceiptForm.items.reduce((sum, item) => sum + (Number(item.qty) * Number(item.unitPrice)), 0) + 
-                    Number(manualReceiptForm.shippingCharges)) - Number(manualReceiptForm.advancePaid)
-                  ).toLocaleString('en-IN')}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex gap-3 border-t border-white/5 pt-4 justify-end">
-            <button
-              type="button"
-              onClick={() => setIsCreatingReceipt(false)}
-              className="px-5 py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white/80 hover:text-white text-xs font-black uppercase tracking-wider transition-colors cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={async () => {
-                if (!manualReceiptForm.customerName) {
-                  alert('Customer name is required');
-                  return;
-                }
-                const invalidItem = manualReceiptForm.items.some(item => !item.description || item.unitPrice <= 0);
-                if (invalidItem) {
-                  alert('Please complete all line item fields with valid prices');
-                  return;
-                }
-                
-                try {
-                  const payload = {
+            {/* Footer actions */}
+            <div className="flex gap-3 border-t border-white/5 px-6 py-4 justify-end flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsCreatingReceipt(false)}
+                className="px-5 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white/80 hover:text-white text-xs font-black uppercase tracking-wider transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!manualReceiptForm.customerName) return;
+                  setSelectedReceipt({
                     receiptNumber: manualReceiptForm.receiptNumber,
-                    customerId: 'dummy',
-                    customerName: manualReceiptForm.customerName,
-                    customerPhone: manualReceiptForm.customerPhone || null,
-                    customerInstagram: manualReceiptForm.customerInstagram || null,
-                    customerAddress: manualReceiptForm.customerAddress || null,
-                    shippingCharges: Number(manualReceiptForm.shippingCharges),
-                    advancePaid: Number(manualReceiptForm.advancePaid),
-                    footerNote: manualReceiptForm.footerNote || null,
+                    orderId: manualReceiptForm.receiptNumber,
+                    date: new Date().toISOString(),
+                    status: isPreBook ? 'Pre-Order' : 'Confirmed',
+                    bookingType: isPreBook ? 'pre_order' : 'standard',
+                    customer: {
+                      name: manualReceiptForm.customerName,
+                      phone: manualReceiptForm.customerPhone,
+                      instagram: manualReceiptForm.customerInstagram,
+                      address: manualReceiptForm.customerAddress,
+                      email: ''
+                    },
                     items: manualReceiptForm.items.map(i => ({
-                      description: i.description,
+                      productId: i.productId,
+                      name: i.description,
+                      series: '',
+                      scale: '1:64',
                       qty: Number(i.qty),
-                      amount: Number(i.unitPrice)
-                    }))
-                  };
-                  
-                  await addReceipt(payload);
-                  alert('Manual invoice generated successfully!');
-                  setIsCreatingReceipt(false);
-                  loadAllData();
-                } catch (err) {
-                  console.error(err);
-                  alert('Failed to create manual invoice: ' + err.message);
-                }
-              }}
-              className="px-5 py-3 rounded-xl bg-[#ff5500] hover:bg-[#ff6611] text-black text-xs font-black uppercase tracking-wider hover:shadow-[0_0_20px_rgba(255,85,0,0.25)] transition-all cursor-pointer border-none"
-            >
-              Generate Invoice
-            </button>
+                      unitPrice: Number(i.unitPrice),
+                      lineTotal: Number(i.qty) * Number(i.unitPrice)
+                    })),
+                    subtotal: lineSubtotal,
+                    shippingCharges: Number(manualReceiptForm.shippingCharges || 0),
+                    totalAmount: grandTotal,
+                    advancePaid,
+                    pendingBalance,
+                    footerNote: manualReceiptForm.footerNote
+                  });
+                }}
+                className="px-5 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white text-xs font-black uppercase tracking-wider transition-colors cursor-pointer"
+              >
+                👁 Preview
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!manualReceiptForm.customerName) return;
+                  const invalidItem = manualReceiptForm.items.some(item => !item.productId || !item.description || item.unitPrice <= 0);
+                  if (invalidItem) return;
+                  try {
+                    const payload = {
+                      receiptNumber: manualReceiptForm.receiptNumber,
+                      customerId: 'dummy',
+                      formatType: manualReceiptForm.formatType,
+                      customerName: manualReceiptForm.customerName,
+                      customerPhone: manualReceiptForm.customerPhone || null,
+                      customerInstagram: manualReceiptForm.customerInstagram || null,
+                      customerAddress: manualReceiptForm.customerAddress || null,
+                      shippingCharges: Number(manualReceiptForm.shippingCharges),
+                      advancePaid: isPreBook ? Number(manualReceiptForm.advancePaid) : grandTotal,
+                      footerNote: manualReceiptForm.footerNote || null,
+                      items: manualReceiptForm.items.map(i => ({
+                        productId: i.productId,
+                        description: i.description,
+                        qty: Number(i.qty),
+                        amount: Number(i.unitPrice)
+                      }))
+                    };
+                    await addReceipt(payload);
+                    setIsCreatingReceipt(false);
+                    loadAllData();
+                  } catch (err) {
+                    console.error(err);
+                  }
+                }}
+                className="px-5 py-2.5 rounded-xl bg-[#ff5500] hover:bg-[#ff6611] text-black text-xs font-black uppercase tracking-wider hover:shadow-[0_0_20px_rgba(255,85,0,0.25)] transition-all cursor-pointer border-none"
+              >
+                ✓ Generate Invoice
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-    )}
+      );
+    })()}
 
+      {/* Sleek Floating Toast Notification */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-[200] flex items-center gap-3 bg-[#111111] border border-white/5 rounded-2xl px-5 py-4 shadow-2xl animate-fade-in max-w-sm">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black ${
+            toast.type === 'error' 
+              ? 'bg-red-500/10 text-red-500' 
+              : toast.type === 'warning'
+              ? 'bg-[#ff5500]/10 text-[#ff5500]'
+              : 'bg-emerald-500/10 text-emerald-500'
+          }`}>
+            {toast.type === 'error' ? '✕' : toast.type === 'warning' ? '⚠' : '✓'}
+          </div>
+          <div className="text-left">
+            <div className="text-[10px] font-black text-white/40 uppercase tracking-widest">
+              {toast.type === 'error' ? 'Error' : toast.type === 'warning' ? 'Warning' : 'Success'}
+            </div>
+            <div className="text-xs font-bold text-white mt-0.5">{toast.message}</div>
+          </div>
+        </div>
+      )}
 
   </div>
   );
