@@ -36,6 +36,14 @@ export default function Account() {
     }
     setUser(currentUser);
 
+    // Handle returnTo redirect if logged in
+    const params = new URLSearchParams(window.location.search);
+    const returnTo = params.get('returnTo');
+    if (returnTo) {
+      navigate(returnTo);
+      return;
+    }
+
     async function loadOrdersAndProfile() {
       try {
         const [data, prof] = await Promise.all([

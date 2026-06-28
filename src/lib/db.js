@@ -47,10 +47,23 @@ window.fetch = async function (url, options = {}) {
             } else {
               isRefreshing = false;
               localStorage.removeItem('gk_user');
+              const currentPath = window.location.pathname + window.location.search;
+              let redirectUrl = '/account';
+              if (window.location.pathname !== '/account') {
+                redirectUrl += `?returnTo=${encodeURIComponent(currentPath)}`;
+              }
+              window.location.href = redirectUrl;
               return response;
             }
           } catch (err) {
             isRefreshing = false;
+            localStorage.removeItem('gk_user');
+            const currentPath = window.location.pathname + window.location.search;
+            let redirectUrl = '/account';
+            if (window.location.pathname !== '/account') {
+              redirectUrl += `?returnTo=${encodeURIComponent(currentPath)}`;
+            }
+            window.location.href = redirectUrl;
             return response;
           }
         }
@@ -58,7 +71,17 @@ window.fetch = async function (url, options = {}) {
         // Wait for token refresh operation to complete, then repeat original request
         return new Promise((resolve) => {
           subscribeTokenRefresh(async () => {
-            resolve(await originalFetch(url, options));
+            const repeatedRes = await originalFetch(url, options);
+            if (repeatedRes.status === 401) {
+              localStorage.removeItem('gk_user');
+              const currentPath = window.location.pathname + window.location.search;
+              let redirectUrl = '/account';
+              if (window.location.pathname !== '/account') {
+                redirectUrl += `?returnTo=${encodeURIComponent(currentPath)}`;
+              }
+              window.location.href = redirectUrl;
+            }
+            resolve(repeatedRes);
           });
         });
       }

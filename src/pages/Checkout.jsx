@@ -90,7 +90,7 @@ export default function Checkout() {
         const user = getCurrentUser()
         if (!user) {
           // Force login
-          window.location.href = `/login?returnTo=${encodeURIComponent(window.location.pathname + window.location.search)}`
+          window.location.href = `/account?returnTo=${encodeURIComponent(window.location.pathname + window.location.search)}`
           return
         }
         
