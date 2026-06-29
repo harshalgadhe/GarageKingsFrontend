@@ -79,6 +79,14 @@ Instruct AWS Lambda to update function code pulling from the S3 file location:
 aws lambda update-function-code --function-name gk-production-api-prod --s3-bucket gk-production-public-assets-2026 --s3-key lambda-deploy.zip --region ap-south-1
 ```
 
+### Backend (GitHub Actions CI/CD)
+Automatic backend deployment is configured via GitHub Actions. Pushing code changes to the `main` branch of the backend repository will automatically run the deployment pipeline in `.github/workflows/deploy.yml` (compiles, packages, uploads to S3, and updates Lambda function code).
+
+**Required Repository Secrets in GitHub**:
+To authenticate the deployment run, register the following secrets in your GitHub repository under **Settings > Secrets and variables > Actions**:
+1. `AWS_ACCESS_KEY_ID` (AWS CLI IAM credential key)
+2. `AWS_SECRET_ACCESS_KEY` (AWS CLI IAM credential secret)
+
 ---
 
 ## 4. Observability & Diagnostics
