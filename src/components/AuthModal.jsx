@@ -83,36 +83,6 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'purple', onAu
     ? 'bg-gk-orange hover:bg-[#C7FDFF] hover:shadow-[0_0_30px_rgba(165,243,252,0.45)] text-zinc-950 font-bold' 
     : 'bg-purple-600 hover:bg-purple-500 hover:shadow-[0_0_30px_rgba(168,85,247,0.5)]';
 
-  const handleSandboxBypass = async () => {
-    if (!email) {
-      setError('Please input your registered email address first.');
-      return;
-    }
-    setLoading(true);
-    setError('');
-    try {
-      setSuccessMessage('Sandbox bypass triggered! Verifying email on AWS Cognito...');
-      await autoConfirmUserBackend(email);
-      setSuccessMessage('Account verified! Auto-signing you in...');
-      
-      // Auto login
-      const user = await signInCognito(email, password);
-      if (onAuthSuccess) {
-        setTimeout(() => {
-          onAuthSuccess(user);
-          onClose();
-        }, 1500);
-      } else {
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
-      }
-    } catch (err) {
-      setError(err.message || 'Sandbox bypass failed. Please confirm the account manually.');
-      setLoading(false);
-    }
-  };
-
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
@@ -148,13 +118,18 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'purple', onAu
     
     setLoading(true);
     try {
-      await signUpCognito(email, password, fullName);
-      setSuccessMessage('Account registered! Verification code sent to email.');
-      setTimeout(() => {
-        setSuccessMessage('');
-        setMode('verify');
-        setLoading(false);
-      }, 2000);
+      const user = await signUpCognito(email, password, fullName);
+      setSuccessMessage('Successfully registered! Welcome to the vault...');
+      if (onAuthSuccess) {
+        setTimeout(() => {
+          onAuthSuccess(user);
+          onClose();
+        }, 1500);
+      } else {
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      }
     } catch (err) {
       setError(err.message || 'Registration failed.');
       setLoading(false);
@@ -446,16 +421,6 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'purple', onAu
                         <ArrowRight size={14} />
                       </div>
                     </button>
-
-                    <div className="text-center pt-2 mt-4">
-                      <button 
-                        type="button"
-                        onClick={handleSandboxBypass}
-                        className="text-[10px] text-white/30 hover:text-white/60 transition-colors cursor-pointer bg-transparent border-none"
-                      >
-                        Auto-confirm sandbox account
-                      </button>
-                    </div>
                   </form>
                 )}
               </>

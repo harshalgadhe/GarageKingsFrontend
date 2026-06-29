@@ -156,8 +156,17 @@ export async function signInWithGoogleProfile(googleIdToken) {
       throw new Error(errorMsg);
     }
     const data = await response.json();
+    const { user } = data;
+    localStorage.setItem('gk_user', JSON.stringify({
+      email: user.email,
+      userId: user.id,
+      username: user.email,
+      displayName: user.email.split('@')[0],
+      role: user.role,
+      roles: [user.role.toLowerCase()]
+    }));
 
-    return await signInCognito(data.email, data.temporaryPassword);
+    return user;
   } catch (error) {
     console.error("Google authentication failed:", error);
     throw error;
@@ -170,7 +179,46 @@ export async function autoConfirmUserBackend(email) {
 }
 
 export async function signUpCognito(email, password, name) {
-  return { success: true };
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/signup`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include',
+      body: JSON.stringify({ email: email.trim(), password, fullName: name })
+    });
+
+    if (!response.ok) {
+      let errorMsg = 'Registration failed. Please try again.';
+      try {
+        const data = await response.json();
+        errorMsg = data.message || errorMsg;
+      } catch (e) {
+        try {
+          const text = await response.text();
+          if (text) errorMsg = text;
+        } catch (_) {}
+      }
+      throw new Error(errorMsg);
+    }
+
+    const data = await response.json();
+    const { user } = data;
+    localStorage.setItem('gk_user', JSON.stringify({
+      email: user.email,
+      userId: user.id,
+      username: user.email,
+      displayName: user.email.split('@')[0],
+      role: user.role,
+      roles: [user.role.toLowerCase()]
+    }));
+
+    return user;
+  } catch (error) {
+    console.error("Local signUp failed:", error);
+    throw error;
+  }
 }
 
 export async function confirmSignUpCognito(email, code) {
