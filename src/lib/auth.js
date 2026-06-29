@@ -21,10 +21,21 @@ export async function signInCognito(email, password) {
       body: JSON.stringify({ email: email.trim(), password })
     });
 
-    const data = await response.json();
     if (!response.ok) {
-      throw new Error(data.message || 'Authentication failed. Please verify credentials.');
+      let errorMsg = 'Authentication failed. Please verify credentials.';
+      try {
+        const data = await response.json();
+        errorMsg = data.message || errorMsg;
+      } catch (e) {
+        try {
+          const text = await response.text();
+          if (text) errorMsg = text;
+        } catch (_) {}
+      }
+      throw new Error(errorMsg);
     }
+
+    const data = await response.json();
 
     const { user } = data;
     localStorage.setItem('gk_user', JSON.stringify({
@@ -98,10 +109,20 @@ export async function setupOwner(email, password) {
       credentials: 'include',
       body: JSON.stringify({ email, password })
     });
-    const data = await res.json();
     if (!res.ok) {
-      throw new Error(data.message || "Failed to configure Owner account.");
+      let errorMsg = "Failed to configure Owner account.";
+      try {
+        const data = await res.json();
+        errorMsg = data.message || errorMsg;
+      } catch (e) {
+        try {
+          const text = await res.text();
+          if (text) errorMsg = text;
+        } catch (_) {}
+      }
+      throw new Error(errorMsg);
     }
+    const data = await res.json();
     return data;
   } catch (e) {
     console.error("Owner setup failed:", e);
@@ -121,10 +142,20 @@ export async function signInWithGoogleProfile(googleIdToken) {
       body: JSON.stringify({ idToken: googleIdToken })
     });
 
-    const data = await response.json();
     if (!response.ok) {
-      throw new Error(data.message || 'Google authentication sync failed.');
+      let errorMsg = 'Google authentication sync failed.';
+      try {
+        const data = await response.json();
+        errorMsg = data.message || errorMsg;
+      } catch (e) {
+        try {
+          const text = await response.text();
+          if (text) errorMsg = text;
+        } catch (_) {}
+      }
+      throw new Error(errorMsg);
     }
+    const data = await response.json();
 
     return await signInCognito(data.email, data.temporaryPassword);
   } catch (error) {

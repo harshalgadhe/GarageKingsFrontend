@@ -1,3 +1,5 @@
+import { getSessionCorrelationId } from './telemetry.js';
+
 // ============================================================================
 // GARAGEKINGS CLIENT REST API GATEWAY MODULE (LOCAL AUTH TRANSITION)
 // Optimized for secure local session cookies
@@ -9,6 +11,7 @@ const API_BASE_URL = import.meta.env.PROD
 
 // Mocked configuration checker for backwards-compatibility checks in legacy page loads
 export const isFirebaseConfigured = true;
+
 
 // Automatically inject credentials: 'include' globally to transmit HttpOnly cookies
 // and automatically refresh expired JWT sessions on 401 responses
@@ -27,7 +30,20 @@ function onRefreshed() {
 
 window.fetch = async function (url, options = {}) {
   options.credentials = 'include';
+  
+  // Inject Correlation ID
+  const headers = options.headers || {};
+  if (headers instanceof Headers) {
+    headers.set('x-correlation-id', getSessionCorrelationId());
+  } else if (Array.isArray(headers)) {
+    headers.push(['x-correlation-id', getSessionCorrelationId()]);
+  } else {
+    headers['x-correlation-id'] = getSessionCorrelationId();
+  }
+  options.headers = headers;
+
   try {
+
     const response = await originalFetch(url, options);
     
     // If unauthorized (401), attempt to silently refresh access token via HTTP HttpOnly refresh cookie

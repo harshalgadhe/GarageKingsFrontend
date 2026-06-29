@@ -95,9 +95,13 @@ const TRUST_PILLARS = [
 const LookbookGallery = forwardRef(function LookbookGallery(props, ref) {
   const reduce = useReducedMotion()
   const navigate = useNavigate()
-  const [models, setModels] = useState(PREVIEW_MODELS)
+  
+  // Clean preview fallbacks on production, keep them in dev for testing ease
+  const [models, setModels] = useState(import.meta.env.DEV ? PREVIEW_MODELS : [])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    setLoading(true)
     getCars()
       .then(cars => {
         if (cars && cars.length > 0) {
@@ -119,12 +123,21 @@ const LookbookGallery = forwardRef(function LookbookGallery(props, ref) {
             }
           })
           setModels(mapped)
+        } else if (!import.meta.env.DEV) {
+          setModels([])
         }
       })
       .catch(err => {
         console.error("Error fetching marketplace preview from backend:", err)
+        if (!import.meta.env.DEV) {
+          setModels([])
+        }
+      })
+      .finally(() => {
+        setLoading(false)
       })
   }, [])
+
 
   const handleOrder = (name) => {
     window.open(INSTAGRAM_URL, '_blank')
@@ -150,52 +163,75 @@ const LookbookGallery = forwardRef(function LookbookGallery(props, ref) {
 
           {/* Simple Grid (4 cols desktop, 2 cols tablet, 1 col mobile) */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-6">
-            {models.map((item, idx) => (
-              <motion.div
-                key={item.id}
-                initial={reduce ? false : { opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.15 }}
-                transition={{ duration: 0.7, delay: idx * 0.1, ease: [0.22, 1, 0.36, 1] }}
-                onClick={() => {
-                  if (item.id && item.id.length === 36) {
-                    navigate(`/product/${item.id}`)
-                  } else {
-                    navigate('/marketplace')
-                  }
-                }}
-                className="bg-[#151515] rounded-xl border border-white/[0.02] p-4 flex flex-col justify-between h-[310px] group hover:border-white/10 transition-all duration-500 relative overflow-hidden cursor-pointer hover:bg-zinc-900"
-              >
-                {/* Image Container: 70% of Card Height */}
-                <div className="relative w-full h-[155px] bg-zinc-950/20 rounded-lg flex items-center justify-center overflow-hidden mb-4 shrink-0">
-                  <div className="absolute inset-0 bg-gradient-to-tr from-zinc-950/10 via-transparent to-white/[0.01] pointer-events-none" />
-                  <img
-                    src={item.image}
-                    alt={item.name}
-                    className="max-h-[85%] max-w-[85%] object-contain filter drop-shadow-[0_12px_20px_rgba(0,0,0,0.8)] select-none pointer-events-none scale-100 group-hover:scale-104 transition-transform duration-700 ease-out"
-                  />
+            {loading ? (
+              Array.from({ length: 4 }).map((_, idx) => (
+                <div key={idx} className="bg-[#151515] rounded-xl border border-white/[0.02] p-4 flex flex-col justify-between h-[310px] animate-pulse">
+                  <div className="w-full h-[155px] bg-zinc-900/50 rounded-lg mb-4" />
+                  <div className="flex-1 flex flex-col justify-between">
+                    <div>
+                      <div className="h-4 bg-zinc-900/50 rounded w-3/4 mb-2" />
+                      <div className="h-3 bg-zinc-900/50 rounded w-1/2" />
+                    </div>
+                    <div className="flex items-center justify-between border-t border-zinc-900/60 pt-3 mt-3">
+                      <div className="h-4 bg-zinc-900/50 rounded w-1/4" />
+                      <div className="h-3 bg-zinc-900/50 rounded w-1/4" />
+                    </div>
+                  </div>
                 </div>
+              ))
+            ) : models.length === 0 ? (
+              <div className="col-span-full py-16 text-center border border-dashed border-white/5 rounded-2xl bg-zinc-950/20">
+                <p className="text-xs text-zinc-500 uppercase tracking-wider font-mono">No marketplace models available.</p>
+              </div>
+            ) : (
+              models.map((item, idx) => (
+                <motion.div
+                  key={item.id}
+                  initial={reduce ? false : { opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, amount: 0.15 }}
+                  transition={{ duration: 0.7, delay: idx * 0.1, ease: [0.22, 1, 0.36, 1] }}
+                  onClick={() => {
+                    if (item.id && item.id.length === 36) {
+                      navigate(`/product/${item.id}`)
+                    } else {
+                      navigate('/marketplace')
+                    }
+                  }}
+                  className="bg-[#151515] rounded-xl border border-white/[0.02] p-4 flex flex-col justify-between h-[310px] group hover:border-white/10 transition-all duration-500 relative overflow-hidden cursor-pointer hover:bg-zinc-900"
+                >
+                  {/* Image Container: 70% of Card Height */}
+                  <div className="relative w-full h-[155px] bg-zinc-950/20 rounded-lg flex items-center justify-center overflow-hidden mb-4 shrink-0">
+                    <div className="absolute inset-0 bg-gradient-to-tr from-zinc-950/10 via-transparent to-white/[0.01] pointer-events-none" />
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      className="max-h-[85%] max-w-[85%] object-contain filter drop-shadow-[0_12px_20px_rgba(0,0,0,0.8)] select-none pointer-events-none scale-100 group-hover:scale-104 transition-transform duration-700 ease-out"
+                    />
+                  </div>
 
-                {/* Text Info & CTA */}
-                <div className="flex flex-col justify-between flex-1 text-left">
-                  <div>
-                    <h4 className="text-sm font-bold tracking-normal uppercase text-[#F7F7F7] font-grotesk truncate block">
-                      {item.name}
-                    </h4>
-                    <span className="text-[10px] font-mono text-zinc-500 block mt-1">
-                      {item.brand} • {item.scale}
-                    </span>
+                  {/* Text Info & CTA */}
+                  <div className="flex flex-col justify-between flex-1 text-left">
+                    <div>
+                      <h4 className="text-sm font-bold tracking-normal uppercase text-[#F7F7F7] font-grotesk truncate block">
+                        {item.name}
+                      </h4>
+                      <span className="text-[10px] font-mono text-zinc-500 block mt-1">
+                        {item.brand} • {item.scale}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-zinc-900/60">
+                      <span className="text-xs font-bold text-gk-gold font-mono tracking-tight">{item.price}</span>
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-gk-orange group-hover:translate-x-1 transition-transform duration-300">
+                        View Model →
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-zinc-900/60">
-                    <span className="text-xs font-bold text-gk-gold font-mono tracking-tight">{item.price}</span>
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-gk-orange group-hover:translate-x-1 transition-transform duration-300">
-                      View Model →
-                    </span>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              ))
+            )}
           </div>
+
 
           {/* View More Option */}
           <div className="flex justify-center mt-14 w-full">

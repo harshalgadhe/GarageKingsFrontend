@@ -146,8 +146,17 @@ export default function Account() {
       });
 
       if (!res.ok) {
-        const errJson = await res.json();
-        throw new Error(errJson.message || 'Failed to submit remaining payment.');
+        let errorMsg = 'Failed to submit remaining payment.';
+        try {
+          const errJson = await res.json();
+          errorMsg = errJson.message || errorMsg;
+        } catch (_) {
+          try {
+            const text = await res.text();
+            if (text) errorMsg = text;
+          } catch (__) {}
+        }
+        throw new Error(errorMsg);
       }
 
       setUploadSuccess('Remaining payment screenshot submitted successfully! Admin will verify shortly.');

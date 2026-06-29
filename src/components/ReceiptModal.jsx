@@ -18,8 +18,17 @@ export default function ReceiptModal({ orderId, receiptData, onClose, apiBaseUrl
       try {
         const res = await fetch(`${apiBaseUrl}/admin/orders/${orderId}/receipt`, { credentials: 'include' });
         if (!res.ok) {
-          const e = await res.json();
-          throw new Error(e.message || 'Failed to load receipt.');
+          let errorMsg = 'Failed to load receipt.';
+          try {
+            const e = await res.json();
+            errorMsg = e.message || errorMsg;
+          } catch (_) {
+            try {
+              const text = await res.text();
+              if (text) errorMsg = text;
+            } catch (__) {}
+          }
+          throw new Error(errorMsg);
         }
         setReceipt(await res.json());
       } catch (e) {

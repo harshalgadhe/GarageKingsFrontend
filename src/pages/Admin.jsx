@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
   Plus, Trash2, Edit2, Save, X, Settings, Eye, EyeOff, LogOut, User, Search,
-  DollarSign, TrendingUp, Bell, FileText, Users, AlertTriangle, Layers, Calendar, Receipt
+  DollarSign, TrendingUp, Bell, FileText, Users, AlertTriangle, Layers, Calendar, Receipt,
+  Activity, Server, Shield
 } from 'lucide-react';
 import { getCurrentUser, signOutCognito } from '../lib/auth';
 import { 
@@ -11,6 +12,61 @@ import {
 } from '../lib/db';
 import Navigation from '../components/Navigation';
 import ReceiptModal from '../components/ReceiptModal';
+
+const Pagination = ({ currentPage, totalPages, totalItems, onPageChange }) => {
+  if (totalPages <= 1) return null;
+  return (
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-6 border-t border-white/5">
+      <span className="text-[10px] font-mono text-[#888888] uppercase tracking-wider">
+        Showing Page {currentPage} of {totalPages} {totalItems ? `(${totalItems} Total)` : ''}
+      </span>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="px-3 py-1.5 rounded-lg border border-white/5 bg-white/5 text-[10px] font-black uppercase tracking-wider text-white hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-white/5 transition-colors cursor-pointer disabled:cursor-not-allowed"
+        >
+          Prev
+        </button>
+        <div className="flex items-center gap-1.5">
+          {Array.from({ length: totalPages }).map((_, idx) => {
+            const pageNum = idx + 1;
+            if (pageNum === 1 || pageNum === totalPages || Math.abs(pageNum - currentPage) <= 1) {
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => onPageChange(pageNum)}
+                  className={`w-7 h-7 rounded-lg border text-[10px] font-mono font-bold flex items-center justify-center transition-colors cursor-pointer ${
+                    currentPage === pageNum
+                      ? 'bg-[#ff5500]/10 border-[#ff5500]/30 text-[#ff5500]'
+                      : 'border-white/5 bg-transparent text-[#888888] hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              );
+            }
+            if (pageNum === 2 || pageNum === totalPages - 1) {
+              return (
+                <span key={pageNum} className="text-[#555555] text-xs px-0.5 font-mono">
+                  ...
+                </span>
+              );
+            }
+            return null;
+          })}
+        </div>
+        <button
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="px-3 py-1.5 rounded-lg border border-white/5 bg-white/5 text-[10px] font-black uppercase tracking-wider text-white hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-white/5 transition-colors cursor-pointer disabled:cursor-not-allowed"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  );
+};
 
 export default function Admin() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -88,6 +144,55 @@ export default function Admin() {
   const [inventorySearchQuery, setInventorySearchQuery] = useState('');
   const [orderSearchQuery, setOrderSearchQuery] = useState('');
   const [receiptOrderId, setReceiptOrderId] = useState(null); // open ReceiptModal for this orderId
+
+  // --- PAGINATION & OBSERVABILITY STATES ---
+  const [inventoryPage, setInventoryPage] = useState(1);
+  const [inventoryTotalPages, setInventoryTotalPages] = useState(1);
+  const [inventoryTotal, setInventoryTotal] = useState(0);
+
+  const [ordersPage, setOrdersPage] = useState(1);
+  const [ordersTotalPages, setOrdersTotalPages] = useState(1);
+  const [ordersTotal, setOrdersTotal] = useState(0);
+  const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
+
+  const [expensesPage, setExpensesPage] = useState(1);
+  const [expensesSearch, setExpensesSearch] = useState('');
+  const [expensesTotalPages, setExpensesTotalPages] = useState(1);
+  const [expensesTotal, setExpensesTotal] = useState(0);
+
+  const [receiptsPage, setReceiptsPage] = useState(1);
+  const [receiptsSearch, setReceiptsSearch] = useState('');
+  const [receiptsTotalPages, setReceiptsTotalPages] = useState(1);
+  const [receiptsTotal, setReceiptsTotal] = useState(0);
+
+  // Diagnostics states
+  const [telemetryErrors, setTelemetryErrors] = useState([]);
+  const [telemetryPage, setTelemetryPage] = useState(1);
+  const [telemetryTotalPages, setTelemetryTotalPages] = useState(1);
+  const [telemetrySearch, setTelemetrySearch] = useState('');
+  const [telemetryFilter, setTelemetryFilter] = useState('false'); // 'false', 'true', 'all'
+  const [diagnosticsSubTab, setDiagnosticsSubTab] = useState('health'); // 'health', 'errors', 'audit', 'settings'
+
+  
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [auditLogsPage, setAuditLogsPage] = useState(1);
+  const [auditLogsTotalPages, setAuditLogsTotalPages] = useState(1);
+  const [auditLogsSearch, setAuditLogsSearch] = useState('');
+  const [auditLogsCategory, setAuditLogsCategory] = useState('All');
+
+  const [healthStatus, setHealthStatus] = useState(null);
+  const [healthLoading, setHealthLoading] = useState(false);
+
+  const [perfStats, setPerfStats] = useState([]);
+  const [perfLoading, setPerfLoading] = useState(false);
+
+  const [obsSettings, setObsSettings] = useState({
+    alertThresholds: { errorRatePerMin: 10, slowRequestRate: 5, authFailureCount: 5 },
+    retentionPeriodDays: 14
+  });
+  const [obsSettingsLoading, setObsSettingsLoading] = useState(false);
+  const [isSavingObsSettings, setIsSavingObsSettings] = useState(false);
+
   const [collectRemainingOrder, setCollectRemainingOrder] = useState(null); // { id, remainingAmount }
   const [collectRemainingFile, setCollectRemainingFile] = useState(null);
   const [collectRemainingLoading, setCollectRemainingLoading] = useState(false);
@@ -251,28 +356,17 @@ export default function Admin() {
   const loadAllData = async () => {
     try {
       const [
-        carsRes,
-        ordersRes,
-        expensesRes,
         splitsRes,
         notificationsRes,
         cmsRes,
-        settingsRes,
-        receiptsData
+        settingsRes
       ] = await Promise.all([
-        fetch(`${API_BASE_URL}/admin/products`, { credentials: 'include' }),
-        fetch(`${API_BASE_URL}/admin/orders`, { credentials: 'include' }),
-        fetch(`${API_BASE_URL}/admin/expenses`, { credentials: 'include' }),
         fetch(`${API_BASE_URL}/admin/splits`, { credentials: 'include' }),
         fetch(`${API_BASE_URL}/admin/notifications`, { credentials: 'include' }),
         fetch(`${API_BASE_URL}/admin/homepage-cms`, { credentials: 'include' }),
-        fetch(`${API_BASE_URL}/settings`, { credentials: 'include' }),
-        getReceipts()
+        fetch(`${API_BASE_URL}/settings`, { credentials: 'include' })
       ]);
 
-      if (carsRes.ok) setCars(await carsRes.json());
-      if (ordersRes.ok) setOrders(await ordersRes.json());
-      if (expensesRes.ok) setExpenses(await expensesRes.json());
       if (splitsRes.ok) setSplitsData(await splitsRes.json());
       if (notificationsRes.ok) {
         const notifs = await notificationsRes.json();
@@ -281,21 +375,260 @@ export default function Admin() {
       }
       if (cmsRes.ok) setCmsData(await cmsRes.json());
       if (settingsRes.ok) setGlobalSettings(await settingsRes.json());
-      setReceiptsList(receiptsData || []);
-
-      // Fetch telemetry logs safely
-      const telemetryRes = await fetch(`${API_BASE_URL}/admin/telemetry/logs`, { credentials: 'include' }).catch(() => null);
-      if (telemetryRes && telemetryRes.ok) {
-        setTelemetryLogs(await telemetryRes.json());
-      }
       
       // Reset loaded metrics on refetches to ensure they represent fresh data when calculated next
       setKpis(null);
       setAnalytics(null);
+
+      // Trigger fetch for the active tab
+      triggerTabFetch(adminTab);
     } catch (e) {
       setDbError('Error loading dashboard datasets.');
     }
   };
+
+  const triggerTabFetch = (tab) => {
+    if (tab === 'dashboard') {
+      fetchKPIs();
+    } else if (tab === 'inventory') {
+      fetchInventory(inventoryPage, inventorySearchQuery);
+    } else if (tab === 'orders') {
+      fetchOrders(ordersPage, orderSearchQuery, orderFilter);
+    } else if (tab === 'receipts') {
+      fetchReceipts(receiptsPage, receiptsSearch);
+    } else if (tab === 'expenses') {
+      fetchExpenses(expensesPage, expensesSearch);
+    } else if (tab === 'diagnostics') {
+      fetchDiagnosticsData();
+    }
+  };
+
+  const fetchInventory = async (page, search) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/products?page=${page}&limit=12&search=${encodeURIComponent(search)}`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setCars(data.products || []);
+        setInventoryTotalPages(data.totalPages || 1);
+        setInventoryTotal(data.total || 0);
+      }
+    } catch (e) {
+      console.error("Error loading inventory:", e);
+    }
+  };
+
+  const fetchOrders = async (page, search, status) => {
+    const statusParam = status === 'all' ? 'All' : status;
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/orders?page=${page}&limit=10&search=${encodeURIComponent(search)}&status=${encodeURIComponent(statusParam)}`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setOrders(data.orders || []);
+        setOrdersTotalPages(data.totalPages || 1);
+        setOrdersTotal(data.total || 0);
+        setPendingOrdersCount(data.pendingCount || 0);
+      }
+    } catch (e) {
+      console.error("Error loading orders:", e);
+    }
+  };
+
+  const fetchExpenses = async (page, search) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/expenses?page=${page}&limit=15&search=${encodeURIComponent(search)}`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setExpenses(data.expenses || []);
+        setExpensesTotalPages(data.totalPages || 1);
+        setExpensesTotal(data.total || 0);
+      }
+    } catch (e) {
+      console.error("Error loading expenses:", e);
+    }
+  };
+
+  const fetchReceipts = async (page, search) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/receipts?page=${page}&limit=15&search=${encodeURIComponent(search)}`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setReceiptsList(data.receipts || []);
+        setReceiptsTotalPages(data.totalPages || 1);
+        setReceiptsTotal(data.total || 0);
+      }
+    } catch (e) {
+      console.error("Error loading receipts:", e);
+    }
+  };
+
+  const fetchDiagnosticsData = async () => {
+    fetchTelemetryErrors(telemetryPage, telemetrySearch, telemetryFilter);
+    fetchAuditLogs(auditLogsPage, auditLogsSearch, auditLogsCategory);
+    fetchHealth();
+    fetchPerformanceMetrics();
+    fetchObsSettings();
+  };
+
+  const fetchTelemetryErrors = async (page, search, acknowledged) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/telemetry/errors?page=${page}&limit=8&search=${encodeURIComponent(search)}&acknowledged=${acknowledged}`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setTelemetryErrors(data.errors || []);
+        setTelemetryTotalPages(data.totalPages || 1);
+      }
+    } catch (e) {
+      console.error("Error loading telemetry errors:", e);
+    }
+  };
+
+  const fetchAuditLogs = async (page, search, category) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/audit-logs?page=${page}&limit=12&search=${encodeURIComponent(search)}&category=${encodeURIComponent(category)}`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setAuditLogs(data.logs || []);
+        setAuditLogsTotalPages(data.totalPages || 1);
+      }
+    } catch (e) {
+      console.error("Error loading audit logs:", e);
+    }
+  };
+
+  const fetchHealth = async () => {
+    setHealthLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/health`);
+      if (res.ok) {
+        setHealthStatus(await res.json());
+      }
+    } catch (e) {
+      console.error("Error loading health status:", e);
+    } finally {
+      setHealthLoading(false);
+    }
+  };
+
+  const fetchPerformanceMetrics = async () => {
+    setPerfLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/performance-metrics`, { credentials: 'include' });
+      if (res.ok) {
+        setPerfStats(await res.json());
+      }
+    } catch (e) {
+      console.error("Error loading performance stats:", e);
+    } finally {
+      setPerfLoading(false);
+    }
+  };
+
+  const fetchObsSettings = async () => {
+    setObsSettingsLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/observability/settings`, { credentials: 'include' });
+      if (res.ok) {
+        setObsSettings(await res.json());
+      }
+    } catch (e) {
+      console.error("Error loading observability settings:", e);
+    } finally {
+      setObsSettingsLoading(false);
+    }
+  };
+
+  const handleSaveObsSettings = async (settings) => {
+    setIsSavingObsSettings(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/observability/settings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings),
+        credentials: 'include'
+      });
+      if (res.ok) {
+        showToast("Settings updated successfully", "success");
+        setObsSettings(settings);
+      } else {
+        showToast("Failed to update settings", "error");
+      }
+    } catch (e) {
+      console.error("Error saving observability settings:", e);
+      showToast("Error updating settings", "error");
+    } finally {
+      setIsSavingObsSettings(false);
+    }
+  };
+
+  const handleAcknowledgeError = async (fingerprint) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/telemetry/errors/${fingerprint}/acknowledge`, {
+        method: 'PATCH',
+        credentials: 'include'
+      });
+      if (res.ok) {
+        showToast("Error marked as resolved", "success");
+        fetchTelemetryErrors(telemetryPage, telemetrySearch, telemetryFilter);
+      }
+    } catch (e) {
+      console.error("Error acknowledging error:", e);
+    }
+  };
+
+  const handleClearErrors = async () => {
+    if (!window.confirm("Are you sure you want to clear all logged errors? This cannot be undone.")) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/telemetry/clear-errors`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+      if (res.ok) {
+        showToast("Errors cleared successfully", "success");
+        fetchTelemetryErrors(telemetryPage, telemetrySearch, telemetryFilter);
+      }
+    } catch (e) {
+      console.error("Error clearing errors:", e);
+    }
+  };
+
+  // Debounced search logic for all inputs
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      if (isAuthenticated && isAdmin) {
+        if (adminTab === 'inventory') {
+          setInventoryPage(1);
+          fetchInventory(1, inventorySearchQuery);
+        } else if (adminTab === 'orders') {
+          setOrdersPage(1);
+          fetchOrders(1, orderSearchQuery, orderFilter);
+        } else if (adminTab === 'receipts') {
+          setReceiptsPage(1);
+          fetchReceipts(1, receiptsSearch);
+        } else if (adminTab === 'expenses') {
+          setExpensesPage(1);
+          fetchExpenses(1, expensesSearch);
+        } else if (adminTab === 'diagnostics') {
+          if (diagnosticsSubTab === 'errors') {
+            setTelemetryPage(1);
+            fetchTelemetryErrors(1, telemetrySearch, telemetryFilter);
+          } else if (diagnosticsSubTab === 'audit') {
+            setAuditLogsPage(1);
+            fetchAuditLogs(1, auditLogsSearch, auditLogsCategory);
+          }
+        }
+      }
+    }, 350);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [inventorySearchQuery, orderSearchQuery, receiptsSearch, expensesSearch, telemetrySearch, auditLogsSearch]);
+
+  // Tab and page state change triggers
+  useEffect(() => {
+    if (isAuthenticated && isAdmin) {
+      triggerTabFetch(adminTab);
+    }
+  }, [adminTab, inventoryPage, ordersPage, orderFilter, receiptsPage, expensesPage, telemetryPage, telemetryFilter, auditLogsPage, auditLogsCategory]);
+
 
   const handleViewReceipt = (dbReceipt) => {
     const mapped = {
@@ -604,12 +937,13 @@ export default function Admin() {
           {[
             { id: 'dashboard', label: 'Dashboard', icon: TrendingUp },
             { id: 'inventory', label: 'Inventory', icon: Layers },
-            { id: 'orders', label: 'Orders', icon: FileText, badge: groupedOrders.filter(o => o.status === 'Verification Pending').length },
+            { id: 'orders', label: 'Orders', icon: FileText, badge: pendingOrdersCount },
             { id: 'receipts', label: 'Invoices', icon: Receipt },
             { id: 'expenses', label: 'Expenses', icon: DollarSign },
             { id: 'finance', label: 'Founder Splits', icon: DollarSign },
             { id: 'analytics', label: 'Analytics', icon: TrendingUp },
             { id: 'notifications', label: 'Alerts', icon: Bell, badge: notifications.length },
+            { id: 'diagnostics', label: 'Diagnostics', icon: Activity },
             { id: 'settings', label: 'Settings', icon: Settings }
           ].map(tab => {
             const Icon = tab.icon;
@@ -853,6 +1187,12 @@ export default function Admin() {
                   </tbody>
                 </table>
               </div>
+              <Pagination
+                currentPage={inventoryPage}
+                totalPages={inventoryTotalPages}
+                totalItems={inventoryTotal}
+                onPageChange={setInventoryPage}
+              />
             </div>
           )}
 
@@ -1177,6 +1517,12 @@ export default function Admin() {
                   ))
                 )}
               </div>
+              <Pagination
+                currentPage={ordersPage}
+                totalPages={ordersTotalPages}
+                totalItems={ordersTotal}
+                onPageChange={setOrdersPage}
+              />
             </div>
           )}
 
@@ -1214,6 +1560,18 @@ export default function Admin() {
                   <Plus size={14} strokeWidth={3} />
                   New Invoice
                 </button>
+              </div>
+
+              {/* Search Bar */}
+              <div className="flex items-center gap-2 bg-[#141414] border border-white/5 rounded-xl px-3.5 py-2.5 w-full max-w-md">
+                <Search size={14} className="text-zinc-500" />
+                <input
+                  type="text"
+                  placeholder="Search invoices by receipt #, customer name, or phone..."
+                  value={receiptsSearch}
+                  onChange={(e) => setReceiptsSearch(e.target.value)}
+                  className="bg-transparent border-none text-xs text-white placeholder-zinc-600 focus:outline-none w-full"
+                />
               </div>
 
               {/* Invoices List */}
@@ -1295,6 +1653,12 @@ export default function Admin() {
                   )}
                 </div>
               </div>
+              <Pagination
+                currentPage={receiptsPage}
+                totalPages={receiptsTotalPages}
+                totalItems={receiptsTotal}
+                onPageChange={setReceiptsPage}
+              />
             </div>
           )}
 
@@ -1314,6 +1678,18 @@ export default function Admin() {
                 >
                   <Plus size={14} /> Log Expense
                 </button>
+              </div>
+
+              {/* Search Bar */}
+              <div className="flex items-center gap-2 bg-[#141414] border border-white/5 rounded-xl px-3.5 py-2.5 w-full max-w-md">
+                <Search size={14} className="text-zinc-500" />
+                <input
+                  type="text"
+                  placeholder="Search expenses by title, category, or notes..."
+                  value={expensesSearch}
+                  onChange={(e) => setExpensesSearch(e.target.value)}
+                  className="bg-transparent border-none text-xs text-white placeholder-zinc-600 focus:outline-none w-full"
+                />
               </div>
 
               <div className="overflow-x-auto border border-white/5 rounded-2xl">
@@ -1347,6 +1723,12 @@ export default function Admin() {
                   </tbody>
                 </table>
               </div>
+              <Pagination
+                currentPage={expensesPage}
+                totalPages={expensesTotalPages}
+                totalItems={expensesTotal}
+                onPageChange={setExpensesPage}
+              />
             </div>
           )}
 
@@ -1535,25 +1917,37 @@ export default function Admin() {
                     No active alerts.
                   </div>
                 ) : (
-                  notifications.map(n => (
-                    <div key={n.id} className="p-4 border rounded-xl flex gap-3 text-xs bg-[#ff5500]/5 border-[#ff5500]/20 text-[#ff5500] relative group">
-                      <AlertTriangle className="shrink-0 mt-0.5" size={16} />
-                      <div className="flex-1">
-                        <span className="font-extrabold text-white block uppercase tracking-wide mb-0.5">{n.title}</span>
-                        <span className="text-[#888888] leading-relaxed block">{n.message}</span>
-                        <span className="text-[9px] text-[#555555] font-mono mt-1 block">
-                          {new Date(n.created_at).toLocaleString('en-IN')}
-                        </span>
+                  notifications.map(n => {
+                    const isError = n.title.toLowerCase().includes('error') || n.title.toLowerCase().includes('critical') || n.title.toLowerCase().includes('fail');
+                    const isWarning = n.title.toLowerCase().includes('warning') || n.title.toLowerCase().includes('threshold') || n.title.toLowerCase().includes('slow');
+                    
+                    let alertClasses = "bg-blue-950/25 border-blue-500/20 text-blue-400";
+                    if (isError) {
+                      alertClasses = "bg-red-950/25 border-red-500/20 text-red-400";
+                    } else if (isWarning) {
+                      alertClasses = "bg-amber-950/25 border-amber-500/20 text-amber-400";
+                    }
+
+                    return (
+                      <div key={n.id} className={`p-4 border rounded-xl flex gap-3 text-xs relative group ${alertClasses}`}>
+                        <AlertTriangle className="shrink-0 mt-0.5" size={16} />
+                        <div className="flex-1">
+                          <span className="font-extrabold text-white block uppercase tracking-wide mb-0.5">{n.title}</span>
+                          <span className="text-[#888888] leading-relaxed block">{n.message}</span>
+                          <span className="text-[9px] text-[#555555] font-mono mt-1 block">
+                            {new Date(n.created_at).toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteNotification(n.id)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity absolute top-3 right-3 text-[#888888] hover:text-white cursor-pointer w-6 h-6 rounded-full bg-white/5 flex items-center justify-center border border-white/5"
+                          title="Dismiss Alert"
+                        >
+                          <X size={12} />
+                        </button>
                       </div>
-                      <button
-                        onClick={() => handleDeleteNotification(n.id)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity absolute top-3 right-3 text-[#888888] hover:text-white cursor-pointer w-6 h-6 rounded-full bg-white/5 flex items-center justify-center border border-white/5"
-                        title="Dismiss Alert"
-                      >
-                        <X size={12} />
-                      </button>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
 
@@ -1567,101 +1961,6 @@ export default function Admin() {
                   </button>
                 </div>
               )}
-
-              <div className="h-[1px] bg-white/5 my-8" />
-
-              <div className="space-y-6">
-                <div className="flex justify-between items-center pb-3 border-b border-white/5">
-                  <div>
-                    <h3 className="text-xs font-black uppercase tracking-wider text-white">
-                      Error Telemetry Logs
-                    </h3>
-                    <p className="text-[10px] text-[#888888] mt-0.5">Captured runtime exceptions from frontend and backend services.</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={async () => {
-                        try {
-                          const res = await fetch(`${API_BASE_URL}/admin/telemetry/logs`, { credentials: 'include' });
-                          if (res.ok) setTelemetryLogs(await res.json());
-                        } catch (err) {
-                          console.error("Failed to refresh telemetry:", err);
-                        }
-                      }}
-                      className="bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold text-[10px] px-3.5 py-2 rounded-xl uppercase tracking-wider transition-colors cursor-pointer"
-                    >
-                      Refresh Logs
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2" data-lenis-prevent="true">
-                  {telemetryLogs.length === 0 ? (
-                    <div className="text-center py-12 text-[#888888] text-xs">
-                      No telemetry logs captured yet.
-                    </div>
-                  ) : (
-                    telemetryLogs.map(log => (
-                      <div key={log.id} className="p-4 bg-[#141416] border border-white/5 rounded-xl text-xs space-y-2 relative group">
-                        <div className="flex justify-between items-start">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
-                              log.source === 'frontend' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
-                            }`}>
-                              {log.source}
-                            </span>
-                            <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
-                              log.level === 'error' ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                            }`}>
-                              {log.level}
-                            </span>
-                            {log.user_email && (
-                              <span className="text-[10px] text-white/40 font-bold">
-                                {log.user_email}
-                              </span>
-                            )}
-                          </div>
-                          <span className="text-[9px] text-white/30 font-mono">
-                            {new Date(log.created_at).toLocaleString('en-IN')}
-                          </span>
-                        </div>
-
-                        <div className="text-white font-bold leading-relaxed pr-8">
-                          {log.message}
-                        </div>
-
-                        {log.url && (
-                          <div className="text-[10px] text-white/40 font-mono truncate">
-                            URL: <span className="text-[#ff5500]/60">{log.url}</span>
-                          </div>
-                        )}
-
-                        {log.user_agent && (
-                          <div className="text-[9px] text-[#555555] font-mono truncate" title={log.user_agent}>
-                            UA: {log.user_agent}
-                          </div>
-                        )}
-
-                        {log.stack && (
-                          <div className="pt-1">
-                            <button
-                              onClick={() => setExpandedLogs(prev => ({ ...prev, [log.id]: !prev[log.id] }))}
-                              className="text-[10px] font-bold text-[#ff5500] hover:underline uppercase tracking-wider cursor-pointer bg-transparent border-0"
-                            >
-                              {expandedLogs[log.id] ? 'Hide Stack Trace' : 'View Stack Trace'}
-                            </button>
-                            {expandedLogs[log.id] && (
-                              <pre className="font-mono text-[9px] bg-black/50 border border-white/5 p-3 rounded-lg overflow-x-auto text-[#ee7777] mt-2 leading-relaxed max-w-full whitespace-pre-wrap break-all">
-                                {log.stack}
-                              </pre>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
             </div>
           )}
 
@@ -1763,6 +2062,438 @@ export default function Admin() {
               </div>
             </div>
           )}
+
+          {/* 11. DIAGNOSTICS & SYSTEM HEALTH TAB */}
+          {adminTab === 'diagnostics' && (
+            <div className="space-y-6">
+              
+              {/* Header and Sub-navigation */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/5">
+                <div>
+                  <h3 className="text-base font-black uppercase tracking-wider text-white">Observability & Diagnostics</h3>
+                  <p className="text-[10px] text-[#888888] mt-0.5">Monitor system telemetry, audit operations, and health alerts.</p>
+                </div>
+                
+                {/* Sub-tabs menu */}
+                <div className="flex flex-wrap gap-1 bg-[#141414] border border-white/5 p-1 rounded-xl">
+                  {[
+                    { id: 'health', label: 'System Health', icon: Server },
+                    { id: 'errors', label: 'Telemetry Errors', icon: AlertTriangle },
+                    { id: 'audit', label: 'Audit Logs', icon: Shield },
+                    { id: 'settings', label: 'Alert Settings', icon: Settings }
+                  ].map(sub => {
+                    const active = diagnosticsSubTab === sub.id;
+                    const SubIcon = sub.icon;
+                    return (
+                      <button
+                        key={sub.id}
+                        onClick={() => setDiagnosticsSubTab(sub.id)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors cursor-pointer border ${
+                          active
+                            ? 'bg-[#ff5500]/10 border-[#ff5500]/30 text-[#ff5500]'
+                            : 'border-transparent text-[#888888] hover:text-white'
+                        }`}
+                      >
+                        <SubIcon size={12} />
+                        {sub.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Sub-tab Content: Health */}
+              {diagnosticsSubTab === 'health' && (
+                <div className="space-y-6">
+                  {/* System Health Status Grid (Bento Style) */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="bg-[#141414] border border-white/5 rounded-2xl p-5 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-mono text-[#888888] uppercase tracking-wider">Database Node</span>
+                        <span className={`w-2 h-2 rounded-full ${healthStatus?.database?.status === 'up' ? 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.3)]' : 'bg-red-400 animate-pulse'} flex-shrink-0`} />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-white uppercase tracking-wider">PostgreSQL Gateway</h4>
+                        <p className="text-[10px] text-[#888888] font-mono mt-1">Status: {healthStatus?.database?.status === 'up' ? 'ONLINE (ACTIVE)' : 'OFFLINE'}</p>
+                      </div>
+                    </div>
+
+                    <div className="bg-[#141414] border border-white/5 rounded-2xl p-5 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-mono text-[#888888] uppercase tracking-wider">System Environment</span>
+                        <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.3)] flex-shrink-0" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-white uppercase tracking-wider">Vite & Node Runtime</h4>
+                        <p className="text-[10px] text-[#888888] font-mono mt-1">Environment: {import.meta.env.MODE.toUpperCase()}</p>
+                        <p className="text-[9px] text-zinc-500 font-mono mt-0.5">V: {healthStatus?.version || '1.0.0-GA'}</p>
+                      </div>
+                    </div>
+
+                    <div className="bg-[#141414] border border-white/5 rounded-2xl p-5 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-mono text-[#888888] uppercase tracking-wider">Build Revision</span>
+                        <span className="w-2 h-2 rounded-full bg-purple-400 shadow-[0_0_10px_rgba(192,132,252,0.3)] flex-shrink-0" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-white uppercase tracking-wider">Git Commit</h4>
+                        <p className="text-[10px] text-[#888888] font-mono mt-1 truncate block" title={healthStatus?.git?.commit}>
+                          SHA: {healthStatus?.git?.commit ? healthStatus.git.commit.slice(0, 8) : 'DEVELOPMENT_BUILD'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Latency & Metrics Charts */}
+                  <div className="bg-[#141414] border border-white/5 rounded-2xl p-6 space-y-6">
+                    <div>
+                      <h4 className="text-xs font-black uppercase tracking-wider text-white">Route Performance Metrics</h4>
+                      <p className="text-[10px] text-[#888888] mt-0.5">Monitors latency and response size profiles across routes.</p>
+                    </div>
+
+                    {perfLoading ? (
+                      <div className="py-8 text-center text-[#888888] text-xs animate-pulse">Analyzing profiles...</div>
+                    ) : perfStats.length === 0 ? (
+                      <div className="py-8 text-center text-[#888888] text-xs">No metrics recorded yet. Trigger api calls to log statistics.</div>
+                    ) : (
+                      <div className="space-y-4">
+                        {perfStats.map((metric, idx) => {
+                          const avgLat = parseFloat(metric.avg_duration);
+                          const isSlow = avgLat > 500;
+                          const latencyRating = avgLat < 200 ? 'Excellent' : avgLat < 500 ? 'Good' : 'Slow';
+                          const ratingColor = avgLat < 200 ? 'text-emerald-400' : avgLat < 500 ? 'text-amber-400' : 'text-red-400';
+                          return (
+                            <div key={idx} className="bg-[#1c1c1c] border border-white/5 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                              <div>
+                                <span className="text-[9px] font-mono font-bold text-[#ff5500] uppercase bg-[#ff5500]/10 border-[#ff5500]/20 px-2 py-0.5 rounded">
+                                  {metric.method}
+                                </span>
+                                <span className="ml-2.5 text-xs font-bold text-white font-mono">{metric.route}</span>
+                              </div>
+                              <div className="flex items-center gap-6">
+                                <div className="text-right">
+                                  <span className="text-[10px] text-[#888888] block">AVG LATENCY</span>
+                                  <span className={`text-xs font-mono font-black ${ratingColor}`}>{avgLat.toFixed(1)} ms ({latencyRating})</span>
+                                </div>
+                                <div className="text-right">
+                                  <span className="text-[10px] text-[#888888] block">HIT COUNT</span>
+                                  <span className="text-xs font-mono font-black text-white">{metric.hit_count} hits</span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Sub-tab Content: Telemetry Errors */}
+              {diagnosticsSubTab === 'errors' && (
+                <div className="space-y-6">
+                  {/* Actions & Filters */}
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                      <div className="flex items-center gap-2 bg-[#141414] border border-white/5 rounded-xl px-3.5 py-2 w-full max-w-xs">
+                        <Search size={12} className="text-zinc-500" />
+                        <input
+                          type="text"
+                          placeholder="Search error messages..."
+                          value={telemetrySearch}
+                          onChange={(e) => setTelemetrySearch(e.target.value)}
+                          className="bg-transparent border-none text-[11px] text-white placeholder-zinc-600 focus:outline-none w-full"
+                        />
+                      </div>
+                      
+                      <select
+                        value={telemetryFilter}
+                        onChange={(e) => setTelemetryFilter(e.target.value)}
+                        className="bg-[#141414] border border-white/5 rounded-xl px-3 py-2 text-[11px] text-white focus:outline-none focus:border-[#ff5500]/50"
+                      >
+                        <option value="false">Unresolved Errors</option>
+                        <option value="true">Resolved Errors</option>
+                        <option value="all">All Logs</option>
+                      </select>
+                    </div>
+
+                    <button
+                      onClick={handleClearErrors}
+                      className="bg-red-950/30 border border-red-500/20 text-red-400 hover:bg-red-950/50 hover:text-red-300 font-extrabold text-[10px] px-3.5 py-2 rounded-xl uppercase tracking-wider transition-colors cursor-pointer"
+                    >
+                      Clear Logged Errors
+                    </button>
+                  </div>
+
+                  {/* Telemetry Error Cards */}
+                  <div className="space-y-4">
+                    {telemetryErrors.length === 0 ? (
+                      <div className="bg-[#141414] border border-white/5 rounded-2xl p-12 text-center text-[#888888] text-xs">
+                        No error logs matching your filters.
+                      </div>
+                    ) : (
+                      telemetryErrors.map((err) => {
+                        const isAcknowledgeable = !err.acknowledged;
+                        return (
+                          <div key={err.fingerprint} className="bg-[#141414] border border-white/5 rounded-2xl p-5 space-y-4 relative group">
+                            {/* Tags row */}
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
+                                err.source === 'frontend' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
+                              }`}>
+                                {err.source}
+                              </span>
+                              <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-red-500/10 text-red-400 border border-red-500/20">
+                                {err.category}
+                              </span>
+                              <span className="text-[9px] text-[#555555] font-mono ml-auto">
+                                Occurrences: <span className="font-bold text-white">{err.seen_count}</span>
+                              </span>
+                            </div>
+
+                            {/* Error Header */}
+                            <div>
+                              <h4 className="text-xs font-black uppercase tracking-wider text-red-400 leading-snug">
+                                {err.message}
+                              </h4>
+                              <p className="text-[10px] text-zinc-500 font-mono mt-1 break-all">Route: {err.url || 'Internal Operation'}</p>
+                            </div>
+
+                            {/* Stack trace section */}
+                            {err.stack && (
+                              <details className="group/details">
+                                <summary className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest cursor-pointer hover:text-white list-none select-none flex items-center gap-1">
+                                  <span>▶</span> <span>Toggle Trace Stack</span>
+                                </summary>
+                                <pre className="mt-3 p-3 bg-[#0a0a0b] border border-white/5 rounded-xl text-[9px] font-mono text-zinc-400 leading-relaxed overflow-x-auto select-text" data-lenis-prevent="true">
+                                  {err.stack}
+                                </pre>
+                              </details>
+                            )}
+
+                            {/* Trace footer */}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-3 border-t border-white/5 text-[9px] font-mono text-[#555555]">
+                              <span>Seen: {new Date(err.first_seen).toLocaleString('en-IN')} — {new Date(err.last_seen).toLocaleString('en-IN')}</span>
+                              {err.correlation_id && (
+                                <span className="bg-zinc-900 border border-white/5 px-2 py-0.5 rounded text-[9px] font-mono text-[#888888] select-all cursor-copy" title="Click to copy Correlation ID">
+                                  CID: {err.correlation_id}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Action overlay */}
+                            {isAcknowledgeable && (
+                              <div className="absolute top-2 right-5">
+                                <button
+                                  onClick={() => handleAcknowledgeError(err.fingerprint)}
+                                  className="bg-emerald-950/20 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-950/40 hover:text-emerald-300 font-extrabold text-[9px] px-2.5 py-1 rounded-lg uppercase tracking-wider cursor-pointer transition-colors"
+                                >
+                                  Resolve
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  <Pagination
+                    currentPage={telemetryPage}
+                    totalPages={telemetryTotalPages}
+                    onPageChange={setTelemetryPage}
+                  />
+                </div>
+              )}
+
+              {/* Sub-tab Content: Audit Logs */}
+              {diagnosticsSubTab === 'audit' && (
+                <div className="space-y-6">
+                  {/* Filters */}
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                    <div className="flex items-center gap-2 bg-[#141414] border border-white/5 rounded-xl px-3.5 py-2 w-full max-w-xs">
+                      <Search size={12} className="text-zinc-500" />
+                      <input
+                        type="text"
+                        placeholder="Search logs by user, IP, action..."
+                        value={auditLogsSearch}
+                        onChange={(e) => setAuditLogsSearch(e.target.value)}
+                        className="bg-transparent border-none text-[11px] text-white placeholder-zinc-600 focus:outline-none w-full"
+                      />
+                    </div>
+                    
+                    <select
+                      value={auditLogsCategory}
+                      onChange={(e) => setAuditLogsCategory(e.target.value)}
+                      className="bg-[#141414] border border-white/5 rounded-xl px-3 py-2 text-[11px] text-white focus:outline-none focus:border-[#ff5500]/50"
+                    >
+                      <option value="All">All Categories</option>
+                      <option value="Products">Products</option>
+                      <option value="Orders">Orders</option>
+                      <option value="Expenses">Expenses</option>
+                      <option value="Invoices">Invoices</option>
+                    </select>
+                  </div>
+
+                  {/* Audit Logs Table */}
+                  <div className="overflow-x-auto border border-white/5 rounded-2xl">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-[#141414] border-b border-white/5 text-[#888888] uppercase tracking-widest text-[9px]">
+                          <th className="p-4 font-bold">Timestamp</th>
+                          <th className="p-4 font-bold">Action & Entity</th>
+                          <th className="p-4 font-bold">Operator Details</th>
+                          <th className="p-4 font-bold">State Changes</th>
+                          <th className="p-4 font-bold">Correlation ID</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {auditLogs.length === 0 ? (
+                          <tr>
+                            <td colSpan="5" className="p-8 text-center text-[#888888] uppercase text-[10px] tracking-wider font-bold">
+                              No audit logs matching your filters.
+                            </td>
+                          </tr>
+                        ) : (
+                          auditLogs.map((log) => (
+                            <tr key={log.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                              <td className="p-4 font-mono text-[#888888]">
+                                {new Date(log.created_at).toLocaleString('en-IN')}
+                              </td>
+                              <td className="p-4">
+                                <span className="font-bold text-white block">{log.action}</span>
+                                <span className="text-[10px] text-zinc-500 uppercase font-mono">{log.entity} #{log.entity_id?.slice(0, 8)}</span>
+                              </td>
+                              <td className="p-4">
+                                <span className="font-bold text-white block">{log.user_email || 'System Auto'}</span>
+                                <span className="text-[10px] text-zinc-500 font-mono block mt-0.5">{log.ip_address || '127.0.0.1'}</span>
+                              </td>
+                              <td className="p-4 max-w-[280px]">
+                                {log.before_state || log.after_state ? (
+                                  <details className="group/audit-details font-mono">
+                                    <summary className="text-[9px] font-bold text-[#ff5500] uppercase tracking-wider cursor-pointer list-none select-none">
+                                      View Payload JSON
+                                    </summary>
+                                    <pre className="mt-2 p-2 bg-[#09090a] border border-white/5 rounded-lg text-[9px] font-mono text-zinc-400 overflow-x-auto leading-relaxed select-text" data-lenis-prevent="true">
+                                      {JSON.stringify({
+                                        before: log.before_state ? JSON.parse(log.before_state) : null,
+                                        after: log.after_state ? JSON.parse(log.after_state) : null
+                                      }, null, 2)}
+                                    </pre>
+                                  </details>
+                                ) : (
+                                  <span className="text-[10px] text-[#555555] font-mono">No state changes</span>
+                                )}
+                              </td>
+                              <td className="p-4 font-mono">
+                                {log.correlation_id ? (
+                                  <span className="bg-zinc-900 border border-white/5 px-2 py-0.5 rounded text-[9px] text-[#888888] select-all cursor-copy">
+                                    {log.correlation_id}
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] text-[#555555]">—</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <Pagination
+                    currentPage={auditLogsPage}
+                    totalPages={auditLogsTotalPages}
+                    onPageChange={setAuditLogsPage}
+                  />
+                </div>
+              )}
+
+              {/* Sub-tab Content: Alert Settings */}
+              {diagnosticsSubTab === 'settings' && (
+                <div className="bg-[#141414] border border-white/5 rounded-2xl p-6 space-y-6">
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-wider text-white">Alert Thresholds & Purge Settings</h4>
+                    <p className="text-[10px] text-[#888888] mt-0.5">Tune thresholds for triggering telemetry alerts and set log retention schedules.</p>
+                  </div>
+
+                  {obsSettingsLoading ? (
+                    <div className="py-8 text-center text-[#888888] text-xs animate-pulse">Retrieving settings...</div>
+                  ) : (
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Error Rate Alert Threshold (per min)</label>
+                          <input
+                            type="number"
+                            value={obsSettings.alertThresholds.errorRatePerMin}
+                            onChange={(e) => setObsSettings(prev => ({
+                              ...prev,
+                              alertThresholds: { ...prev.alertThresholds, errorRatePerMin: Number(e.target.value) }
+                            }))}
+                            className="w-full px-4 py-3 bg-[#1c1c1c] border border-white/5 rounded-xl text-xs text-white focus:outline-none focus:border-[#ff5500]/50"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Slow Query Latency Alert Threshold (ms)</label>
+                          <input
+                            type="number"
+                            value={obsSettings.alertThresholds.slowRequestRate}
+                            onChange={(e) => setObsSettings(prev => ({
+                              ...prev,
+                              alertThresholds: { ...prev.alertThresholds, slowRequestRate: Number(e.target.value) }
+                            }))}
+                            className="w-full px-4 py-3 bg-[#1c1c1c] border border-white/5 rounded-xl text-xs text-white focus:outline-none focus:border-[#ff5500]/50"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Auth Failures Alert Threshold (per min)</label>
+                          <input
+                            type="number"
+                            value={obsSettings.alertThresholds.authFailureCount}
+                            onChange={(e) => setObsSettings(prev => ({
+                              ...prev,
+                              alertThresholds: { ...prev.alertThresholds, authFailureCount: Number(e.target.value) }
+                            }))}
+                            className="w-full px-4 py-3 bg-[#1c1c1c] border border-white/5 rounded-xl text-xs text-white focus:outline-none focus:border-[#ff5500]/50"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-white/5">
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Log Purge Retention Period (days)</label>
+                          <input
+                            type="number"
+                            value={obsSettings.retentionPeriodDays}
+                            onChange={(e) => setObsSettings(prev => ({
+                              ...prev,
+                              retentionPeriodDays: Number(e.target.value)
+                            }))}
+                            className="w-full px-4 py-3 bg-[#1c1c1c] border border-white/5 rounded-xl text-xs text-white focus:outline-none focus:border-[#ff5500]/50"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end pt-4 border-t border-white/5">
+                        <button
+                          disabled={isSavingObsSettings}
+                          onClick={() => handleSaveObsSettings(obsSettings)}
+                          className="bg-[#ff5500] hover:bg-[#ff6611] disabled:opacity-50 text-black font-extrabold text-[10px] px-5 py-2.5 rounded-xl uppercase tracking-wider transition-colors cursor-pointer"
+                        >
+                          {isSavingObsSettings ? 'Saving...' : 'Save Observability Settings'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+            </div>
+          )}
+
 
         </main>
       </div>

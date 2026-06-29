@@ -43,10 +43,21 @@ export default function ScreenshotUploader({ orderId, onUploadSuccess }) {
         body: formData
       });
 
-      const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.message || 'Upload failed. Please check your image.');
+        let errorMsg = 'Upload failed. Please check your image.';
+        try {
+          const data = await response.json();
+          errorMsg = data.message || errorMsg;
+        } catch (e) {
+          try {
+            const text = await response.text();
+            if (text) errorMsg = text;
+          } catch (_) {}
+        }
+        throw new Error(errorMsg);
       }
+
+      const data = await response.json();
 
       if (onUploadSuccess) {
         onUploadSuccess();
