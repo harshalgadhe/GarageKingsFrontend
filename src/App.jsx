@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { SpeedInsights } from '@vercel/speed-insights/react'
 import { SmoothScrollProvider } from './providers/SmoothScroll'
 import Home from './pages/Home'
 import Admin from './pages/Admin'
@@ -28,6 +29,7 @@ export default function App() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </SmoothScrollProvider>
+      <SpeedInsights />
     </Router>
   )
 }
