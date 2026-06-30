@@ -2110,11 +2110,11 @@ export default function Admin() {
                     <div className="bg-[#141414] border border-white/5 rounded-2xl p-5 space-y-4">
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] font-mono text-[#888888] uppercase tracking-wider">Database Node</span>
-                        <span className={`w-2 h-2 rounded-full ${healthStatus?.database?.status === 'up' ? 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.3)]' : 'bg-red-400 animate-pulse'} flex-shrink-0`} />
+                        <span className={`w-2 h-2 rounded-full ${(healthStatus?.database?.status === 'up' || healthStatus?.database?.status === 'healthy') ? 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.3)]' : 'bg-red-400 animate-pulse'} flex-shrink-0`} />
                       </div>
                       <div>
                         <h4 className="text-xs font-bold text-white uppercase tracking-wider">PostgreSQL Gateway</h4>
-                        <p className="text-[10px] text-[#888888] font-mono mt-1">Status: {healthStatus?.database?.status === 'up' ? 'ONLINE (ACTIVE)' : 'OFFLINE'}</p>
+                        <p className="text-[10px] text-[#888888] font-mono mt-1">Status: {(healthStatus?.database?.status === 'up' || healthStatus?.database?.status === 'healthy') ? 'ONLINE (ACTIVE)' : 'OFFLINE'}</p>
                       </div>
                     </div>
 
@@ -2137,8 +2137,8 @@ export default function Admin() {
                       </div>
                       <div>
                         <h4 className="text-xs font-bold text-white uppercase tracking-wider">Git Commit</h4>
-                        <p className="text-[10px] text-[#888888] font-mono mt-1 truncate block" title={healthStatus?.git?.commit}>
-                          SHA: {healthStatus?.git?.commit ? healthStatus.git.commit.slice(0, 8) : 'DEVELOPMENT_BUILD'}
+                        <p className="text-[10px] text-[#888888] font-mono mt-1 truncate block" title={healthStatus?.commit || healthStatus?.git?.commit}>
+                          SHA: {healthStatus?.commit && healthStatus?.commit !== 'N/A' ? healthStatus.commit.slice(0, 8) : (healthStatus?.git?.commit ? healthStatus.git.commit.slice(0, 8) : 'DEVELOPMENT_BUILD')}
                         </p>
                       </div>
                     </div>
@@ -2158,7 +2158,9 @@ export default function Admin() {
                     ) : (
                       <div className="space-y-4">
                         {perfStats.map((metric, idx) => {
-                          const avgLat = parseFloat(metric.avg_duration);
+                          const avgLat = parseFloat(metric.avgLatency || metric.avg_duration || 0);
+                          const hitCount = metric.totalRequests || metric.hit_count || 0;
+                          const featureName = metric.feature || metric.route || 'Route';
                           const isSlow = avgLat > 500;
                           const latencyRating = avgLat < 200 ? 'Excellent' : avgLat < 500 ? 'Good' : 'Slow';
                           const ratingColor = avgLat < 200 ? 'text-emerald-400' : avgLat < 500 ? 'text-amber-400' : 'text-red-400';
@@ -2166,9 +2168,9 @@ export default function Admin() {
                             <div key={idx} className="bg-[#1c1c1c] border border-white/5 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                               <div>
                                 <span className="text-[9px] font-mono font-bold text-[#ff5500] uppercase bg-[#ff5500]/10 border-[#ff5500]/20 px-2 py-0.5 rounded">
-                                  {metric.method}
+                                  {metric.method || 'API'}
                                 </span>
-                                <span className="ml-2.5 text-xs font-bold text-white font-mono">{metric.route}</span>
+                                <span className="ml-2.5 text-xs font-bold text-white font-mono">{featureName}</span>
                               </div>
                               <div className="flex items-center gap-6">
                                 <div className="text-right">
@@ -2177,7 +2179,7 @@ export default function Admin() {
                                 </div>
                                 <div className="text-right">
                                   <span className="text-[10px] text-[#888888] block">HIT COUNT</span>
-                                  <span className="text-xs font-mono font-black text-white">{metric.hit_count} hits</span>
+                                  <span className="text-xs font-mono font-black text-white">{hitCount} hits</span>
                                 </div>
                               </div>
                             </div>
@@ -2234,6 +2236,12 @@ export default function Admin() {
                     ) : (
                       telemetryErrors.map((err) => {
                         const isAcknowledgeable = !err.acknowledged;
+                        const occurrenceCount = err.occurrenceCount || err.seen_count || err.occurrences || 0;
+                        const firstSeen = err.firstOccurrence || err.first_seen;
+                        const lastSeen = err.lastOccurrence || err.last_seen;
+                        const stack = err.stackTrace || err.stack;
+                        const correlationId = err.latestCorrelationId || err.correlation_id;
+                        const url = err.latestUrl || err.url || 'Internal Operation';
                         return (
                           <div key={err.fingerprint} className="bg-[#141414] border border-white/5 rounded-2xl p-5 space-y-4 relative group">
                             {/* Tags row */}
@@ -2247,7 +2255,7 @@ export default function Admin() {
                                 {err.category}
                               </span>
                               <span className="text-[9px] text-[#555555] font-mono ml-auto">
-                                Occurrences: <span className="font-bold text-white">{err.seen_count}</span>
+                                Occurrences: <span className="font-bold text-white">{occurrenceCount}</span>
                               </span>
                             </div>
 
@@ -2256,27 +2264,27 @@ export default function Admin() {
                               <h4 className="text-xs font-black uppercase tracking-wider text-red-400 leading-snug">
                                 {err.message}
                               </h4>
-                              <p className="text-[10px] text-zinc-500 font-mono mt-1 break-all">Route: {err.url || 'Internal Operation'}</p>
+                              <p className="text-[10px] text-zinc-500 font-mono mt-1 break-all">Route: {url}</p>
                             </div>
 
                             {/* Stack trace section */}
-                            {err.stack && (
+                            {stack && (
                               <details className="group/details">
                                 <summary className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest cursor-pointer hover:text-white list-none select-none flex items-center gap-1">
                                   <span>▶</span> <span>Toggle Trace Stack</span>
                                 </summary>
                                 <pre className="mt-3 p-3 bg-[#0a0a0b] border border-white/5 rounded-xl text-[9px] font-mono text-zinc-400 leading-relaxed overflow-x-auto select-text" data-lenis-prevent="true">
-                                  {err.stack}
+                                  {stack}
                                 </pre>
                               </details>
                             )}
 
                             {/* Trace footer */}
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-3 border-t border-white/5 text-[9px] font-mono text-[#555555]">
-                              <span>Seen: {new Date(err.first_seen).toLocaleString('en-IN')} — {new Date(err.last_seen).toLocaleString('en-IN')}</span>
-                              {err.correlation_id && (
+                              <span>Seen: {firstSeen ? new Date(firstSeen).toLocaleString('en-IN') : 'N/A'} — {lastSeen ? new Date(lastSeen).toLocaleString('en-IN') : 'N/A'}</span>
+                              {correlationId && (
                                 <span className="bg-zinc-900 border border-white/5 px-2 py-0.5 rounded text-[9px] font-mono text-[#888888] select-all cursor-copy" title="Click to copy Correlation ID">
-                                  CID: {err.correlation_id}
+                                  CID: {correlationId}
                                 </span>
                               )}
                             </div>
