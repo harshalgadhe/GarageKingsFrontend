@@ -549,3 +549,99 @@ export async function updateCustomerProfile(profile) {
   return await res.json();
 }
 
+// Supplier Purchases client Rest APIs
+export async function getSuppliers() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/suppliers`, { headers: getAuthHeaders() });
+    if (!res.ok) throw new Error("Failed to fetch suppliers");
+    return await res.json();
+  } catch (err) {
+    console.error("Error getSuppliers:", err);
+    return [];
+  }
+}
+
+export async function createSupplier(supplier) {
+  const res = await fetch(`${API_BASE_URL}/admin/suppliers`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(supplier)
+  });
+  if (!res.ok) throw new Error("Failed to create supplier");
+  return await res.json();
+}
+
+export async function getSupplierPurchases(page = 1, limit = 10, search = "") {
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/supplier-purchases?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}`, {
+      headers: getAuthHeaders()
+    });
+    if (!res.ok) throw new Error("Failed to fetch supplier purchases");
+    return await res.json();
+  } catch (err) {
+    console.error("Error getSupplierPurchases:", err);
+    return { purchases: [], total: 0, totalPages: 0 };
+  }
+}
+
+export async function getSupplierPurchaseDetails(id) {
+  const res = await fetch(`${API_BASE_URL}/admin/supplier-purchases/${id}`, {
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error("Failed to fetch supplier purchase details");
+  return await res.json();
+}
+
+export async function addSupplierPurchase(purchase) {
+  const res = await fetch(`${API_BASE_URL}/admin/supplier-purchases`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(purchase)
+  });
+  if (!res.ok) throw new Error("Failed to add supplier purchase");
+  return await res.json();
+}
+
+export async function recordSupplierPayment(id, payment) {
+  const res = await fetch(`${API_BASE_URL}/admin/supplier-purchases/${id}/pay`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payment)
+  });
+  if (!res.ok) throw new Error("Failed to record supplier payment");
+  return await res.json();
+}
+
+export async function receiveSupplierShipment(id, receiving) {
+  const res = await fetch(`${API_BASE_URL}/admin/supplier-purchases/${id}/receive`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(receiving)
+  });
+  if (!res.ok) throw new Error("Failed to receive supplier shipment");
+  return await res.json();
+}
+
+export async function updateSupplierPurchaseStatus(id, status) {
+  const res = await fetch(`${API_BASE_URL}/admin/supplier-purchases/${id}/status`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ status })
+  });
+  if (!res.ok) throw new Error("Failed to update supplier purchase status");
+  return await res.json();
+}
+
+export async function getSupplierMetrics() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/dashboard/supplier-metrics`, {
+      headers: getAuthHeaders()
+    });
+    if (!res.ok) throw new Error("Failed to fetch supplier metrics");
+    return await res.json();
+  } catch (err) {
+    console.error("Error getSupplierMetrics:", err);
+    return { upcomingArrivals: 0, outstandingPayables: 0, awaitingReceiptCount: 0, delayedShipments: 0, totalSpend: 0, avgLeadTimeDays: 0, timeline: [] };
+  }
+}
+

@@ -3,12 +3,14 @@ import { useNavigate, Link } from 'react-router-dom';
 import { 
   Plus, Trash2, Edit2, Save, X, Settings, Eye, EyeOff, LogOut, User, Search,
   DollarSign, TrendingUp, Bell, FileText, Users, AlertTriangle, Layers, Calendar, Receipt,
-  Activity, Server, Shield
+  Activity, Server, Shield, Truck
 } from 'lucide-react';
 import { getCurrentUser, signOutCognito } from '../lib/auth';
 import { 
   getCars, addCar, updateCar, deleteCar, uploadImageToStorage, getGlobalSettings, updateGlobalSettings,
-  getReceipts, addReceipt, deleteReceipt 
+  getReceipts, addReceipt, deleteReceipt,
+  getSuppliers, createSupplier, getSupplierPurchases, getSupplierPurchaseDetails, addSupplierPurchase,
+  recordSupplierPayment, receiveSupplierShipment, updateSupplierPurchaseStatus, getSupplierMetrics
 } from '../lib/db';
 import Navigation from '../components/Navigation';
 import ReceiptModal from '../components/ReceiptModal';
@@ -78,6 +80,29 @@ export default function Admin() {
   // Tab controller (Exactly 8 modules)
   const [adminTab, setAdminTab] = useState('dashboard'); // 'dashboard', 'inventory', 'orders', 'expenses', 'finance', 'analytics', 'notifications', 'settings'
 
+  // Supplier Purchases State
+  const [supplierPurchases, setSupplierPurchases] = useState([]);
+  const [supplierPurchasesTotalPages, setSupplierPurchasesTotalPages] = useState(1);
+  const [supplierPurchasesTotal, setSupplierPurchasesTotal] = useState(0);
+  const [supplierPurchasesPage, setSupplierPurchasesPage] = useState(1);
+  const [supplierPurchasesSearch, setSupplierPurchasesSearch] = useState('');
+  const [supplierPurchasesLoading, setSupplierPurchasesLoading] = useState(false);
+  const [supplierMetrics, setSupplierMetricsData] = useState({
+    upcomingArrivals: 0,
+    outstandingPayables: 0,
+    awaitingReceiptCount: 0,
+    delayedShipments: 0,
+    totalSpend: 0,
+    avgLeadTimeDays: 0,
+    timeline: []
+  });
+  const [suppliers, setSuppliersList] = useState([]);
+  const [isAddingSupplierPurchase, setIsAddingSupplierPurchase] = useState(false);
+  const [isRecordingSupplierPayment, setIsRecordingSupplierPayment] = useState(false);
+  const [isReceivingShipment, setIsReceivingShipment] = useState(false);
+  const [selectedPurchase, setSelectedPurchase] = useState(null);
+  const [selectedPurchaseId, setSelectedPurchaseId] = useState(null);
+
   // Datasets
   const [cars, setCars] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -97,6 +122,42 @@ export default function Admin() {
   const [cashAccountForm, setCashAccountForm] = useState({ name: '', type: 'Bank', openingBalance: 0, currency: 'INR', description: '' });
   const [isAddingFounderTx, setIsAddingFounderTx] = useState(false);
   const [founderTxForm, setFounderTxForm] = useState({ founderName: 'Harshal', amount: '', type: 'contribution', cashAccountId: '', reason: '', notes: '', date: new Date().toISOString().split('T')[0] });
+
+  // Supplier Purchase Forms
+  const [purchaseForm, setPurchaseForm] = useState({
+    supplierId: '',
+    purchaseDate: new Date().toISOString().split('T')[0],
+    expectedArrivalDate: '',
+    items: [{ productId: '', quantity: 1, purchasePrice: 0 }],
+    advancePaid: 0,
+    cashAccountId: '',
+    paymentMethod: 'Bank Transfer',
+    referenceNumber: '',
+    notes: ''
+  });
+
+  const [paymentForm, setPaymentForm] = useState({
+    amount: 0,
+    cashAccountId: '',
+    paymentMethod: 'Bank Transfer',
+    referenceNumber: '',
+    notes: '',
+    date: new Date().toISOString().split('T')[0]
+  });
+
+  const [receivingForm, setReceivingForm] = useState({
+    receivedBy: '',
+    notes: '',
+    items: []
+  });
+
+  const [isCreatingNewSupplier, setIsCreatingNewSupplier] = useState(false);
+  const [newSupplierForm, setNewSupplierForm] = useState({
+    name: '',
+    contactEmail: '',
+    contactPhone: '',
+    address: ''
+  });
 
   const fetchCashAccounts = async () => {
     try {
@@ -563,6 +624,54 @@ export default function Admin() {
       fetchCMS();
     } else if (tab === 'notifications') {
       fetchNotifications();
+    } else if (tab === 'supplier_purchases') {
+      fetchSupplierPurchases(supplierPurchasesPage, supplierPurchasesSearch);
+      fetchSupplierMetrics();
+      fetchSuppliersList();
+      if (selectedPurchaseId) {
+        fetchSupplierPurchaseDetailsData(selectedPurchaseId);
+      }
+    }
+  };
+
+  const fetchSupplierPurchases = async (page, search) => {
+    setSupplierPurchasesLoading(true);
+    try {
+      const data = await getSupplierPurchases(page, 10, search);
+      setSupplierPurchases(data.purchases || []);
+      setSupplierPurchasesTotalPages(data.totalPages || 1);
+      setSupplierPurchasesTotal(data.total || 0);
+    } catch (e) {
+      console.error("Error loading supplier purchases:", e);
+    } finally {
+      setSupplierPurchasesLoading(false);
+    }
+  };
+
+  const fetchSupplierMetrics = async () => {
+    try {
+      const data = await getSupplierMetrics();
+      setSupplierMetricsData(data);
+    } catch (e) {
+      console.error("Error loading supplier metrics:", e);
+    }
+  };
+
+  const fetchSuppliersList = async () => {
+    try {
+      const data = await getSuppliers();
+      setSuppliersList(data || []);
+    } catch (e) {
+      console.error("Error loading suppliers list:", e);
+    }
+  };
+
+  const fetchSupplierPurchaseDetailsData = async (id) => {
+    try {
+      const data = await getSupplierPurchaseDetails(id);
+      setSelectedPurchase(data);
+    } catch (e) {
+      console.error("Error loading supplier purchase details:", e);
     }
   };
 
@@ -770,6 +879,9 @@ export default function Admin() {
         } else if (adminTab === 'expenses') {
           setExpensesPage(1);
           fetchExpenses(1, expensesSearch);
+        } else if (adminTab === 'supplier_purchases') {
+          setSupplierPurchasesPage(1);
+          fetchSupplierPurchases(1, supplierPurchasesSearch);
         } else if (adminTab === 'diagnostics') {
           if (diagnosticsSubTab === 'errors') {
             setTelemetryPage(1);
@@ -783,14 +895,14 @@ export default function Admin() {
     }, 350);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [inventorySearchQuery, orderSearchQuery, receiptsSearch, expensesSearch, telemetrySearch, auditLogsSearch]);
+  }, [inventorySearchQuery, orderSearchQuery, receiptsSearch, expensesSearch, telemetrySearch, auditLogsSearch, supplierPurchasesSearch]);
 
   // Tab and page state change triggers
   useEffect(() => {
     if (isAuthenticated && isAdmin) {
       triggerTabFetch(adminTab);
     }
-  }, [adminTab, inventoryPage, ordersPage, orderFilter, receiptsPage, expensesPage, telemetryPage, telemetryFilter, auditLogsPage, auditLogsCategory]);
+  }, [adminTab, inventoryPage, ordersPage, orderFilter, receiptsPage, expensesPage, telemetryPage, telemetryFilter, auditLogsPage, auditLogsCategory, supplierPurchasesPage, selectedPurchaseId]);
 
 
   const handleViewReceipt = (dbReceipt) => {
@@ -848,10 +960,14 @@ export default function Admin() {
   const handleProductSubmit = async (e) => {
     e.preventDefault();
     try {
+      const payload = {
+        ...productForm,
+        totalStock: Number(productForm.availableStock) + Number(productForm.lockedStock || 0) + Number(productForm.soldStock || 0)
+      };
       if (editingProductId) {
-        await updateCar(editingProductId, productForm);
+        await updateCar(editingProductId, payload);
       } else {
-        await addCar(productForm);
+        await addCar(payload);
       }
       setIsAddingProduct(false);
       setEditingProductId(null);
@@ -1103,6 +1219,7 @@ export default function Admin() {
           {[
             { id: 'dashboard', label: 'Dashboard', icon: TrendingUp },
             { id: 'inventory', label: 'Inventory', icon: Layers },
+            { id: 'supplier_purchases', label: 'Supplier Orders', icon: Truck },
             { id: 'orders', label: 'Orders', icon: FileText, badge: pendingOrdersCount },
             { id: 'receipts', label: 'Invoices', icon: Receipt },
             { id: 'expenses', label: 'Expenses', icon: DollarSign },
@@ -1895,6 +2012,344 @@ export default function Admin() {
                 totalItems={expensesTotal}
                 onPageChange={setExpensesPage}
               />
+            </div>
+          )}
+
+          {/* SUPPLIER PURCHASES MODULE */}
+          {adminTab === 'supplier_purchases' && (
+            <div className="space-y-6">
+              
+              {/* Supplier KPIs Metrics Bar */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-[#111111] border border-white/5 p-4 rounded-2xl">
+                  <span className="text-[10px] uppercase font-mono tracking-widest text-[#888888]">Total Spend</span>
+                  <div className="text-lg font-black font-mono text-[#ff5500] mt-1">₹{Number(supplierMetrics.totalSpend || 0).toLocaleString('en-IN')}</div>
+                </div>
+                <div className="bg-[#111111] border border-white/5 p-4 rounded-2xl">
+                  <span className="text-[10px] uppercase font-mono tracking-widest text-[#888888]">Outstanding Payable</span>
+                  <div className="text-lg font-black font-mono text-amber-500 mt-1">₹{Number(supplierMetrics.outstandingPayables || 0).toLocaleString('en-IN')}</div>
+                </div>
+                <div className="bg-[#111111] border border-white/5 p-4 rounded-2xl">
+                  <span className="text-[10px] uppercase font-mono tracking-widest text-[#888888]">Upcoming Arrivals</span>
+                  <div className="text-lg font-black font-mono text-blue-400 mt-1">{supplierMetrics.upcomingArrivals || 0} Shipments</div>
+                </div>
+                <div className="bg-[#111111] border border-white/5 p-4 rounded-2xl">
+                  <span className="text-[10px] uppercase font-mono tracking-widest text-[#888888]">Delayed / Late</span>
+                  <div className="text-lg font-black font-mono text-red-500 mt-1">{supplierMetrics.delayedShipments || 0} Orders</div>
+                </div>
+              </div>
+
+              {/* Action Bar: Search & Add Supplier Purchase */}
+              <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
+                <div className="flex items-center gap-2 bg-[#141414] border border-white/5 rounded-xl px-3.5 py-2.5 w-full max-w-md">
+                  <Search size={14} className="text-zinc-500" />
+                  <input
+                    type="text"
+                    placeholder="Search by supplier or notes..."
+                    value={supplierPurchasesSearch}
+                    onChange={(e) => setSupplierPurchasesSearch(e.target.value)}
+                    className="bg-transparent border-none text-xs text-white placeholder-zinc-600 focus:outline-none w-full"
+                  />
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setIsAddingSupplierPurchase(true);
+                      setPurchaseForm({
+                        supplierId: '',
+                        purchaseDate: new Date().toISOString().split('T')[0],
+                        expectedArrivalDate: '',
+                        items: [{ productId: '', quantity: 1, purchasePrice: 0 }],
+                        advancePaid: 0,
+                        cashAccountId: '',
+                        paymentMethod: 'Bank Transfer',
+                        referenceNumber: '',
+                        notes: ''
+                      });
+                    }}
+                    className="bg-[#ff5500] hover:bg-[#ff6611] text-black font-extrabold text-[10px] px-4 py-2.5 rounded-xl uppercase tracking-wider flex items-center gap-1.5 shadow-[0_4px_15px_-4px_rgba(255,85,0,0.3)] cursor-pointer"
+                  >
+                    <Plus size={14} /> New Supplier Order
+                  </button>
+                </div>
+              </div>
+
+              {/* Commitments Table */}
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                
+                {/* Left: Supplier Purchase Orders List */}
+                <div className="xl:col-span-2 overflow-x-auto border border-white/5 rounded-2xl bg-[#0b0b0b] p-4 space-y-4">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-[#111111] border-b border-white/5 text-[#888888] uppercase tracking-widest text-[9px]">
+                        <th className="p-4 font-bold">Supplier & Date</th>
+                        <th className="p-4 font-bold">Status</th>
+                        <th className="p-4 font-bold text-right">Total Value</th>
+                        <th className="p-4 font-bold text-right">Balance</th>
+                        <th className="p-4 font-bold text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {supplierPurchasesLoading ? (
+                        <tr>
+                          <td colSpan="5" className="p-8 text-center text-[#888888] font-mono">Loading commitments...</td>
+                        </tr>
+                      ) : supplierPurchases.length === 0 ? (
+                        <tr>
+                          <td colSpan="5" className="p-8 text-center text-[#888888] font-mono">No supplier purchases logged.</td>
+                        </tr>
+                      ) : (
+                        supplierPurchases.map(p => {
+                          const isFullyPaid = p.paymentStatus === 'Fully Paid';
+                          const statusColor = 
+                            p.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                            p.status === 'Cancelled' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                            p.status === 'Partially Received' ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' :
+                            p.status === 'In Transit' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                            'bg-amber-500/10 text-amber-400 border-amber-500/20';
+
+                          return (
+                            <tr key={p.id} className={`border-b border-white/5 hover:bg-white/[0.01] transition-colors cursor-pointer ${selectedPurchaseId === p.id ? 'bg-white/[0.02]' : ''}`} onClick={() => setSelectedPurchaseId(p.id)}>
+                              <td className="p-4">
+                                <span className="font-bold text-white block">{p.supplierName}</span>
+                                <span className="text-[10px] text-[#888888] font-mono">{new Date(p.purchaseDate).toLocaleDateString('en-IN')}</span>
+                              </td>
+                              <td className="p-4">
+                                <div className="flex flex-col gap-1 items-start">
+                                  <span className={`text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded border ${statusColor}`}>
+                                    {p.status}
+                                  </span>
+                                  <span className={`text-[8px] font-black uppercase tracking-wider px-1.5 py-0.25 rounded ${isFullyPaid ? 'text-emerald-400' : 'text-amber-500'}`}>
+                                    {p.paymentStatus}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="p-4 text-right font-mono font-bold text-white">₹{Number(p.totalValue).toLocaleString('en-IN')}</td>
+                              <td className="p-4 text-right font-mono text-[#888888]">₹{Number(p.remainingBalance).toLocaleString('en-IN')}</td>
+                              <td className="p-4 text-right">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedPurchaseId(p.id);
+                                  }}
+                                  className="text-[#ff5500] hover:underline font-bold text-[10px] uppercase tracking-wider"
+                                >
+                                  Details
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                  
+                  <Pagination
+                    currentPage={supplierPurchasesPage}
+                    totalPages={supplierPurchasesTotalPages}
+                    totalItems={supplierPurchasesTotal}
+                    onPageChange={setSupplierPurchasesPage}
+                  />
+                </div>
+
+                {/* Right: Detailed View panel */}
+                <div className="xl:col-span-1 bg-[#111111] border border-white/5 rounded-2xl p-5 space-y-6">
+                  {selectedPurchase ? (
+                    <div className="space-y-6">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className="font-black text-sm text-white uppercase tracking-wider">{selectedPurchase.supplierName}</h4>
+                          <p className="text-[10px] text-[#888888] font-mono mt-0.5">Order ID: {selectedPurchase.id.slice(0,8)}...</p>
+                        </div>
+                        <span className={`text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded border ${
+                          selectedPurchase.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                          selectedPurchase.status === 'Cancelled' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                          'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                        }`}>
+                          {selectedPurchase.status}
+                        </span>
+                      </div>
+
+                      {/* Financial Balance Summary */}
+                      <div className="grid grid-cols-2 gap-4 border-y border-white/5 py-4 font-mono">
+                        <div>
+                          <span className="text-[9px] text-[#888888] uppercase block">Total Value</span>
+                          <span className="text-sm font-black text-white">₹{Number(selectedPurchase.totalValue).toLocaleString('en-IN')}</span>
+                        </div>
+                        <div>
+                          <span className="text-[9px] text-[#888888] uppercase block">Remaining Balance</span>
+                          <span className="text-sm font-black text-amber-500">₹{Number(selectedPurchase.remainingBalance).toLocaleString('en-IN')}</span>
+                        </div>
+                      </div>
+
+                      {/* Items Ordered Checklist */}
+                      <div className="space-y-2.5">
+                        <h5 className="text-[9px] uppercase font-black tracking-widest text-[#888888]">Items List</h5>
+                        <div className="space-y-2">
+                          {selectedPurchase.items?.map(item => (
+                            <div key={item.id} className="flex justify-between items-center text-xs bg-white/[0.02] border border-white/5 p-2.5 rounded-xl">
+                              <div>
+                                <span className="font-bold text-white block">{item.brand} {item.name}</span>
+                                <span className="text-[9px] text-white/40 block font-mono">{item.sku} | ₹{Number(item.purchasePrice).toLocaleString('en-IN')} / unit</span>
+                              </div>
+                              <div className="text-right">
+                                <span className="font-mono text-white/80 font-bold block">{item.receivedQuantity} / {item.quantity} units</span>
+                                <span className="text-[8px] uppercase tracking-wider text-emerald-400">Received</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Payments Log */}
+                      <div className="space-y-2.5">
+                        <h5 className="text-[9px] uppercase font-black tracking-widest text-[#888888]">Payments Log</h5>
+                        {selectedPurchase.payments?.length === 0 ? (
+                          <p className="text-[10px] text-zinc-600 font-mono italic">No payments logged yet.</p>
+                        ) : (
+                          <div className="space-y-2 font-mono">
+                            {selectedPurchase.payments?.map(pay => (
+                              <div key={pay.id} className="flex justify-between items-center text-[11px] bg-[#0b0b0b] p-2.5 rounded-xl border border-white/5">
+                                <div>
+                                  <span className="text-white font-bold block">₹{Number(pay.amount).toLocaleString('en-IN')}</span>
+                                  <span className="text-[9px] text-[#888888]">{pay.paymentMethod} {pay.referenceNumber ? `(${pay.referenceNumber})` : ''}</span>
+                                </div>
+                                <span className="text-[9px] text-white/30">{new Date(pay.paymentDate).toLocaleDateString('en-IN')}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Attachments and Bills */}
+                      <div className="space-y-2.5">
+                        <h5 className="text-[9px] uppercase font-black tracking-widest text-[#888888]">Invoices & Attachments</h5>
+                        <div className="space-y-2">
+                          {selectedPurchase.attachments?.map(file => (
+                            <div key={file.id} className="flex justify-between items-center bg-white/5 border border-white/5 p-2 rounded-xl text-xs">
+                              <span className="text-white/80 font-mono truncate max-w-[150px]">{file.file_name}</span>
+                              <a
+                                href={`${API_BASE_URL}/admin/supplier-attachments/${file.id}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[#ff5500] hover:underline font-bold text-[10px] uppercase tracking-wider"
+                              >
+                                View
+                              </a>
+                            </div>
+                          ))}
+                          
+                          <label className="flex flex-col items-center justify-center border border-dashed border-white/10 rounded-xl p-3 bg-white/[0.01] hover:bg-white/[0.03] transition-all cursor-pointer">
+                            <span className="text-[10px] font-black text-[#ff5500] uppercase tracking-widest">Upload Bill/Invoice</span>
+                            <span className="text-[8px] text-white/30 uppercase mt-0.5">PDF or Image</span>
+                            <input
+                              type="file"
+                              accept="image/*,application/pdf"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                const formData = new FormData();
+                                formData.append('file', file);
+                                try {
+                                  const res = await fetch(`${API_BASE_URL}/admin/supplier-purchases/${selectedPurchase.id}/attachments`, {
+                                    method: 'POST',
+                                    body: formData
+                                  });
+                                  if (res.ok) {
+                                    showToast("Attachment uploaded successfully", "success");
+                                    fetchSupplierPurchaseDetailsData(selectedPurchase.id);
+                                  } else {
+                                    const errData = await res.json();
+                                    showToast(errData.message || "Failed to upload file", "error");
+                                  }
+                                } catch (err) {
+                                  showToast("File upload failed", "error");
+                                }
+                              }}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex gap-2.5 pt-4 border-t border-white/5">
+                        {selectedPurchase.status !== 'Completed' && selectedPurchase.status !== 'Cancelled' && (
+                          <>
+                            <button
+                              onClick={() => {
+                                setReceivingForm({
+                                  receivedBy: user?.email || '',
+                                  notes: '',
+                                  items: selectedPurchase.items.map(item => ({
+                                    productId: item.productId,
+                                    name: item.name,
+                                    brand: item.brand,
+                                    sku: item.sku,
+                                    remaining: item.quantity - item.receivedQuantity,
+                                    quantityReceived: item.quantity - item.receivedQuantity,
+                                    quantityDamaged: 0,
+                                    quantityShort: 0,
+                                    quantityOver: 0
+                                  }))
+                                });
+                                setIsReceivingShipment(true);
+                              }}
+                              className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold text-[10px] py-2.5 rounded-xl uppercase tracking-wider transition-all text-center cursor-pointer"
+                            >
+                              Receive Shipment
+                            </button>
+                            {selectedPurchase.remainingBalance > 0 && (
+                              <button
+                                onClick={() => {
+                                  setPaymentForm({
+                                    amount: selectedPurchase.remainingBalance,
+                                    cashAccountId: cashAccounts[0]?.id || '',
+                                    paymentMethod: 'Bank Transfer',
+                                    referenceNumber: '',
+                                    notes: '',
+                                    date: new Date().toISOString().split('T')[0]
+                                  });
+                                  setIsRecordingSupplierPayment(true);
+                                }}
+                                className="flex-1 bg-amber-500 hover:bg-amber-600 text-black font-extrabold text-[10px] py-2.5 rounded-xl uppercase tracking-wider transition-all text-center cursor-pointer"
+                              >
+                                Record Payment
+                              </button>
+                            )}
+                          </>
+                        )}
+                        {selectedPurchase.status !== 'Completed' && selectedPurchase.status !== 'Cancelled' && (
+                          <button
+                            onClick={async () => {
+                              if (!window.confirm("Are you sure you want to cancel this purchase commitment?")) return;
+                              try {
+                                await updateSupplierPurchaseStatus(selectedPurchase.id, 'Cancelled');
+                                showToast("Purchase order cancelled successfully", "success");
+                                fetchSupplierPurchases(supplierPurchasesPage, supplierPurchasesSearch);
+                                fetchSupplierPurchaseDetailsData(selectedPurchase.id);
+                                fetchSupplierMetrics();
+                              } catch (e) {
+                                showToast("Failed to cancel purchase", "error");
+                              }
+                            }}
+                            className="bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-red-400 font-extrabold text-[10px] px-3.5 py-2.5 rounded-xl uppercase tracking-wider transition-all cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 text-[#888888] font-mono italic">
+                      Select a purchase order to view details.
+                    </div>
+                  )}
+                </div>
+
+              </div>
+
             </div>
           )}
 
@@ -3059,11 +3514,11 @@ export default function Admin() {
                   <input type="text" value={productForm.category} onChange={e => setProductForm(p => ({ ...p, category: e.target.value }))} className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ff5500]/40" required />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">Total Stock</label>
-                  <input type="number" value={productForm.totalStock} onChange={e => setProductForm(p => ({ ...p, totalStock: Number(e.target.value) }))} className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ff5500]/40 font-mono" required />
+                  <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">Available Stock</label>
+                  <input type="number" value={productForm.availableStock} onChange={e => setProductForm(p => ({ ...p, availableStock: Number(e.target.value) }))} className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ff5500]/40 font-mono" required />
                   {editingProductId && (
                     <div className="text-[9px] text-[#888888] font-bold uppercase tracking-wider mt-1">
-                      Available: <span className="text-white">{productForm.availableStock}</span> • 
+                      Total: <span className="text-white">{Number(productForm.availableStock) + Number(productForm.lockedStock) + Number(productForm.soldStock)}</span> • 
                       Locked: <span className="text-amber-400">{productForm.lockedStock}</span> • 
                       Sold: <span className="text-emerald-400">{productForm.soldStock}</span>
                     </div>
@@ -3885,6 +4340,605 @@ export default function Admin() {
         </div>
       );
     })()}
+
+      {/* New Supplier Order Modal */}
+      {isAddingSupplierPurchase && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
+          <div className="w-full max-w-lg bg-[#0f0f0f] border border-white/5 rounded-2xl relative overflow-hidden shadow-2xl my-8">
+            <div className="h-[2px] bg-[#ff5500]" />
+            <div className="p-6 border-b border-white/5 flex items-center justify-between">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Book New Supplier Purchase</h3>
+              <button onClick={() => setIsAddingSupplierPurchase(false)} className="text-[#888888] hover:text-white text-xs">✕</button>
+            </div>
+            
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              if (!purchaseForm.supplierId) {
+                showToast("Please select a supplier", "error");
+                return;
+              }
+              const hasEmptyProducts = purchaseForm.items.some(it => !it.productId || it.quantity <= 0 || it.purchasePrice <= 0);
+              if (hasEmptyProducts) {
+                showToast("Please fill in all product items correctly", "error");
+                return;
+              }
+              try {
+                const res = await addSupplierPurchase(purchaseForm);
+                if (res.success) {
+                  showToast("Supplier Purchase booked successfully", "success");
+                  setIsAddingSupplierPurchase(false);
+                  fetchSupplierPurchases(supplierPurchasesPage, supplierPurchasesSearch);
+                  fetchSupplierMetrics();
+                  if (res.id) setSelectedPurchaseId(res.id);
+                }
+              } catch (err) {
+                showToast(err.message || "Failed to book supplier order", "error");
+              }
+            }} className="p-6 space-y-4 text-xs">
+              
+              {/* Supplier Selection */}
+              <div className="space-y-1">
+                <div className="flex justify-between items-center">
+                  <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">Select Supplier</label>
+                  <button type="button" onClick={() => setIsCreatingNewSupplier(true)} className="text-[#ff5500] hover:underline font-bold text-[9px] uppercase tracking-wider">
+                    + Add New Supplier
+                  </button>
+                </div>
+                <select
+                  value={purchaseForm.supplierId}
+                  onChange={(e) => setPurchaseForm(p => ({ ...p, supplierId: e.target.value }))}
+                  className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none"
+                  required
+                >
+                  <option value="">-- Choose Supplier --</option>
+                  {suppliers.map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Purchase Date & Expected Arrival Date */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">Purchase Date</label>
+                  <input
+                    type="date"
+                    value={purchaseForm.purchaseDate}
+                    onChange={(e) => setPurchaseForm(p => ({ ...p, purchaseDate: e.target.value }))}
+                    className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none font-mono"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">Expected Arrival Date</label>
+                  <input
+                    type="date"
+                    value={purchaseForm.expectedArrivalDate}
+                    onChange={(e) => setPurchaseForm(p => ({ ...p, expectedArrivalDate: e.target.value }))}
+                    className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Items List */}
+              <div className="space-y-2.5">
+                <div className="flex justify-between items-center">
+                  <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">Ordered Products</label>
+                  <button
+                    type="button"
+                    onClick={() => setPurchaseForm(p => ({ ...p, items: [...p.items, { productId: '', quantity: 1, purchasePrice: 0 }] }))}
+                    className="text-[#ff5500] hover:underline font-bold text-[9px] uppercase tracking-wider"
+                  >
+                    + Add Product Line
+                  </button>
+                </div>
+                
+                <div className="space-y-2 max-h-48 overflow-y-auto scrollbar-none pr-1">
+                  {purchaseForm.items.map((item, idx) => (
+                    <div key={idx} className="flex gap-2 items-center bg-white/[0.01] border border-white/5 p-2 rounded-xl">
+                      <select
+                        value={item.productId}
+                        onChange={(e) => {
+                          const updated = [...purchaseForm.items];
+                          updated[idx].productId = e.target.value;
+                          const prod = cars.find(c => c.id === e.target.value);
+                          if (prod) {
+                            updated[idx].purchasePrice = prod.purchase_price || 0;
+                          }
+                          setPurchaseForm(p => ({ ...p, items: updated }));
+                        }}
+                        className="flex-1 bg-[#141414] border border-white/5 rounded-lg px-2.5 py-2 text-white focus:outline-none text-[11px]"
+                        required
+                      >
+                        <option value="">-- Product --</option>
+                        {cars.map(c => (
+                          <option key={c.id} value={c.id}>{c.brand} {c.model_name} ({c.sku || 'No SKU'})</option>
+                        ))}
+                      </select>
+
+                      <input
+                        type="number"
+                        placeholder="Qty"
+                        value={item.quantity}
+                        min="1"
+                        onChange={(e) => {
+                          const updated = [...purchaseForm.items];
+                          updated[idx].quantity = parseInt(e.target.value, 10) || 0;
+                          setPurchaseForm(p => ({ ...p, items: updated }));
+                        }}
+                        className="w-16 bg-[#141414] border border-white/5 rounded-lg px-2.5 py-2 text-white focus:outline-none font-mono text-[11px]"
+                        required
+                      />
+
+                      <input
+                        type="number"
+                        placeholder="Cost"
+                        value={item.purchasePrice}
+                        min="0"
+                        step="0.01"
+                        onChange={(e) => {
+                          const updated = [...purchaseForm.items];
+                          updated[idx].purchasePrice = parseFloat(e.target.value) || 0;
+                          setPurchaseForm(p => ({ ...p, items: updated }));
+                        }}
+                        className="w-20 bg-[#141414] border border-white/5 rounded-lg px-2.5 py-2 text-white focus:outline-none font-mono text-[11px]"
+                        required
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = purchaseForm.items.filter((_, i) => i !== idx);
+                          setPurchaseForm(p => ({ ...p, items: updated }));
+                        }}
+                        disabled={purchaseForm.items.length === 1}
+                        className="text-red-400 hover:text-red-300 disabled:opacity-30 p-1"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Advance Payment Details */}
+              <div className="border-t border-white/5 pt-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="hasAdvance"
+                    checked={purchaseForm.advancePaid > 0}
+                    onChange={(e) => setPurchaseForm(p => ({ ...p, advancePaid: e.target.checked ? 1000 : 0 }))}
+                    className="rounded bg-[#141414] border-white/5 text-[#ff5500] focus:ring-0 focus:ring-offset-0 cursor-pointer"
+                  />
+                  <label htmlFor="hasAdvance" className="text-[10px] font-bold text-white uppercase tracking-widest cursor-pointer select-none">
+                    Log Advance Payment Outflow Now
+                  </label>
+                </div>
+
+                {purchaseForm.advancePaid > 0 && (
+                  <div className="space-y-3 bg-[#111111] p-3.5 rounded-xl border border-white/5">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-bold text-[#888888] uppercase block">Advance Paid Amount</label>
+                        <input
+                          type="number"
+                          value={purchaseForm.advancePaid}
+                          onChange={(e) => setPurchaseForm(p => ({ ...p, advancePaid: parseFloat(e.target.value) || 0 }))}
+                          className="w-full bg-[#141414] border border-white/5 rounded-lg px-3 py-2 text-white focus:outline-none font-mono"
+                          required
+                        />
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-bold text-[#888888] uppercase block">Select Cash Account</label>
+                        <select
+                          value={purchaseForm.cashAccountId}
+                          onChange={(e) => setPurchaseForm(p => ({ ...p, cashAccountId: e.target.value }))}
+                          className="w-full bg-[#141414] border border-white/5 rounded-lg px-3 py-2 text-white focus:outline-none"
+                          required
+                        >
+                          <option value="">-- Choose Account --</option>
+                          {cashAccounts.map(a => (
+                            <option key={a.id} value={a.id}>{a.name} (₹{Number(a.balance).toLocaleString('en-IN')})</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-bold text-[#888888] uppercase block">Payment Method</label>
+                        <select
+                          value={purchaseForm.paymentMethod}
+                          onChange={(e) => setPurchaseForm(p => ({ ...p, paymentMethod: e.target.value }))}
+                          className="w-full bg-[#141414] border border-white/5 rounded-lg px-3 py-2 text-white focus:outline-none"
+                        >
+                          <option value="Bank Transfer">Bank Transfer</option>
+                          <option value="UPI">UPI</option>
+                          <option value="Cash">Cash</option>
+                        </select>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-bold text-[#888888] uppercase block">Tx Ref Number / ID</label>
+                        <input
+                          type="text"
+                          value={purchaseForm.referenceNumber}
+                          onChange={(e) => setPurchaseForm(p => ({ ...p, referenceNumber: e.target.value }))}
+                          placeholder="Bank UTR / UPI Ref"
+                          className="w-full bg-[#141414] border border-white/5 rounded-lg px-3 py-2 text-white focus:outline-none font-mono"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Notes */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">Order Notes</label>
+                <textarea
+                  value={purchaseForm.notes}
+                  onChange={(e) => setPurchaseForm(p => ({ ...p, notes: e.target.value }))}
+                  placeholder="Reference instructions, shipment terms, customs, WhatsApp correspondence notes..."
+                  className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none h-16 resize-none"
+                />
+              </div>
+
+              <button type="submit" className="w-full bg-[#ff5500] hover:bg-[#ff6611] text-black font-extrabold py-3.5 rounded-xl uppercase tracking-wider shadow-lg transition-colors cursor-pointer border-none text-[11px]">
+                Book Supplier Purchase Order
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Create New Supplier Inline Modal */}
+      {isCreatingNewSupplier && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
+          <div className="w-full max-w-sm bg-[#0f0f0f] border border-white/5 rounded-2xl relative overflow-hidden shadow-2xl">
+            <div className="h-[2px] bg-[#ff5500]" />
+            <div className="p-6 border-b border-white/5 flex items-center justify-between">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Create New Supplier Profile</h3>
+              <button onClick={() => setIsCreatingNewSupplier(false)} className="text-[#888888] hover:text-white text-xs">✕</button>
+            </div>
+            
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              if (!newSupplierForm.name.trim()) return;
+              try {
+                const res = await createSupplier(newSupplierForm);
+                showToast(`Supplier ${res.name} added successfully`, "success");
+                setIsCreatingNewSupplier(false);
+                fetchSuppliersList();
+                setPurchaseForm(p => ({ ...p, supplierId: res.id }));
+              } catch (err) {
+                showToast("Failed to create supplier profile", "error");
+              }
+            }} className="p-6 space-y-4 text-xs">
+              
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-[#888888] uppercase block">Supplier Name / Business</label>
+                <input
+                  type="text"
+                  value={newSupplierForm.name}
+                  onChange={(e) => setNewSupplierForm(p => ({ ...p, name: e.target.value }))}
+                  placeholder="e.g. Diecast Distributors India"
+                  className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-[#888888] uppercase block">Email Address</label>
+                <input
+                  type="email"
+                  value={newSupplierForm.contactEmail}
+                  onChange={(e) => setNewSupplierForm(p => ({ ...p, contactEmail: e.target.value }))}
+                  placeholder="billing@ddi.com"
+                  className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-[#888888] uppercase block">Contact Phone</label>
+                <input
+                  type="text"
+                  value={newSupplierForm.contactPhone}
+                  onChange={(e) => setNewSupplierForm(p => ({ ...p, contactPhone: e.target.value }))}
+                  placeholder="+91 99988 88877"
+                  className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none font-mono"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-[#888888] uppercase block">Warehouse / Office Address</label>
+                <textarea
+                  value={newSupplierForm.address}
+                  onChange={(e) => setNewSupplierForm(p => ({ ...p, address: e.target.value }))}
+                  placeholder="Registered corporate address details..."
+                  className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none h-16 resize-none"
+                />
+              </div>
+
+              <button type="submit" className="w-full bg-[#ff5500] hover:bg-[#ff6611] text-black font-extrabold py-3.5 rounded-xl uppercase tracking-wider transition-colors cursor-pointer border-none text-[10px]">
+                Create Supplier Profile
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Record Supplier Payment Modal */}
+      {isRecordingSupplierPayment && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="w-full max-w-sm bg-[#0f0f0f] border border-white/5 rounded-2xl relative overflow-hidden shadow-2xl">
+            <div className="h-[2px] bg-[#ff5500]" />
+            <div className="p-6 border-b border-white/5 flex items-center justify-between">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Record Supplier Payment</h3>
+              <button onClick={() => setIsRecordingSupplierPayment(false)} className="text-[#888888] hover:text-white text-xs">✕</button>
+            </div>
+            
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              if (paymentForm.amount <= 0) {
+                showToast("Please enter a valid payment amount", "error");
+                return;
+              }
+              if (!paymentForm.cashAccountId) {
+                showToast("Please select a funding cash drawer", "error");
+                return;
+              }
+              try {
+                const res = await recordSupplierPayment(selectedPurchase.id, paymentForm);
+                if (res.success) {
+                  showToast("Payment recorded successfully", "success");
+                  setIsRecordingSupplierPayment(false);
+                  fetchSupplierPurchases(supplierPurchasesPage, supplierPurchasesSearch);
+                  fetchSupplierPurchaseDetailsData(selectedPurchase.id);
+                  fetchSupplierMetrics();
+                  fetchCashAccounts();
+                }
+              } catch (err) {
+                showToast(err.message || "Failed to record payment", "error");
+              }
+            }} className="p-6 space-y-4 text-xs">
+              
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-[#888888] uppercase block">Payment Date</label>
+                <input
+                  type="date"
+                  value={paymentForm.date}
+                  onChange={(e) => setPaymentForm(p => ({ ...p, date: e.target.value }))}
+                  className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none font-mono"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-[#888888] uppercase block">Amount Paid</label>
+                  <input
+                    type="number"
+                    value={paymentForm.amount}
+                    onChange={(e) => setPaymentForm(p => ({ ...p, amount: parseFloat(e.target.value) || 0 }))}
+                    className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none font-mono"
+                    required
+                  />
+                </div>
+                
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-[#888888] uppercase block">Source Drawer/Bank</label>
+                  <select
+                    value={paymentForm.cashAccountId}
+                    onChange={(e) => setPaymentForm(p => ({ ...p, cashAccountId: e.target.value }))}
+                    className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none"
+                    required
+                  >
+                    <option value="">-- Choose Account --</option>
+                    {cashAccounts.map(a => (
+                      <option key={a.id} value={a.id}>{a.name} (₹{Number(a.balance).toLocaleString('en-IN')})</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-[#888888] uppercase block">Payment Method</label>
+                  <select
+                    value={paymentForm.paymentMethod}
+                    onChange={(e) => setPaymentForm(p => ({ ...p, paymentMethod: e.target.value }))}
+                    className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none"
+                  >
+                    <option value="Bank Transfer">Bank Transfer</option>
+                    <option value="UPI">UPI</option>
+                    <option value="Cash">Cash</option>
+                  </select>
+                </div>
+                
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-[#888888] uppercase block">UTR / Tx Reference Number</label>
+                  <input
+                    type="text"
+                    value={paymentForm.referenceNumber}
+                    onChange={(e) => setPaymentForm(p => ({ ...p, referenceNumber: e.target.value }))}
+                    placeholder="Ref ID"
+                    className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-[#888888] uppercase block">Memo Notes</label>
+                <input
+                  type="text"
+                  value={paymentForm.notes}
+                  onChange={(e) => setPaymentForm(p => ({ ...p, notes: e.target.value }))}
+                  placeholder="Settlement final invoice clearing..."
+                  className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none"
+                />
+              </div>
+
+              <button type="submit" className="w-full bg-[#ff5500] hover:bg-[#ff6611] text-black font-extrabold py-3.5 rounded-xl uppercase tracking-wider transition-colors cursor-pointer border-none text-[10px]">
+                Submit Payment Log
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Receive Shipment Modal */}
+      {isReceivingShipment && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
+          <div className="w-full max-w-lg bg-[#0f0f0f] border border-white/5 rounded-2xl relative overflow-hidden shadow-2xl my-8">
+            <div className="h-[2px] bg-emerald-500" />
+            <div className="p-6 border-b border-white/5 flex items-center justify-between">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Log Physical Cargo Delivery</h3>
+              <button onClick={() => setIsReceivingShipment(false)} className="text-[#888888] hover:text-white text-xs">✕</button>
+            </div>
+            
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              const hasNegative = receivingForm.items.some(
+                it => it.quantityReceived < 0 || it.quantityDamaged < 0 || it.quantityShort < 0 || it.quantityOver < 0
+              );
+              if (hasNegative) {
+                showToast("Quantities cannot be negative", "error");
+                return;
+              }
+              const totalArrived = receivingForm.items.reduce((acc, it) => acc + it.quantityReceived + it.quantityDamaged, 0);
+              if (totalArrived === 0) {
+                showToast("Please receive at least one product unit", "error");
+                return;
+              }
+              try {
+                const res = await receiveSupplierShipment(selectedPurchase.id, receivingForm);
+                if (res.success) {
+                  showToast(`Cargo received successfully under ${res.receiptNumber}`, "success");
+                  setIsReceivingShipment(false);
+                  fetchSupplierPurchases(supplierPurchasesPage, supplierPurchasesSearch);
+                  fetchSupplierPurchaseDetailsData(selectedPurchase.id);
+                  fetchSupplierMetrics();
+                }
+              } catch (err) {
+                showToast(err.message || "Failed to receive shipment", "error");
+              }
+            }} className="p-6 space-y-4 text-xs">
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-[#888888] uppercase block">Received By (Admin Name)</label>
+                  <input
+                    type="text"
+                    value={receivingForm.receivedBy}
+                    onChange={(e) => setReceivingForm(p => ({ ...p, receivedBy: e.target.value }))}
+                    placeholder="Admin Name"
+                    className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-[#888888] uppercase block">Delivery Note / Memo</label>
+                  <input
+                    type="text"
+                    value={receivingForm.notes}
+                    onChange={(e) => setReceivingForm(p => ({ ...p, notes: e.target.value }))}
+                    placeholder="Challan number, courier info..."
+                    className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Items Table */}
+              <div className="space-y-2.5">
+                <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">Cargo Checklist</label>
+                <div className="space-y-3 max-h-60 overflow-y-auto scrollbar-none pr-1">
+                  {receivingForm.items.map((item, idx) => (
+                    <div key={item.productId} className="bg-white/[0.01] border border-white/5 p-3 rounded-xl space-y-2">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <span className="font-bold text-white block">{item.brand} {item.name}</span>
+                          <span className="text-[9px] text-[#888888] font-mono">{item.sku}</span>
+                        </div>
+                        <span className="text-[10px] text-white/50 font-mono font-bold">Pending: {item.remaining} units</span>
+                      </div>
+
+                      <div className="grid grid-cols-4 gap-2 text-center">
+                        <div>
+                          <label className="text-[8px] uppercase tracking-wider text-emerald-400 block mb-0.5">Received</label>
+                          <input
+                            type="number"
+                            value={item.quantityReceived}
+                            min="0"
+                            onChange={(e) => {
+                              const updated = [...receivingForm.items];
+                              updated[idx].quantityReceived = parseInt(e.target.value, 10) || 0;
+                              setReceivingForm(p => ({ ...p, items: updated }));
+                            }}
+                            className="w-full text-center bg-[#141414] border border-white/5 rounded-lg py-1.5 text-white font-mono text-[11px]"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[8px] uppercase tracking-wider text-red-400 block mb-0.5">Damaged</label>
+                          <input
+                            type="number"
+                            value={item.quantityDamaged}
+                            min="0"
+                            onChange={(e) => {
+                              const updated = [...receivingForm.items];
+                              updated[idx].quantityDamaged = parseInt(e.target.value, 10) || 0;
+                              setReceivingForm(p => ({ ...p, items: updated }));
+                            }}
+                            className="w-full text-center bg-[#141414] border border-white/5 rounded-lg py-1.5 text-white font-mono text-[11px]"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[8px] uppercase tracking-wider text-amber-500 block mb-0.5">Short</label>
+                          <input
+                            type="number"
+                            value={item.quantityShort}
+                            min="0"
+                            onChange={(e) => {
+                              const updated = [...receivingForm.items];
+                              updated[idx].quantityShort = parseInt(e.target.value, 10) || 0;
+                              setReceivingForm(p => ({ ...p, items: updated }));
+                            }}
+                            className="w-full text-center bg-[#141414] border border-white/5 rounded-lg py-1.5 text-white font-mono text-[11px]"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[8px] uppercase tracking-wider text-blue-400 block mb-0.5">Over</label>
+                          <input
+                            type="number"
+                            value={item.quantityOver}
+                            min="0"
+                            onChange={(e) => {
+                              const updated = [...receivingForm.items];
+                              updated[idx].quantityOver = parseInt(e.target.value, 10) || 0;
+                              setReceivingForm(p => ({ ...p, items: updated }));
+                            }}
+                            className="w-full text-center bg-[#141414] border border-white/5 rounded-lg py-1.5 text-white font-mono text-[11px]"
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <button type="submit" className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold py-3.5 rounded-xl uppercase tracking-wider shadow-lg transition-colors cursor-pointer border-none text-[10px]">
+                Accept Cargo Delivery & Allocate Pre-orders
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Sleek Floating Toast Notification */}
       {toast && (
