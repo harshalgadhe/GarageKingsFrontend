@@ -88,6 +88,134 @@ export default function Admin() {
   const [analytics, setAnalytics] = useState(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
+  const [financeSubTab, setFinanceSubTab] = useState('overview'); // 'overview', 'cash_drawer', 'founder_capital', 'cash_ledger'
+  const [cashAccounts, setCashAccounts] = useState([]);
+  const [ledgerTransactions, setLedgerTransactions] = useState([]);
+  const [ledgerFilters, setLedgerFilters] = useState({ timeRange: 'Lifetime', cashAccountId: '', type: '', limit: 50, offset: 0 });
+  const [founderLedger, setFounderLedger] = useState(null);
+  const [isAddingCashAccount, setIsAddingCashAccount] = useState(false);
+  const [cashAccountForm, setCashAccountForm] = useState({ name: '', type: 'Bank', openingBalance: 0, currency: 'INR', description: '' });
+  const [isAddingFounderTx, setIsAddingFounderTx] = useState(false);
+  const [founderTxForm, setFounderTxForm] = useState({ founderName: 'Harshal', amount: '', type: 'contribution', cashAccountId: '', reason: '', notes: '', date: new Date().toISOString().split('T')[0] });
+
+  const fetchCashAccounts = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/cash-accounts`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setCashAccounts(data);
+        if (data.length > 0 && !founderTxForm.cashAccountId) {
+          setFounderTxForm(prev => ({ ...prev, cashAccountId: data[0].id }));
+        }
+      }
+    } catch (e) {
+      console.error("Error loading cash accounts:", e);
+    }
+  };
+
+  const fetchLedger = async () => {
+    try {
+      const query = new URLSearchParams(ledgerFilters).toString();
+      const res = await fetch(`${API_BASE_URL}/admin/cash-ledger?${query}`, { credentials: 'include' });
+      if (res.ok) setLedgerTransactions(await res.json());
+    } catch (e) {
+      console.error("Error loading ledger:", e);
+    }
+  };
+
+  const fetchFounderLedger = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/founder-ledger`, { credentials: 'include' });
+      if (res.ok) setFounderLedger(await res.json());
+    } catch (e) {
+      console.error("Error loading founder ledger:", e);
+    }
+  };
+
+  useEffect(() => {
+    if (isAdmin && adminTab === 'finance') {
+      fetchLedger();
+    }
+  }, [ledgerFilters, adminTab, isAdmin]);
+
+  const exportLedgerToCSV = () => {
+    if (ledgerTransactions.length === 0) return;
+    const headers = ['Date', 'Account', 'Type', 'Amount', 'Ref Number', 'Reason', 'Notes', 'Created By'];
+    const rows = ledgerTransactions.map(tx => [
+      new Date(tx.date).toLocaleDateString('en-IN'),
+      tx.cash_account_name || 'N/A',
+      tx.type,
+      tx.amount,
+      tx.reference_number || '',
+      tx.reason,
+      tx.notes || '',
+      tx.created_by
+    ]);
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + [headers.join(','), ...rows.map(e => e.map(val => `"${val}"`).join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `cash_ledger_${ledgerFilters.timeRange}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleCreateCashAccount = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/cash-accounts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(cashAccountForm),
+        credentials: 'include'
+      });
+      if (res.ok) {
+        showToast("Cash account registered successfully");
+        setIsAddingCashAccount(false);
+        setCashAccountForm({ name: '', type: 'Bank', openingBalance: 0, currency: 'INR', description: '' });
+        fetchCashAccounts();
+      } else {
+        showToast("Failed to register cash account", "error");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleFounderTxSubmit = async (e) => {
+    e.preventDefault();
+    const endpoint = founderTxForm.type === 'contribution' ? 'contribute' : 'reimburse';
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/founder-ledger/${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          founderName: founderTxForm.founderName,
+          amount: Number(founderTxForm.amount),
+          cashAccountId: founderTxForm.cashAccountId,
+          reason: founderTxForm.reason,
+          notes: founderTxForm.notes,
+          date: founderTxForm.date
+        }),
+        credentials: 'include'
+      });
+      if (res.ok) {
+        showToast(`Founder transaction recorded successfully`);
+        setIsAddingFounderTx(false);
+        setFounderTxForm(prev => ({ ...prev, amount: '', reason: '', notes: '' }));
+        fetchFounderLedger();
+        fetchKPIs();
+        fetchLedger();
+      } else {
+        showToast("Failed to record transaction", "error");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const fetchKPIs = async () => {
     setKpisLoading(true);
     try {
@@ -398,6 +526,11 @@ export default function Admin() {
       fetchReceipts(receiptsPage, receiptsSearch);
     } else if (tab === 'expenses') {
       fetchExpenses(expensesPage, expensesSearch);
+    } else if (tab === 'finance') {
+      fetchKPIs();
+      fetchCashAccounts();
+      fetchFounderLedger();
+      fetchLedger();
     } else if (tab === 'diagnostics') {
       fetchDiagnosticsData();
     }
@@ -1732,62 +1865,302 @@ export default function Admin() {
             </div>
           )}
 
-          {/* 6. FOUNDER SPLITS TAB */}
+          {/* 6. ADVANCED FINANCE MODULE */}
           {adminTab === 'finance' && (
             <div className="space-y-8">
-              <div className="flex justify-between items-center pb-3 border-b border-white/5">
-                <h3 className="text-xs font-black uppercase tracking-wider text-white">
-                  Founder Split settlements Ledger
-                </h3>
-                <button
-                  onClick={() => setIsAddingSettlement(true)}
-                  className="bg-[#ff5500] hover:bg-[#ff6611] text-black font-extrabold text-[10px] px-4 py-2.5 rounded-xl uppercase tracking-wider flex items-center gap-1.5 shadow-[0_4px_15px_-4px_rgba(255,85,0,0.3)] cursor-pointer"
-                >
-                  <Plus size={14} /> Record Transfer
-                </button>
-              </div>
-
-              {/* Balances Ledger Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {Object.keys(splitsData.balances || {}).map(f => {
-                  const bal = splitsData.balances[f];
-                  const owes = bal < 0;
-                  return (
-                    <div key={f} className="bg-[#141414] border border-white/5 rounded-2xl p-5 relative overflow-hidden">
-                      <div className="absolute top-0 left-0 w-full h-[2px] bg-white/5" />
-                      <p className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">{f}</p>
-                      <h3 className={`text-xl font-black mt-2 font-mono ${owes ? 'text-red-400' : 'text-emerald-400'}`}>
-                        {owes ? '-' : '+'}₹{Math.abs(Number(bal.toFixed(2))).toLocaleString('en-IN')}
-                      </h3>
-                      <p className="text-[9px] text-[#666666] uppercase mt-1">
-                        {owes ? 'Owes split adjustments' : 'Owed split balance'}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Settlement adjustments ledger transfers recommendations */}
-              <div className="bg-[#141414] border border-white/5 rounded-2xl p-6 space-y-4">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-white">
-                  Settlement Balancing Pipeline (Ledger Transfers)
-                </h4>
-                <div className="space-y-3">
-                  {splitsData.owesWho?.length === 0 ? (
-                    <p className="text-xs text-[#888888]">Founder split balances are fully settled.</p>
-                  ) : (
-                    splitsData.owesWho?.map((tr, i) => (
-                      <div key={i} className="flex items-center gap-3 text-xs bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-3">
-                        <span className="font-bold text-red-400">{tr.from}</span>
-                        <span className="text-[#888888]">needs to transfer</span>
-                        <span className="font-bold font-mono text-white">₹{tr.amount.toLocaleString('en-IN')}</span>
-                        <span className="text-[#888888]">to</span>
-                        <span className="font-bold text-emerald-400">{tr.to}</span>
-                      </div>
-                    ))
-                  )}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-3 border-b border-white/5">
+                <div className="flex gap-2">
+                  {[
+                    { id: 'overview', label: 'Financial Performance' },
+                    { id: 'cash_drawer', label: 'Cash Drawer' },
+                    { id: 'founder_capital', label: 'Founder Capital' },
+                    { id: 'cash_ledger', label: 'Cash Ledger' }
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setFinanceSubTab(tab.id)}
+                      className={`px-3 py-1.5 rounded-lg border text-[10px] font-mono font-bold transition-all cursor-pointer ${
+                        financeSubTab === tab.id
+                          ? 'bg-[#ff5500]/10 border-[#ff5500]/30 text-[#ff5500]'
+                          : 'border-white/5 bg-transparent text-[#888888] hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
                 </div>
+                
+                {financeSubTab === 'cash_drawer' && (
+                  <button
+                    onClick={() => setIsAddingCashAccount(true)}
+                    className="bg-[#ff5500] hover:bg-[#ff6611] text-black font-extrabold text-[10px] px-4 py-2.5 rounded-xl uppercase tracking-wider flex items-center gap-1.5 shadow-[0_4px_15px_-4px_rgba(255,85,0,0.3)] cursor-pointer"
+                  >
+                    <Plus size={14} /> Add Cash Account
+                  </button>
+                )}
+
+                {financeSubTab === 'founder_capital' && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setIsAddingFounderTx(true)}
+                      className="bg-[#ff5500] hover:bg-[#ff6611] text-black font-extrabold text-[10px] px-4 py-2.5 rounded-xl uppercase tracking-wider flex items-center gap-1.5 shadow-[0_4px_15px_-4px_rgba(255,85,0,0.3)] cursor-pointer"
+                    >
+                      <Plus size={14} /> Record Founder Tx
+                    </button>
+                    <button
+                      onClick={() => setIsAddingSettlement(true)}
+                      className="border border-white/10 hover:border-white/20 text-white font-extrabold text-[10px] px-4 py-2.5 rounded-xl uppercase tracking-wider flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Plus size={14} /> Record Settlement
+                    </button>
+                  </div>
+                )}
               </div>
+
+              {/* OVERVIEW SUB-TAB */}
+              {financeSubTab === 'overview' && kpis && (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {[
+                      { label: 'Total Revenue', val: kpis.revenue, color: 'text-white', sub: `${kpis.trends?.revenueGrowth >= 0 ? '▲' : '▼'} ${Math.abs(kpis.trends?.revenueGrowth || 0).toFixed(1)}% vs prev period` },
+                      { label: 'Cost of Goods Sold (COGS)', val: kpis.cogs, color: 'text-[#888888]', sub: `Gross Margin: ${kpis.grossMarginPct?.toFixed(1)}%` },
+                      { label: 'Gross Profit', val: kpis.grossProfit, color: 'text-emerald-400', sub: 'Revenue minus product costs' },
+                      { label: 'Operating Expenses', val: kpis.expenses, color: 'text-[#888888]', sub: 'Operational costs' },
+                      { label: 'Net Profit / Loss', val: kpis.netProfit, color: kpis.netProfit >= 0 ? 'text-emerald-400' : 'text-red-400', sub: `${kpis.trends?.netProfitGrowth >= 0 ? '▲' : '▼'} ${Math.abs(kpis.trends?.netProfitGrowth || 0).toFixed(1)}% vs prev period` },
+                      { label: 'Current Cash Balance', val: kpis.currentCashBalance, color: 'text-amber-400', sub: 'Liquid capital across accounts' },
+                      { label: 'Inventory Asset Value', val: kpis.inventoryAssetValue, color: 'text-[#ff5500]', sub: 'FIFO valuation of stock' },
+                      { label: 'Outstanding Founder Capital', val: kpis.outstandingFounderCapital, color: 'text-[#ff5500]', sub: 'Total unpaid founder contributions' }
+                    ].map((card, i) => (
+                      <div key={i} className="bg-[#141414] border border-white/5 rounded-2xl p-5 relative overflow-hidden">
+                        <p className="text-[9px] font-bold text-[#888888] uppercase tracking-widest">{card.label}</p>
+                        <h3 className={`text-xl font-black mt-2 font-mono ${card.color}`}>
+                          ₹{card.val?.toLocaleString('en-IN') || 0}
+                        </h3>
+                        <p className="text-[9px] text-[#666666] uppercase mt-1.5">{card.sub}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* CASH DRAWER SUB-TAB */}
+              {financeSubTab === 'cash_drawer' && (
+                <div className="bg-[#141414] border border-white/5 rounded-2xl p-6">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="border-b border-white/5 text-[#888888] font-bold uppercase tracking-wider text-[10px]">
+                          <th className="pb-3">Account Name</th>
+                          <th className="pb-3">Type</th>
+                          <th className="pb-3">Opening Balance</th>
+                          <th className="pb-3">Currency</th>
+                          <th className="pb-3 text-right">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {cashAccounts.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="py-4 text-center text-[#666666]">No cash accounts registered.</td>
+                          </tr>
+                        ) : (
+                          cashAccounts.map(acc => (
+                            <tr key={acc.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                              <td className="py-3 font-bold text-white">{acc.name}</td>
+                              <td className="py-3 font-mono text-[#888888]">{acc.type}</td>
+                              <td className="py-3 font-mono text-white">₹{Number(acc.opening_balance).toLocaleString('en-IN')}</td>
+                              <td className="py-3 font-mono text-[#666666]">{acc.currency}</td>
+                              <td className="py-3 text-right">
+                                <span className={`inline-block px-2 py-0.5 rounded text-[8px] font-mono uppercase tracking-widest font-black ${
+                                  acc.is_active ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-white/5 text-[#666666] border border-white/5'
+                                }`}>
+                                  {acc.is_active ? 'Active' : 'Archived'}
+                                </span>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* FOUNDER CAPITAL SUB-TAB */}
+              {financeSubTab === 'founder_capital' && founderLedger && (
+                <div className="space-y-8">
+                  {/* Founder capital metrics */}
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    {founderLedger.founders.map(f => {
+                      const bal = founderLedger.balances[f] || 0;
+                      const owes = bal < 0;
+                      return (
+                        <div key={f} className="bg-[#141414] border border-white/5 rounded-2xl p-5 relative overflow-hidden">
+                          <p className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">{f}</p>
+                          <h3 className={`text-xl font-black mt-2 font-mono ${owes ? 'text-red-400' : 'text-emerald-400'}`}>
+                            {owes ? '-' : '+'}₹{Math.abs(Number(bal.toFixed(2))).toLocaleString('en-IN')}
+                          </h3>
+                          <p className="text-[9px] text-[#666666] uppercase mt-1">
+                            Outstanding Balance
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Balancing Pipeline settlements transfers */}
+                  <div className="bg-[#141414] border border-white/5 rounded-2xl p-6 space-y-4">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-white">
+                      Settlement Balancing Pipeline (Ledger Transfers)
+                    </h4>
+                    <div className="space-y-3">
+                      {splitsData.owesWho?.length === 0 ? (
+                        <p className="text-xs text-[#888888]">Founder split balances are fully settled.</p>
+                      ) : (
+                        splitsData.owesWho?.map((tr, i) => (
+                          <div key={i} className="flex items-center gap-3 text-xs bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-3">
+                            <span className="font-bold text-red-400">{tr.from}</span>
+                            <span className="text-[#888888]">needs to transfer</span>
+                            <span className="font-bold font-mono text-white">₹{tr.amount.toLocaleString('en-IN')}</span>
+                            <span className="text-[#888888]">to</span>
+                            <span className="font-bold text-emerald-400">{tr.to}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Founder capital ledger timeline */}
+                  <div className="bg-[#141414] border border-white/5 rounded-2xl p-6 space-y-4">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-white">
+                      Founder Capital timeline history
+                    </h4>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="border-b border-white/5 text-[#888888] font-bold uppercase tracking-wider text-[10px]">
+                            <th className="pb-3">Date</th>
+                            <th className="pb-3">Founder</th>
+                            <th className="pb-3">Type</th>
+                            <th className="pb-3">Amount</th>
+                            <th className="pb-3">Reason</th>
+                            <th className="pb-3">Notes</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {founderLedger.timeline.length === 0 ? (
+                            <tr>
+                              <td colSpan={6} className="py-4 text-center text-[#666666]">No capital transactions recorded.</td>
+                            </tr>
+                          ) : (
+                            founderLedger.timeline.map(tx => (
+                              <tr key={tx.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                                <td className="py-3 font-mono text-white">{new Date(tx.date).toLocaleDateString('en-IN')}</td>
+                                <td className="py-3 font-bold text-white">{tx.founderName}</td>
+                                <td className="py-3 font-mono text-[#888888]">{tx.type}</td>
+                                <td className={`py-3 font-bold font-mono ${Number(tx.amount) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                  {Number(tx.amount) >= 0 ? '+' : ''}₹{Math.abs(Number(tx.amount)).toLocaleString('en-IN')}
+                                </td>
+                                <td className="py-3 text-white">{tx.reason}</td>
+                                <td className="py-3 text-[#666666] max-w-[200px] truncate">{tx.notes}</td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* CASH LEDGER TIMELINE SUB-TAB */}
+              {financeSubTab === 'cash_ledger' && (
+                <div className="space-y-6">
+                  {/* Filters & CSV exporter */}
+                  <div className="flex flex-wrap justify-between items-center gap-4 bg-[#141414] border border-white/5 rounded-2xl p-5">
+                    <div className="flex flex-wrap gap-3">
+                      <select
+                        value={ledgerFilters.timeRange}
+                        onChange={e => setLedgerFilters(prev => ({ ...prev, timeRange: e.target.value }))}
+                        className="bg-[#1c1c1c] border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-[#ff5500]/50"
+                      >
+                        {['Today', 'Yesterday', 'Last 7 Days', 'Last 30 Days', 'This Month', 'Previous Month', 'Quarter', 'Year To Date', 'Previous Year', 'Lifetime'].map(r => (
+                          <option key={r} value={r}>{r}</option>
+                        ))}
+                      </select>
+
+                      <select
+                        value={ledgerFilters.cashAccountId}
+                        onChange={e => setLedgerFilters(prev => ({ ...prev, cashAccountId: e.target.value }))}
+                        className="bg-[#1c1c1c] border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-[#ff5500]/50"
+                      >
+                        <option value="">All Accounts</option>
+                        {cashAccounts.map(acc => (
+                          <option key={acc.id} value={acc.id}>{acc.name}</option>
+                        ))}
+                      </select>
+
+                      <select
+                        value={ledgerFilters.type}
+                        onChange={e => setLedgerFilters(prev => ({ ...prev, type: e.target.value }))}
+                        className="bg-[#1c1c1c] border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-[#ff5500]/50"
+                      >
+                        <option value="">All Types</option>
+                        {['Customer Payment', 'Pre-order Advance', 'Pre-order Remaining Payment', 'Founder Contribution', 'Founder Reimbursement', 'Inventory Purchase', 'Operating Expense', 'Refund', 'Manual Adjustment', 'Settlement Between Founders'].map(t => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <button
+                      onClick={exportLedgerToCSV}
+                      disabled={ledgerTransactions.length === 0}
+                      className="border border-white/10 hover:border-white/20 disabled:opacity-30 disabled:hover:border-white/10 text-white font-extrabold text-[10px] px-4 py-2.5 rounded-xl uppercase tracking-wider flex items-center gap-1.5 cursor-pointer"
+                    >
+                      Export CSV
+                    </button>
+                  </div>
+
+                  {/* Cash ledger table */}
+                  <div className="bg-[#141414] border border-white/5 rounded-2xl p-6">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="border-b border-white/5 text-[#888888] font-bold uppercase tracking-wider text-[10px]">
+                            <th className="pb-3">Date</th>
+                            <th className="pb-3">Account</th>
+                            <th className="pb-3">Type</th>
+                            <th className="pb-3">Amount</th>
+                            <th className="pb-3">Ref Number</th>
+                            <th className="pb-3">Reason</th>
+                            <th className="pb-3">Created By</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {ledgerTransactions.length === 0 ? (
+                            <tr>
+                              <td colSpan={7} className="py-4 text-center text-[#666666]">No ledger records match current filters.</td>
+                            </tr>
+                          ) : (
+                            ledgerTransactions.map(tx => (
+                              <tr key={tx.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                                <td className="py-3 font-mono text-[#888888]">{new Date(tx.date).toLocaleDateString('en-IN')}</td>
+                                <td className="py-3 font-bold text-white">{tx.cash_account_name || 'N/A'}</td>
+                                <td className="py-3 font-mono text-[#888888]">{tx.type}</td>
+                                <td className={`py-3 font-bold font-mono ${Number(tx.amount) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                  {Number(tx.amount) >= 0 ? '+' : ''}₹{Math.abs(Number(tx.amount)).toLocaleString('en-IN')}
+                                </td>
+                                <td className="py-3 font-mono text-[#666666]">{tx.reference_number || '—'}</td>
+                                <td className="py-3 text-white max-w-[200px] truncate" title={tx.reason}>{tx.reason}</td>
+                                <td className="py-3 text-[#666666]">{tx.created_by.split('@')[0]}</td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -2870,6 +3243,118 @@ export default function Admin() {
 
               <button type="submit" className="w-full bg-[#ff5500] hover:bg-[#ff6611] text-black font-extrabold py-3.5 rounded-xl uppercase tracking-wider shadow-lg transition-colors cursor-pointer">
                 Record Transfer
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 5b. Add Cash Account Modal */}
+      {isAddingCashAccount && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="w-full max-w-sm bg-[#0f0f0f] border border-white/5 rounded-2xl relative overflow-hidden shadow-2xl">
+            <div className="h-[2px] bg-[#ff5500]" />
+            <div className="p-6 border-b border-white/5 flex items-center justify-between">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Register Cash Account</h3>
+              <button onClick={() => setIsAddingCashAccount(false)} className="text-[#888888] hover:text-white text-xs">✕</button>
+            </div>
+            <form onSubmit={handleCreateCashAccount} className="p-6 space-y-4 text-xs">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">Account Name</label>
+                <input type="text" value={cashAccountForm.name} onChange={e => setCashAccountForm(p => ({ ...p, name: e.target.value }))} placeholder="HDFC Current Account" className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none" required />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">Type</label>
+                  <select value={cashAccountForm.type} onChange={e => setCashAccountForm(p => ({ ...p, type: e.target.value }))} className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none">
+                    <option value="Bank">Bank Account</option>
+                    <option value="UPI">UPI Endpoint</option>
+                    <option value="Cash Drawer">Cash Drawer</option>
+                    <option value="Petty Cash">Petty Cash</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">Opening Balance</label>
+                  <input type="number" value={cashAccountForm.openingBalance} onChange={e => setCashAccountForm(p => ({ ...p, openingBalance: Number(e.target.value) }))} className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none font-mono" required />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">Description / Notes</label>
+                <input type="text" value={cashAccountForm.description} onChange={e => setCashAccountForm(p => ({ ...p, description: e.target.value }))} placeholder="Primary banking account for deposits" className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none" />
+              </div>
+
+              <button type="submit" className="w-full bg-[#ff5500] hover:bg-[#ff6611] text-black font-extrabold py-3.5 rounded-xl uppercase tracking-wider shadow-lg transition-colors cursor-pointer">
+                Register Account
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 5c. Record Founder Capital transaction Modal */}
+      {isAddingFounderTx && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="w-full max-w-sm bg-[#0f0f0f] border border-white/5 rounded-2xl relative overflow-hidden shadow-2xl">
+            <div className="h-[2px] bg-[#ff5500]" />
+            <div className="p-6 border-b border-white/5 flex items-center justify-between">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Record Founder capital event</h3>
+              <button onClick={() => setIsAddingFounderTx(false)} className="text-[#888888] hover:text-white text-xs">✕</button>
+            </div>
+            <form onSubmit={handleFounderTxSubmit} className="p-6 space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">Founder</label>
+                  <select value={founderTxForm.founderName} onChange={e => setFounderTxForm(p => ({ ...p, founderName: e.target.value }))} className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none">
+                    <option value="Harshal">Harshal</option>
+                    <option value="Anutosh">Anutosh</option>
+                    <option value="Sanchit">Sanchit</option>
+                    <option value="Anish">Anish</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">Transaction Type</label>
+                  <select value={founderTxForm.type} onChange={e => setFounderTxForm(p => ({ ...p, type: e.target.value }))} className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none">
+                    <option value="contribution">Capital Contribution</option>
+                    <option value="reimburse">Reimbursement Withdrawal</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">Amount</label>
+                  <input type="number" value={founderTxForm.amount} onChange={e => setFounderTxForm(p => ({ ...p, amount: e.target.value }))} placeholder="5000" className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none font-mono" required />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">Cash Account</label>
+                  <select value={founderTxForm.cashAccountId} onChange={e => setFounderTxForm(p => ({ ...p, cashAccountId: e.target.value }))} className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none">
+                    {cashAccounts.map(acc => (
+                      <option key={acc.id} value={acc.id}>{acc.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">Date</label>
+                  <input type="date" value={founderTxForm.date} onChange={e => setFounderTxForm(p => ({ ...p, date: e.target.value }))} className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none font-mono" required />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">Reason / Head</label>
+                  <input type="text" value={founderTxForm.reason} onChange={e => setFounderTxForm(p => ({ ...p, reason: e.target.value }))} placeholder="Cash pool injection" className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none" required />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">Additional Notes</label>
+                <input type="text" value={founderTxForm.notes} onChange={e => setFounderTxForm(p => ({ ...p, notes: e.target.value }))} placeholder="UPI reference or details" className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none" />
+              </div>
+
+              <button type="submit" className="w-full bg-[#ff5500] hover:bg-[#ff6611] text-black font-extrabold py-3.5 rounded-xl uppercase tracking-wider shadow-lg transition-colors cursor-pointer">
+                Submit Transaction
               </button>
             </form>
           </div>
