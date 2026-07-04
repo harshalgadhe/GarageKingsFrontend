@@ -469,7 +469,7 @@ export default function Admin() {
           const isUserAdmin = activeSession.roles.includes('owner') || activeSession.roles.includes('admin');
           setIsAdmin(isUserAdmin);
           if (isUserAdmin) {
-            await loadAllData();
+            triggerTabFetch(adminTab);
           }
         }
       } catch (err) {
@@ -481,34 +481,56 @@ export default function Admin() {
     checkSetupAndLoad();
   }, [navigate]);
 
-  const loadAllData = async () => {
+  const fetchSplits = async () => {
     try {
-      const [
-        splitsRes,
-        notificationsRes,
-        cmsRes,
-        settingsRes
-      ] = await Promise.all([
-        fetch(`${API_BASE_URL}/admin/splits`, { credentials: 'include' }),
-        fetch(`${API_BASE_URL}/admin/notifications`, { credentials: 'include' }),
-        fetch(`${API_BASE_URL}/admin/homepage-cms`, { credentials: 'include' }),
-        fetch(`${API_BASE_URL}/settings`, { credentials: 'include' })
-      ]);
+      const res = await fetch(`${API_BASE_URL}/admin/splits`, { credentials: 'include' });
+      if (res.ok) setSplitsData(await res.json());
+    } catch (e) {
+      console.error("Error loading splits:", e);
+    }
+  };
 
-      if (splitsRes.ok) setSplitsData(await splitsRes.json());
-      if (notificationsRes.ok) {
-        const notifs = await notificationsRes.json();
+  const fetchNotifications = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/notifications`, { credentials: 'include' });
+      if (res.ok) {
+        const notifs = await res.json();
         setNotifications(notifs);
         setHasMoreNotifications(notifs.length === 10);
       }
-      if (cmsRes.ok) setCmsData(await cmsRes.json());
-      if (settingsRes.ok) setGlobalSettings(await settingsRes.json());
-      
-      // Reset loaded metrics on refetches to ensure they represent fresh data when calculated next
+    } catch (e) {
+      console.error("Error loading notifications:", e);
+    }
+  };
+
+  const fetchCMS = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/homepage-cms`, { credentials: 'include' });
+      if (res.ok) setCmsData(await res.json());
+    } catch (e) {
+      console.error("Error loading CMS data:", e);
+    }
+  };
+
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/settings`, { credentials: 'include' });
+      if (res.ok) setGlobalSettings(await res.json());
+    } catch (e) {
+      console.error("Error loading settings:", e);
+    }
+  };
+
+  const loadAllData = async () => {
+    try {
+      await Promise.all([
+        fetchSplits(),
+        fetchNotifications(),
+        fetchCMS(),
+        fetchSettings()
+      ]);
       setKpis(null);
       setAnalytics(null);
-
-      // Trigger fetch for the active tab
       triggerTabFetch(adminTab);
     } catch (e) {
       setDbError('Error loading dashboard datasets.');
@@ -518,8 +540,10 @@ export default function Admin() {
   const triggerTabFetch = (tab) => {
     if (tab === 'dashboard') {
       fetchKPIs();
+      fetchNotifications();
     } else if (tab === 'inventory') {
       fetchInventory(inventoryPage, inventorySearchQuery);
+      fetchSettings();
     } else if (tab === 'orders') {
       fetchOrders(ordersPage, orderSearchQuery, orderFilter);
     } else if (tab === 'receipts') {
@@ -531,14 +555,20 @@ export default function Admin() {
       fetchCashAccounts();
       fetchFounderLedger();
       fetchLedger();
+      fetchSplits();
     } else if (tab === 'diagnostics') {
       fetchDiagnosticsData();
+    } else if (tab === 'settings') {
+      fetchSettings();
+      fetchCMS();
+    } else if (tab === 'notifications') {
+      fetchNotifications();
     }
   };
 
   const fetchInventory = async (page, search) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/admin/products?page=${page}&limit=12&search=${encodeURIComponent(search)}`, { credentials: 'include' });
+      const res = await fetch(`${API_BASE_URL}/admin/products?page=${page}&limit=10&search=${encodeURIComponent(search)}`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setCars(data.products || []);
@@ -568,7 +598,7 @@ export default function Admin() {
 
   const fetchExpenses = async (page, search) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/admin/expenses?page=${page}&limit=15&search=${encodeURIComponent(search)}`, { credentials: 'include' });
+      const res = await fetch(`${API_BASE_URL}/admin/expenses?page=${page}&limit=10&search=${encodeURIComponent(search)}`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setExpenses(data.expenses || []);
@@ -582,7 +612,7 @@ export default function Admin() {
 
   const fetchReceipts = async (page, search) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/receipts?page=${page}&limit=15&search=${encodeURIComponent(search)}`, { credentials: 'include' });
+      const res = await fetch(`${API_BASE_URL}/receipts?page=${page}&limit=10&search=${encodeURIComponent(search)}`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setReceiptsList(data.receipts || []);
@@ -604,7 +634,7 @@ export default function Admin() {
 
   const fetchTelemetryErrors = async (page, search, acknowledged) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/admin/telemetry/errors?page=${page}&limit=8&search=${encodeURIComponent(search)}&acknowledged=${acknowledged}`, { credentials: 'include' });
+      const res = await fetch(`${API_BASE_URL}/admin/telemetry/errors?page=${page}&limit=10&search=${encodeURIComponent(search)}&acknowledged=${acknowledged}`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setTelemetryErrors(data.errors || []);
@@ -617,7 +647,7 @@ export default function Admin() {
 
   const fetchAuditLogs = async (page, search, category) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/admin/audit-logs?page=${page}&limit=12&search=${encodeURIComponent(search)}&category=${encodeURIComponent(category)}`, { credentials: 'include' });
+      const res = await fetch(`${API_BASE_URL}/admin/audit-logs?page=${page}&limit=10&search=${encodeURIComponent(search)}&category=${encodeURIComponent(category)}`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setAuditLogs(data.logs || []);
@@ -871,7 +901,7 @@ export default function Admin() {
         body: JSON.stringify({ status: 'Confirmed' })
       });
       if (!res.ok) throw new Error("Verification confirmation failed.");
-      await loadAllData();
+      fetchOrders(ordersPage, orderSearchQuery, orderFilter);
     } catch (err) {
       showToast(err.message, "error");
     }
@@ -887,7 +917,7 @@ export default function Admin() {
         body: JSON.stringify({ status: 'Cancelled' })
       });
       if (!res.ok) throw new Error("Order cancellation failed.");
-      await loadAllData();
+      fetchOrders(ordersPage, orderSearchQuery, orderFilter);
     } catch (err) {
       showToast(err.message, "error");
     }
@@ -907,7 +937,7 @@ export default function Admin() {
       });
       if (!res.ok) throw new Error("Failed to dispatch shipment details.");
       setShippingModalOrder(null);
-      await loadAllData();
+      fetchOrders(ordersPage, orderSearchQuery, orderFilter);
     } catch (err) {
       showToast(err.message, "error");
     }
@@ -925,7 +955,7 @@ export default function Admin() {
       });
       if (!res.ok) throw new Error("Failed to log expense.");
       setIsAddingExpense(false);
-      await loadAllData();
+      fetchExpenses(expensesPage, expensesSearch);
     } catch (err) {
       showToast(err.message, "error");
     }
@@ -939,7 +969,7 @@ export default function Admin() {
         credentials: 'include'
       });
       if (!res.ok) throw new Error("Failed to delete expense log.");
-      await loadAllData();
+      fetchExpenses(expensesPage, expensesSearch);
     } catch (err) {
       showToast(err.message, "error");
     }
@@ -957,7 +987,7 @@ export default function Admin() {
       });
       if (!res.ok) throw new Error("Failed to record settlement transfer.");
       setIsAddingSettlement(false);
-      await loadAllData();
+      fetchSplits();
     } catch (err) {
       showToast(err.message, "error");
     }
@@ -972,7 +1002,7 @@ export default function Admin() {
         body: JSON.stringify({ sectionName, isVisible: !currentVisible })
       });
       if (!res.ok) throw new Error("Failed to update section visibility");
-      await loadAllData();
+      fetchCMS();
     } catch (err) {
       showToast(err.message, "error");
     }
@@ -981,7 +1011,7 @@ export default function Admin() {
   const handleUpdateGlobalSettings = async (updates) => {
     try {
       await updateGlobalSettings(updates);
-      await loadAllData();
+      fetchSettings();
     } catch (err) {
       showToast(err.message, "error");
     }
@@ -1594,7 +1624,7 @@ export default function Admin() {
                                       credentials: 'include',
                                       body: JSON.stringify({ status: 'Awaiting Stock' })
                                     });
-                                    if (res.ok) await loadAllData();
+                                    if (res.ok) fetchOrders(ordersPage, orderSearchQuery, orderFilter);
                                   }}
                                   className="bg-orange-500 hover:bg-orange-600 text-black font-extrabold text-[10px] px-4 py-2 rounded-lg uppercase tracking-wider transition-colors cursor-pointer"
                                 >
@@ -1768,7 +1798,7 @@ export default function Admin() {
                                   try {
                                     await deleteReceipt(rec.id);
                                     showToast('Invoice deleted successfully', 'success');
-                                    loadAllData();
+                                    fetchReceipts(receiptsPage, receiptsSearch);
                                   } catch (err) {
                                     showToast('Failed to delete invoice', 'error');
                                   }
