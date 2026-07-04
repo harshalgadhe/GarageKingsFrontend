@@ -3115,9 +3115,19 @@ export default function Admin() {
                               <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-red-500/10 text-red-400 border border-red-500/20">
                                 {err.category}
                               </span>
-                              <span className="text-[9px] text-[#555555] font-mono ml-auto">
-                                Occurrences: <span className="font-bold text-white">{occurrenceCount}</span>
-                              </span>
+                              <div className="ml-auto flex items-center gap-3">
+                                <span className="text-[9px] text-[#555555] font-mono">
+                                  Occurrences: <span className="font-bold text-white">{occurrenceCount}</span>
+                                </span>
+                                {isAcknowledgeable && (
+                                  <button
+                                    onClick={() => handleAcknowledgeError(err.fingerprint)}
+                                    className="bg-[#ff5500]/10 border border-[#ff5500]/30 hover:bg-[#ff5500]/20 text-[#ff5500] font-extrabold text-[9px] px-2.5 py-1 rounded-lg uppercase tracking-wider cursor-pointer transition-colors"
+                                  >
+                                    Resolve
+                                  </button>
+                                )}
+                              </div>
                             </div>
 
                             {/* Error Header */}
@@ -3149,18 +3159,6 @@ export default function Admin() {
                                 </span>
                               )}
                             </div>
-
-                            {/* Action overlay */}
-                            {isAcknowledgeable && (
-                              <div className="absolute top-2 right-5">
-                                <button
-                                  onClick={() => handleAcknowledgeError(err.fingerprint)}
-                                  className="bg-emerald-950/20 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-950/40 hover:text-emerald-300 font-extrabold text-[9px] px-2.5 py-1 rounded-lg uppercase tracking-wider cursor-pointer transition-colors"
-                                >
-                                  Resolve
-                                </button>
-                              </div>
-                            )}
                           </div>
                         );
                       })

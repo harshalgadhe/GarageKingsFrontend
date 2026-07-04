@@ -144,7 +144,7 @@ export default function ReceiptModal({ orderId, receiptData, onClose, apiBaseUrl
               </div>
               <div>
                 <div className="text-[9px] font-black text-[#ff5500] uppercase tracking-widest">Official Receipt</div>
-                <div className="text-sm font-bold text-white">Order #{orderId?.slice(0, 8).toUpperCase()}</div>
+                <div className="text-sm font-bold text-white">Order #{orderId?.toUpperCase()}</div>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -218,7 +218,7 @@ export default function ReceiptModal({ orderId, receiptData, onClose, apiBaseUrl
                     <div className="space-y-1.5">
                       <div className="flex justify-between text-[10px]">
                         <span className="text-white/40">Order ID</span>
-                        <span className="text-white font-mono text-[9px]">{receipt.orderId.slice(0, 16)}…</span>
+                        <span className="text-white font-mono text-[9px]">{receipt.orderId}</span>
                       </div>
                       {receipt.bookingType === 'pre_order' && (
                         <div className="flex justify-between text-[10px]">
