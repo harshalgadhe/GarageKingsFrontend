@@ -22,3 +22,14 @@ This log registers the critical architectural, security, and product-flow decisi
   - Copy new QR image to `public/upi-qr.png`.
   - Update `global_settings` table in the database to override company UPI ID properties.
   - Remove frontend onError fallback that replaced image elements with text strings in `PaymentInstructions.jsx`.
+
+---
+
+## [2026-07-04] Multi-Distributor Batch Inventory & FIFO Ledger System
+- **Decision:** Migrate from a simple product-level inventory system to a multi-distributor batch inventory system with an append-only ledger and FIFO depletion.
+- **Reason:** To accurately track costs of goods sold (COGS) when sourcing the same casting from multiple distributors at varying purchase prices, preserve historical records, and ensure transaction-safe concurrency checks.
+- **Impact:**
+  - Database: Added `distributors`, `inventory_batches`, `inventory_ledger`, and `order_inventory_allocations` tables.
+  - FIFO Depletion: Depletes stock starting from the oldest available batch (`received_at ASC`) inside single query runner transaction blocks using row-level locking (`FOR UPDATE`).
+  - Pre-order Queue: Confirmed pre-orders are stored in a queue and allocated incoming stock chronologically.
+  - Verification: Nightly/startup checks compare cache totals with batch and ledger sums.
