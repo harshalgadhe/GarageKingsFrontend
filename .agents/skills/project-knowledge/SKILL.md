@@ -11,10 +11,11 @@ This skill contains the condensed, high-signal knowledge graph and invariant rul
 
 ## 1. Core Invariants (Rules Never to Violate)
 1. **Authenticated Checkout Only:** Guest checkout is deprecated. All order reservation API calls (`POST /products/reserve` and `/reserve-cart`) must verify the user is authenticated via JWT session cookie (`gk_access_token`).
-2. **First-Come-First-Served:** The active 15-second reservation timer cleanup worker is disabled. Available stock is locked at checkout submission and sold/released upon manual admin payment verification.
-3. **No Negative Stock:** Dynamic availability formula: `Available = Total - Locked - Sold`. Available stock must never drop below 0. Checkouts requesting more than available must be rejected.
+2. **First-Come-First-Served & No Checkout Locks:** Checkout-level locking is removed. Inventory is only reserved (`Reserved`) after payment verification and order approval. Avoid locking stock on incomplete/abandoned checkouts.
+3. **No Negative Stock:** Dynamic availability formula: `Available = Total - Reserved - Sold`. Available stock must never drop below 0. Checkouts requesting more than available must be rejected.
 4. **Email-Unique CRM Records:** The `customers` table unique constraint is mapped to the customer's email, not their phone number.
 5. **Private Uploads Guard:** Payment screenshots are private assets. They must be uploaded securely and streamed only via authenticated backend endpoints checking ownership or admin privileges. File magic bytes signatures must be verified.
+6. **Immutable Costs:** Once inventory is received, its batch purchase cost is immutable. All financial adjustments must be made using ledger adjustments.
 
 ---
 
