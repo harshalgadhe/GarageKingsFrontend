@@ -262,7 +262,7 @@ export default function Admin() {
   // UI state variables
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [editingProductId, setEditingProductId] = useState(null);
-  const [productForm, setProductForm] = useState({ name: '', brand: '', price: '', scale: '1:64', lane: '', totalStock: 10, description: '', image: '', category: 'JDM', purchasePrice: '', maxQtyPerCustomer: '', hasLimit: false });
+  const [productForm, setProductForm] = useState({ name: '', brand: '', price: '', scale: '1:64', lane: '', totalStock: 10, availableStock: 10, lockedStock: 0, soldStock: 0, description: '', image: '', category: 'JDM', purchasePrice: '', maxQtyPerCustomer: '', hasLimit: false });
   const [uploadingImage, setUploadingImage] = useState(false);
 
   const [activeScreenshotOrder, setActiveScreenshotOrder] = useState(null); // { url, orderId, status, orderRef }
@@ -869,6 +869,9 @@ export default function Admin() {
       scale: car.scale,
       lane: car.lane,
       totalStock: car.totalStock,
+      availableStock: car.availableStock || 0,
+      lockedStock: car.lockedStock || 0,
+      soldStock: car.soldStock || 0,
       description: car.description,
       image: car.image,
       category: car.category || 'JDM',
@@ -1270,7 +1273,7 @@ export default function Admin() {
                 </h3>
                 <button
                   onClick={() => {
-                    setProductForm({ name: '', brand: '', price: '', scale: '1:64', lane: 'Standard Edition', totalStock: 10, description: '', image: '', category: 'JDM', purchasePrice: '', maxQtyPerCustomer: '', hasLimit: false });
+                    setProductForm({ name: '', brand: '', price: '', scale: '1:64', lane: 'Standard Edition', totalStock: 10, availableStock: 10, lockedStock: 0, soldStock: 0, description: '', image: '', category: 'JDM', purchasePrice: '', maxQtyPerCustomer: '', hasLimit: false });
                     setEditingProductId(null);
                     setIsAddingProduct(true);
                   }}
@@ -3058,6 +3061,13 @@ export default function Admin() {
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">Total Stock</label>
                   <input type="number" value={productForm.totalStock} onChange={e => setProductForm(p => ({ ...p, totalStock: Number(e.target.value) }))} className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ff5500]/40 font-mono" required />
+                  {editingProductId && (
+                    <div className="text-[9px] text-[#888888] font-bold uppercase tracking-wider mt-1">
+                      Available: <span className="text-white">{productForm.availableStock}</span> • 
+                      Locked: <span className="text-amber-400">{productForm.lockedStock}</span> • 
+                      Sold: <span className="text-emerald-400">{productForm.soldStock}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
