@@ -825,7 +825,7 @@ export default function Admin() {
       }
       setIsAddingProduct(false);
       setEditingProductId(null);
-      await loadAllData();
+      fetchInventory(inventoryPage, inventorySearchQuery);
     } catch (err) {
       showToast(err.message, "error");
     }
@@ -854,7 +854,7 @@ export default function Admin() {
     if (!confirm('Are you sure you want to archive this casting?')) return;
     try {
       await deleteCar(id);
-      await loadAllData();
+      fetchInventory(inventoryPage, inventorySearchQuery);
     } catch (err) {
       showToast(err.message, "error");
     }
