@@ -123,6 +123,11 @@ export default function Admin() {
   const [isAddingFounderTx, setIsAddingFounderTx] = useState(false);
   const [founderTxForm, setFounderTxForm] = useState({ founderName: 'Harshal', amount: '', type: 'contribution', cashAccountId: '', reason: '', notes: '', date: new Date().toISOString().split('T')[0] });
 
+  const [catalogList, setCatalogList] = useState([]);
+  const [isCreatingNewProductInline, setIsCreatingNewProductInline] = useState(false);
+  const [newProductFormInline, setNewProductFormInline] = useState({ name: '', brand: '', sku: '', purchasePrice: 0, price: 0, scale: '1:64', series: 'NA' });
+  const [activeItemIndexForProductCreation, setActiveItemIndexForProductCreation] = useState(null);
+
   // Supplier Purchase Forms
   const [purchaseForm, setPurchaseForm] = useState({
     supplierId: '',
@@ -628,6 +633,7 @@ export default function Admin() {
       fetchSupplierPurchases(supplierPurchasesPage, supplierPurchasesSearch);
       fetchSupplierMetrics();
       fetchSuppliersList();
+      fetchCatalogList();
       if (selectedPurchaseId) {
         fetchSupplierPurchaseDetailsData(selectedPurchaseId);
       }
@@ -672,6 +678,59 @@ export default function Admin() {
       setSelectedPurchase(data);
     } catch (e) {
       console.error("Error loading supplier purchase details:", e);
+    }
+  };
+
+  const fetchCatalogList = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/products?page=1&limit=1000`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setCatalogList(data.products || []);
+      }
+    } catch (e) {
+      console.error("Error loading catalog list:", e);
+    }
+  };
+
+  const handleCreateProductInlineSubmit = async (e) => {
+    e.preventDefault();
+    if (!newProductFormInline.sku || !newProductFormInline.name || !newProductFormInline.brand) {
+      showToast("Please fill in SKU, Name, and Brand", "error");
+      return;
+    }
+    try {
+      const payload = {
+        name: newProductFormInline.name,
+        brand: newProductFormInline.brand,
+        sku: newProductFormInline.sku,
+        price: Number(newProductFormInline.price),
+        purchasePrice: Number(newProductFormInline.purchasePrice),
+        scale: newProductFormInline.scale,
+        series: newProductFormInline.series,
+        availableStock: 0,
+        lockedStock: 0,
+        soldStock: 0,
+        status: 'Active',
+        showOnHomepage: true
+      };
+      
+      const res = await addCar(payload);
+      showToast(`Product ${payload.brand} ${payload.name} created successfully`, "success");
+      
+      await fetchCatalogList();
+      
+      if (activeItemIndexForProductCreation !== null && res.id) {
+        const updated = [...purchaseForm.items];
+        updated[activeItemIndexForProductCreation].productId = res.id;
+        updated[activeItemIndexForProductCreation].purchasePrice = payload.purchasePrice;
+        setPurchaseForm(p => ({ ...p, items: updated }));
+      }
+      
+      setIsCreatingNewProductInline(false);
+      setActiveItemIndexForProductCreation(null);
+    } catch (err) {
+      showToast("Failed to create product casting: " + err.message, "error");
     }
   };
 
@@ -4434,25 +4493,47 @@ export default function Admin() {
                 <div className="space-y-2 max-h-48 overflow-y-auto scrollbar-none pr-1">
                   {purchaseForm.items.map((item, idx) => (
                     <div key={idx} className="flex gap-2 items-center bg-white/[0.01] border border-white/5 p-2 rounded-xl">
-                      <select
-                        value={item.productId}
-                        onChange={(e) => {
-                          const updated = [...purchaseForm.items];
-                          updated[idx].productId = e.target.value;
-                          const prod = cars.find(c => c.id === e.target.value);
-                          if (prod) {
-                            updated[idx].purchasePrice = prod.purchase_price || 0;
-                          }
-                          setPurchaseForm(p => ({ ...p, items: updated }));
-                        }}
-                        className="flex-1 bg-[#141414] border border-white/5 rounded-lg px-2.5 py-2 text-white focus:outline-none text-[11px]"
-                        required
-                      >
-                        <option value="">-- Product --</option>
-                        {cars.map(c => (
-                          <option key={c.id} value={c.id}>{c.brand} {c.model_name} ({c.sku || 'No SKU'})</option>
-                        ))}
-                      </select>
+                      <div className="flex-1 flex gap-1.5 items-center">
+                        <select
+                          value={item.productId}
+                          onChange={(e) => {
+                            const updated = [...purchaseForm.items];
+                            updated[idx].productId = e.target.value;
+                            const prod = catalogList.find(c => c.id === e.target.value);
+                            if (prod) {
+                              updated[idx].purchasePrice = prod.purchase_price || 0;
+                            }
+                            setPurchaseForm(p => ({ ...p, items: updated }));
+                          }}
+                          className="flex-1 bg-[#141414] border border-white/5 rounded-lg px-2.5 py-2 text-white focus:outline-none text-[11px]"
+                          required
+                        >
+                          <option value="">-- Product --</option>
+                          {catalogList.map(c => (
+                            <option key={c.id} value={c.id}>{c.brand} {c.model_name} ({c.sku || 'No SKU'})</option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveItemIndexForProductCreation(idx);
+                            setNewProductFormInline({
+                              name: '',
+                              brand: '',
+                              sku: '',
+                              purchasePrice: item.purchasePrice || 0,
+                              price: item.purchasePrice ? Math.round(item.purchasePrice * 1.3) : 0,
+                              scale: '1:64',
+                              series: 'NA'
+                            });
+                            setIsCreatingNewProductInline(true);
+                          }}
+                          className="px-2.5 py-2 bg-white/5 hover:bg-white/10 text-[#ff5500] font-black rounded-lg text-[9px] uppercase tracking-wider cursor-pointer border border-white/5"
+                          title="Create new catalog product inline"
+                        >
+                          + New
+                        </button>
+                      </div>
 
                       <input
                         type="number"
@@ -4662,6 +4743,119 @@ export default function Admin() {
 
               <button type="submit" className="w-full bg-[#ff5500] hover:bg-[#ff6611] text-black font-extrabold py-3.5 rounded-xl uppercase tracking-wider transition-colors cursor-pointer border-none text-[10px]">
                 Create Supplier Profile
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Create New Product Inline Modal */}
+      {isCreatingNewProductInline && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
+          <div className="w-full max-w-sm bg-[#0f0f0f] border border-white/5 rounded-2xl relative overflow-hidden shadow-2xl">
+            <div className="h-[2px] bg-[#ff5500]" />
+            <div className="p-6 border-b border-white/5 flex items-center justify-between">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Quick Create Product Casting</h3>
+              <button onClick={() => { setIsCreatingNewProductInline(false); setActiveItemIndexForProductCreation(null); }} className="text-[#888888] hover:text-white text-xs">✕</button>
+            </div>
+            
+            <form onSubmit={handleCreateProductInlineSubmit} className="p-6 space-y-4 text-xs">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-[#888888] uppercase block">SKU / Barcode ID (Unique)</label>
+                <input
+                  type="text"
+                  value={newProductFormInline.sku}
+                  onChange={(e) => setNewProductFormInline(p => ({ ...p, sku: e.target.value }))}
+                  placeholder="e.g. HW-911-RED"
+                  className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none font-mono"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-[#888888] uppercase block">Brand / Make</label>
+                  <input
+                    type="text"
+                    value={newProductFormInline.brand}
+                    onChange={(e) => setNewProductFormInline(p => ({ ...p, brand: e.target.value }))}
+                    placeholder="e.g. Hot Wheels"
+                    className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-[#888888] uppercase block">Scale</label>
+                  <input
+                    type="text"
+                    value={newProductFormInline.scale}
+                    onChange={(e) => setNewProductFormInline(p => ({ ...p, scale: e.target.value }))}
+                    placeholder="e.g. 1:64"
+                    className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-[#888888] uppercase block">Product / Model Name</label>
+                <input
+                  type="text"
+                  value={newProductFormInline.name}
+                  onChange={(e) => setNewProductFormInline(p => ({ ...p, name: e.target.value }))}
+                  placeholder="e.g. Porsche 911 GT3 RS"
+                  className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-[#888888] uppercase block">Unit Purchase Cost (₹)</label>
+                  <input
+                    type="number"
+                    value={newProductFormInline.purchasePrice}
+                    onChange={(e) => {
+                      const cost = parseFloat(e.target.value) || 0;
+                      setNewProductFormInline(p => ({
+                        ...p,
+                        purchasePrice: cost,
+                        price: p.price || Math.round(cost * 1.3)
+                      }));
+                    }}
+                    placeholder="0.00"
+                    className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none font-mono"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-[#888888] uppercase block">Unit Selling Price (₹)</label>
+                  <input
+                    type="number"
+                    value={newProductFormInline.price}
+                    onChange={(e) => setNewProductFormInline(p => ({ ...p, price: parseFloat(e.target.value) || 0 }))}
+                    placeholder="0.00"
+                    className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none font-mono"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-[#888888] uppercase block">Series / Tag (Optional)</label>
+                <input
+                  type="text"
+                  value={newProductFormInline.series}
+                  onChange={(e) => setNewProductFormInline(p => ({ ...p, series: e.target.value }))}
+                  placeholder="e.g. Boulevard 2026"
+                  className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none"
+                />
+              </div>
+
+              <button type="submit" className="w-full bg-[#ff5500] hover:bg-[#ff6611] text-black font-extrabold py-3.5 rounded-xl uppercase tracking-wider transition-colors cursor-pointer border-none text-[10px]">
+                Create Catalog Listing
               </button>
             </form>
           </div>
