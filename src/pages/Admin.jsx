@@ -1536,7 +1536,7 @@ export default function Admin() {
                   {[
                     { key: 'all', label: 'All', count: groupedOrders.length },
                     { key: 'Verification Pending', label: 'Pending', count: groupedOrders.filter(o => o.status === 'Verification Pending').length },
-                    { key: 'Active', label: 'Reserved', count: groupedOrders.filter(o => o.status === 'Active').length },
+                    { key: 'Reserved', label: 'Reserved', count: groupedOrders.filter(o => o.status === 'Reserved').length },
                     { key: 'Confirmed', label: 'Confirmed', count: groupedOrders.filter(o => o.status === 'Confirmed').length },
                     { key: 'Shipped', label: 'Shipped', count: groupedOrders.filter(o => o.status === 'Shipped').length },
                     { key: 'Cancelled', label: 'Cancelled', count: groupedOrders.filter(o => o.status === 'Cancelled').length },
