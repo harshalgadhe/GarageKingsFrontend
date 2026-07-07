@@ -26,9 +26,11 @@ This skill contains the condensed, high-signal knowledge graph and invariant rul
 
 ---
 
-## 3. Mandatory Workflow for Changes (Definition of Done)
+3. **Mandatory Workflow for Changes (Definition of Done)**
 Whenever business logic or code behavior is modified:
 1. **Locate affected docs** in `/docs` (and `/docs/features/`).
 2. **Update implementation** code.
 3. **Update documentation** files, Mermaid charts, and decision logs to match code in the *same* pull request/commit.
 4. **Ensure database migration scripts** (`server/src/database/schema.sql` and `onModuleInit` alterations block in `api.service.ts`) remain synchronized with any schema updates.
+5. **API Security Enforcement**: No endpoint returns database entities directly. Every endpoint must define request and response DTOs. Every endpoint must declare its audience (Public, Customer, Admin). Every endpoint accessing entity IDs must enforce ownership checks where applicable.
+
