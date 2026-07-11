@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
-  Plus, Trash2, Edit2, Save, X, Settings, Eye, EyeOff, LogOut, User, Search,
+  Plus, Trash2, Edit2, Save, X, Settings, Eye, EyeOff, LogOut, User, Search, RefreshCw,
   DollarSign, TrendingUp, Bell, FileText, Users, AlertTriangle, Layers, Calendar, Receipt,
   Activity, Server, Shield, Truck
 } from 'lucide-react';
@@ -333,6 +333,9 @@ export default function Admin() {
   // UI state variables
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [editingProductId, setEditingProductId] = useState(null);
+  const [editingProductData, setEditingProductData] = useState(null);
+  const [loadingProductId, setLoadingProductId] = useState(null);
+  const [isArchivingProductId, setIsArchivingProductId] = useState(null);
   const [productForm, setProductForm] = useState({ name: '', brand: '', price: '', scale: '1:64', lane: '', totalStock: 10, availableStock: 10, lockedStock: 0, soldStock: 0, description: '', image: '', category: 'JDM', purchasePrice: '', maxQtyPerCustomer: '', hasLimit: false });
   const [uploadingImage, setUploadingImage] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1065,36 +1068,37 @@ export default function Admin() {
     }
   };
 
-  const handleEditProduct = (car) => {
-    setProductForm({
-      name: car.name,
-      brand: car.brand,
-      price: car.price,
-      scale: car.scale,
-      lane: car.lane,
-      totalStock: car.totalStock,
-      availableStock: car.availableStock || 0,
-      lockedStock: car.lockedStock || 0,
-      soldStock: car.soldStock || 0,
-      description: car.description,
-      image: car.image,
-      category: car.category || 'JDM',
-      purchasePrice: car.purchasePrice || '',
-      maxQtyPerCustomer: car.maxQtyPerCustomer || '',
-      hasLimit: !!car.maxQtyPerCustomer,
-      casingTypes: car.casing_types || car.casingTypes || ['box']
-    });
-    setEditingProductId(car.id);
-    setIsAddingProduct(true);
+  const handleEditProduct = async (car) => {
+    setLoadingProductId(car.id);
+    try {
+      const res = await fetch(`${API_BASE_URL}/products/${car.id}`, { credentials: 'include' });
+      if (res.ok) {
+        const fullProduct = await res.json();
+        setEditingProductData(fullProduct);
+        setEditingProductId(car.id);
+        setIsAddingProduct(true);
+      } else {
+        showToast("Failed to load product details.", "error");
+      }
+    } catch (err) {
+      console.error(err);
+      showToast("Error loading product details: " + err.message, "error");
+    } finally {
+      setLoadingProductId(null);
+    }
   };
 
   const handleDeleteProduct = async (id) => {
     if (!confirm('Are you sure you want to archive this casting?')) return;
+    setIsArchivingProductId(id);
     try {
       await deleteCar(id);
-      fetchInventory(inventoryPage, inventorySearchQuery);
+      await fetchInventory(inventoryPage, inventorySearchQuery);
+      showToast("Product archived successfully!", "success");
     } catch (err) {
       showToast(err.message, "error");
+    } finally {
+      setIsArchivingProductId(null);
     }
   };
 
@@ -1597,12 +1601,20 @@ export default function Admin() {
                             )}
                           </td>
                           <td className="p-4 text-right space-x-2">
-                            <button onClick={() => handleEditProduct(car)} className="text-white hover:text-[#ff5500] p-1.5 rounded bg-white/5 hover:bg-white/10 transition-colors border border-white/5 cursor-pointer inline-flex">
-                              <Edit2 size={12} />
-                            </button>
-                            <button onClick={() => handleDeleteProduct(car.id)} className="text-red-400 hover:text-red-300 p-1.5 rounded bg-red-500/5 hover:bg-red-500/10 transition-colors border border-red-500/10 cursor-pointer inline-flex">
-                              <Trash2 size={12} />
-                            </button>
+                             <button 
+                               onClick={() => handleEditProduct(car)} 
+                               disabled={loadingProductId !== null || isArchivingProductId !== null}
+                               className="text-white hover:text-[#ff5500] p-1.5 rounded bg-white/5 hover:bg-white/10 transition-colors border border-white/5 cursor-pointer inline-flex disabled:opacity-40 disabled:cursor-not-allowed"
+                             >
+                               {loadingProductId === car.id ? <RefreshCw className="animate-spin" size={12} /> : <Edit2 size={12} />}
+                             </button>
+                             <button 
+                               onClick={() => handleDeleteProduct(car.id)} 
+                               disabled={loadingProductId !== null || isArchivingProductId !== null}
+                               className="text-red-400 hover:text-red-300 p-1.5 rounded bg-red-500/5 hover:bg-red-500/10 transition-colors border border-red-500/10 cursor-pointer inline-flex disabled:opacity-40 disabled:cursor-not-allowed"
+                             >
+                               {isArchivingProductId === car.id ? <RefreshCw className="animate-spin" size={12} /> : <Trash2 size={12} />}
+                             </button>
                           </td>
                         </tr>
                       );
@@ -3674,9 +3686,9 @@ export default function Admin() {
             <div className="p-6 max-h-[80vh] overflow-y-auto" data-lenis-prevent>
               <ProductForm 
                 productId={editingProductId}
-                initialData={editingProductId ? cars.find(c => c.id === editingProductId) : null}
+                initialData={editingProductData}
                 onSave={handleSaveProduct}
-                onCancel={() => { setIsAddingProduct(false); setEditingProductId(null); }}
+                onCancel={() => { setIsAddingProduct(false); setEditingProductId(null); setEditingProductData(null); }}
                 creatorEmail={user?.email}
               />
             </div>

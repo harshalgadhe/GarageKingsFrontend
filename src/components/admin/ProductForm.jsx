@@ -109,8 +109,10 @@ export default function ProductForm({
       setShowOnHomepage(initialData.showOnHomepage ?? true);
       setMaxQtyPerCustomer(initialData.maxQtyPerCustomer || '');
       
-      if (initialData.images && initialData.images.length > 0) {
-        setProductImage(initialData.images[0].url);
+      if (initialData.image) {
+        setProductImage(initialData.image);
+      } else if (initialData.images && initialData.images.length > 0) {
+        setProductImage(initialData.images[0].fullUrl || initialData.images[0].thumbnailUrl || initialData.images[0].url || '');
       }
 
       if (initialData.variants && initialData.variants.length > 0) {
@@ -127,9 +129,9 @@ export default function ProductForm({
           isVisible: v.visibility ?? true,
           status: v.status || 'Active',
           salesStatus: v.salesStatus || 'Available',
-          isPrebook: v.salesStatus === 'Preorder',
-          customerEta: v.customerEta || '',
-          prebookDepositAmount: v.prebookDepositAmount || '',
+          isPrebook: v.isPrebook ?? (v.salesStatus === 'Preorder' || initialData.isPrebook || false),
+          customerEta: v.customerEta || initialData.arrivalDate || '',
+          prebookDepositAmount: v.prebookDepositAmount || initialData.prebookDepositAmount || '',
           maxPreorders: v.maxPreorders || '',
           preorderNotes: v.preorderNotes || '',
           displayMessage: v.displayMessage || '',
