@@ -333,6 +333,9 @@ export default function Admin() {
   const [editingProductId, setEditingProductId] = useState(null);
   const [productForm, setProductForm] = useState({ name: '', brand: '', price: '', scale: '1:64', lane: '', totalStock: 10, availableStock: 10, lockedStock: 0, soldStock: 0, description: '', image: '', category: 'JDM', purchasePrice: '', maxQtyPerCustomer: '', hasLimit: false });
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingOrder, setEditingOrder] = useState(null);
+  const [orderForm, setOrderForm] = useState({ totalPrice: 0, advanceAmount: 0, remainingAmount: 0, shippingAddress: '', status: '', courierPartner: 'Delhivery', trackingNumber: '', shippingCost: 0, packagingCost: 0 });
 
   const [activeScreenshotOrder, setActiveScreenshotOrder] = useState(null); // { url, orderId, status, orderRef }
   const [shippingModalOrder, setShippingModalOrder] = useState(null);
@@ -1022,6 +1025,7 @@ export default function Admin() {
   // Products CRUD handlers
   const handleProductSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
     try {
       const payload = {
         ...productForm,
@@ -1037,6 +1041,8 @@ export default function Admin() {
       fetchInventory(inventoryPage, inventorySearchQuery);
     } catch (err) {
       showToast(err.message, "error");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -1076,6 +1082,7 @@ export default function Admin() {
   // Orders Actions handlers
   const handleConfirmOrder = async (orderId) => {
     if (!confirm('Verify UPI payment screenshot and confirm this order?')) return;
+    setIsSubmitting(true);
     try {
       const res = await fetch(`${API_BASE_URL}/admin/orders/${orderId}`, {
         method: 'PATCH',
@@ -1087,11 +1094,14 @@ export default function Admin() {
       fetchOrders(ordersPage, orderSearchQuery, orderFilter);
     } catch (err) {
       showToast(err.message, "error");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleCancelOrder = async (orderId) => {
     if (!confirm('Cancel this reservation? Stock will be released back immediately.')) return;
+    setIsSubmitting(true);
     try {
       const res = await fetch(`${API_BASE_URL}/admin/orders/${orderId}`, {
         method: 'PATCH',
@@ -1103,11 +1113,14 @@ export default function Admin() {
       fetchOrders(ordersPage, orderSearchQuery, orderFilter);
     } catch (err) {
       showToast(err.message, "error");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleShipOrderSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
     try {
       const res = await fetch(`${API_BASE_URL}/admin/orders/${shippingModalOrder.id}`, {
         method: 'PATCH',
@@ -1123,6 +1136,44 @@ export default function Admin() {
       fetchOrders(ordersPage, orderSearchQuery, orderFilter);
     } catch (err) {
       showToast(err.message, "error");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEditOrder = (order) => {
+    setEditingOrder(order);
+    setOrderForm({
+      totalPrice: order.totalPrice || 0,
+      advanceAmount: order.advanceAmount || 0,
+      remainingAmount: order.remainingAmount || 0,
+      shippingAddress: order.shippingAddress || '',
+      status: order.status || '',
+      courierPartner: order.courierPartner || 'Delhivery',
+      trackingNumber: order.trackingNumber || '',
+      shippingCost: order.shippingCost || 0,
+      packagingCost: order.packagingCost || 0
+    });
+  };
+
+  const handleEditOrderSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/orders/${editingOrder.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(orderForm)
+      });
+      if (!res.ok) throw new Error("Failed to save order updates.");
+      showToast("Order updated successfully", "success");
+      setEditingOrder(null);
+      await loadAllData();
+    } catch (err) {
+      showToast(err.message, "error");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -1645,7 +1696,15 @@ export default function Admin() {
                     }`}>
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-white/5">
                         <div>
-                          <span className="font-mono font-bold text-white text-xs block">ORDER {order.id.slice(0, 8)}</span>
+                          <div className="flex items-center gap-3">
+                            <span className="font-mono font-bold text-white text-xs block">ORDER {order.id.slice(0, 8)}</span>
+                            <button
+                              onClick={() => handleEditOrder(order)}
+                              className="text-[9px] font-black text-[#ff5500] hover:underline uppercase tracking-widest bg-transparent border-0 cursor-pointer p-0"
+                            >
+                              Edit Details
+                            </button>
+                          </div>
                           <span className="text-[10px] text-[#888888] mt-0.5 block">
                             Logged: {new Date(order.createdAt).toLocaleString('en-IN')}
                           </span>
@@ -4035,6 +4094,136 @@ export default function Admin() {
           setSelectedReceipt(null);
         }}
       />
+    )}
+
+    {/* ── EDIT ORDER MODAL ───────────────────────── */}
+    {editingOrder && (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+        <div className="w-full max-w-md bg-[#0f0f0f] border border-white/5 rounded-2xl relative overflow-hidden shadow-2xl">
+          <div className="h-[2px] bg-[#ff5500]" />
+          <div className="p-6 border-b border-white/5 flex items-center justify-between">
+            <h3 className="text-sm font-bold text-white uppercase tracking-wider">Edit Order details</h3>
+            <button onClick={() => setEditingOrder(null)} className="text-[#888888] hover:text-white text-xs">✕</button>
+          </div>
+          <form onSubmit={handleEditOrderSubmit} className="p-6 max-h-[80vh] overflow-y-auto space-y-4 text-xs" data-lenis-prevent="true">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">Total Price (₹)</label>
+                <input
+                  type="number"
+                  value={orderForm.totalPrice}
+                  onChange={e => setOrderForm(p => ({ ...p, totalPrice: Number(e.target.value) }))}
+                  className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none font-mono"
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">Status</label>
+                <select
+                  value={orderForm.status}
+                  onChange={e => setOrderForm(p => ({ ...p, status: e.target.value }))}
+                  className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none"
+                  required
+                >
+                  <option value="Verification Pending">Verification Pending</option>
+                  <option value="Confirmed">Confirmed</option>
+                  <option value="Shipped">Shipped</option>
+                  <option value="Delivered">Delivered</option>
+                  <option value="Cancelled">Cancelled</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">Advance Paid (₹)</label>
+                <input
+                  type="number"
+                  value={orderForm.advanceAmount}
+                  onChange={e => setOrderForm(p => ({ ...p, advanceAmount: Number(e.target.value) }))}
+                  className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none font-mono"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">Remaining Due (₹)</label>
+                <input
+                  type="number"
+                  value={orderForm.remainingAmount}
+                  onChange={e => setOrderForm(p => ({ ...p, remainingAmount: Number(e.target.value) }))}
+                  className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">Shipping Destination Address</label>
+              <textarea
+                value={orderForm.shippingAddress}
+                onChange={e => setOrderForm(p => ({ ...p, shippingAddress: e.target.value }))}
+                rows={2}
+                className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none font-mono"
+              />
+            </div>
+
+            <div className="border-t border-white/5 pt-4">
+              <div className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-3">Courier & Tracking Details</div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">Courier Partner</label>
+                  <select
+                    value={orderForm.courierPartner}
+                    onChange={e => setOrderForm(p => ({ ...p, courierPartner: e.target.value }))}
+                    className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none"
+                  >
+                    <option value="Delhivery">Delhivery</option>
+                    <option value="Bluedart">Bluedart</option>
+                    <option value="DTDC">DTDC</option>
+                    <option value="India Post">India Post</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">Tracking Code</label>
+                  <input
+                    type="text"
+                    value={orderForm.trackingNumber}
+                    onChange={e => setOrderForm(p => ({ ...p, trackingNumber: e.target.value }))}
+                    className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">Shipping Cost (₹)</label>
+                <input
+                  type="number"
+                  value={orderForm.shippingCost}
+                  onChange={e => setOrderForm(p => ({ ...p, shippingCost: Number(e.target.value) }))}
+                  className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none font-mono"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">Packaging Cost (₹)</label>
+                <input
+                  type="number"
+                  value={orderForm.packagingCost}
+                  onChange={e => setOrderForm(p => ({ ...p, packagingCost: Number(e.target.value) }))}
+                  className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none font-mono"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full bg-[#ff5500] hover:bg-[#ff6611] disabled:opacity-50 text-black font-extrabold py-3.5 rounded-xl uppercase tracking-wider shadow-lg transition-colors cursor-pointer"
+            >
+              {isSubmitting ? 'Saving Updates...' : 'Save Order Changes'}
+            </button>
+          </form>
+        </div>
+      </div>
     )}
 
     {/* ── COLLECT REMAINING PAYMENT MODAL ─────────────────── */}
