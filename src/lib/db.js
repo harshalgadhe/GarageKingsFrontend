@@ -645,3 +645,160 @@ export async function getSupplierMetrics() {
   }
 }
 
+// ==========================================
+//          MASTER DATA API CALLS
+// ==========================================
+
+// Brands
+export async function getBrands(adminMode = false) {
+  const res = await fetch(`${API_BASE_URL}/brands?adminMode=${adminMode}`, {
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error("Failed to fetch brands");
+  return await res.json();
+}
+
+export async function createBrand(brand) {
+  const res = await fetch(`${API_BASE_URL}/admin/brands`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(brand)
+  });
+  if (!res.ok) throw new Error("Failed to create brand");
+  return await res.json();
+}
+
+export async function updateBrand(id, brand) {
+  const res = await fetch(`${API_BASE_URL}/admin/brands/${id}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(brand)
+  });
+  if (!res.ok) throw new Error("Failed to update brand");
+  return await res.json();
+}
+
+export async function deleteBrand(id) {
+  const res = await fetch(`${API_BASE_URL}/admin/brands/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error("Failed to archive brand");
+  return await res.json();
+}
+
+// Manufacturers
+export async function getManufacturers(adminMode = false) {
+  const res = await fetch(`${API_BASE_URL}/manufacturers?adminMode=${adminMode}`, {
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error("Failed to fetch manufacturers");
+  return await res.json();
+}
+
+export async function createManufacturer(manufacturer) {
+  const res = await fetch(`${API_BASE_URL}/admin/manufacturers`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(manufacturer)
+  });
+  if (!res.ok) throw new Error("Failed to create manufacturer");
+  return await res.json();
+}
+
+export async function updateManufacturer(id, manufacturer) {
+  const res = await fetch(`${API_BASE_URL}/admin/manufacturers/${id}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(manufacturer)
+  });
+  if (!res.ok) throw new Error("Failed to update manufacturer");
+  return await res.json();
+}
+
+export async function deleteManufacturer(id) {
+  const res = await fetch(`${API_BASE_URL}/admin/manufacturers/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error("Failed to archive manufacturer");
+  return await res.json();
+}
+
+// Scales
+export async function getScales(adminMode = false) {
+  const res = await fetch(`${API_BASE_URL}/scales?adminMode=${adminMode}`, {
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error("Failed to fetch scales");
+  return await res.json();
+}
+
+export async function createScale(scale) {
+  const res = await fetch(`${API_BASE_URL}/admin/scales`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(scale)
+  });
+  if (!res.ok) throw new Error("Failed to create scale");
+  return await res.json();
+}
+
+export async function updateScale(id, scale) {
+  const res = await fetch(`${API_BASE_URL}/admin/scales/${id}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(scale)
+  });
+  if (!res.ok) throw new Error("Failed to update scale");
+  return await res.json();
+}
+
+export async function deleteScale(id) {
+  const res = await fetch(`${API_BASE_URL}/admin/scales/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error("Failed to archive scale");
+  return await res.json();
+}
+
+// Series
+export async function getSeries(adminMode = false) {
+  const res = await fetch(`${API_BASE_URL}/series?adminMode=${adminMode}`, {
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error("Failed to fetch series");
+  return await res.json();
+}
+
+export async function createSeries(series) {
+  const res = await fetch(`${API_BASE_URL}/admin/series`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(series)
+  });
+  if (!res.ok) throw new Error("Failed to create series");
+  return await res.json();
+}
+
+export async function updateSeries(id, series) {
+  const res = await fetch(`${API_BASE_URL}/admin/series/${id}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(series)
+  });
+  if (!res.ok) throw new Error("Failed to update series");
+  return await res.json();
+}
+
+export async function deleteSeries(id) {
+  const res = await fetch(`${API_BASE_URL}/admin/series/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error("Failed to archive series");
+  return await res.json();
+}
+
+

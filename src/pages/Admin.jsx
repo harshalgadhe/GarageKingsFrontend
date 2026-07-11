@@ -17,6 +17,8 @@ import ReceiptModal from '../components/ReceiptModal';
 import BookPurchaseForm from '../components/BookPurchaseForm';
 import ReceiveShipmentForm from '../components/ReceiveShipmentForm';
 import RecordPaymentForm from '../components/RecordPaymentForm';
+import MasterData from './admin/MasterData';
+import ProductForm from '../components/admin/ProductForm';
 
 const Pagination = ({ currentPage, totalPages, totalItems, onPageChange }) => {
   if (totalPages <= 1) return null;
@@ -1022,6 +1024,23 @@ export default function Admin() {
     }
   };
 
+  const handleSaveProduct = async (payload) => {
+    try {
+      if (editingProductId) {
+        await updateCar(editingProductId, payload);
+      } else {
+        await addCar(payload);
+      }
+      setIsAddingProduct(false);
+      setEditingProductId(null);
+      fetchInventory(inventoryPage, inventorySearchQuery);
+      showToast(editingProductId ? "Product updated successfully!" : "Product created successfully!", "success");
+    } catch (err) {
+      showToast(err.message || "Failed to save product", "error");
+      throw err;
+    }
+  };
+
   // Products CRUD handlers
   const handleProductSubmit = async (e) => {
     e.preventDefault();
@@ -1334,6 +1353,7 @@ export default function Admin() {
           {[
             { id: 'dashboard', label: 'Dashboard', icon: TrendingUp },
             { id: 'inventory', label: 'Inventory', icon: Layers },
+            { id: 'master_data', label: 'Master Data', icon: Server },
             { id: 'supplier_purchases', label: 'Supplier Orders', icon: Truck },
             { id: 'orders', label: 'Orders', icon: FileText, badge: pendingOrdersCount },
             { id: 'receipts', label: 'Invoices', icon: Receipt },
@@ -1399,6 +1419,11 @@ export default function Admin() {
               </span>
             </div>
           </div>
+
+          {/* MASTER DATA TAB */}
+          {adminTab === 'master_data' && (
+            <MasterData />
+          )}
 
           {/* 1. DASHBOARD TAB */}
           {adminTab === 'dashboard' && (
@@ -3637,180 +3662,24 @@ export default function Admin() {
 
       {/* 2. Add/Edit Product Modal */}
       {isAddingProduct && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="w-full max-w-lg bg-[#0f0f0f] border border-white/5 rounded-2xl relative overflow-hidden shadow-2xl">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
+          <div className="w-full max-w-5xl bg-[#0f0f0f] border border-white/5 rounded-2xl relative overflow-hidden shadow-2xl my-8">
             <div className="h-[2px] bg-[#ff5500]" />
             <div className="p-6 border-b border-white/5 flex items-center justify-between">
               <h3 className="text-sm font-black text-white uppercase tracking-wider">
                 {editingProductId ? 'Edit Casting Model' : 'Add New Casting'}
               </h3>
-              <button onClick={() => setIsAddingProduct(false)} className="text-[#888888] hover:text-white text-xs">✕</button>
+              <button onClick={() => { setIsAddingProduct(false); setEditingProductId(null); }} className="text-[#888888] hover:text-white text-xs">✕</button>
             </div>
-            <form onSubmit={handleProductSubmit} className="p-6 max-h-[80vh] overflow-y-auto space-y-4 text-xs" data-lenis-prevent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">Brand</label>
-                  <input type="text" value={productForm.brand} onChange={e => setProductForm(p => ({ ...p, brand: e.target.value }))} placeholder="MINI GT" className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ff5500]/40" required />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">Model Name</label>
-                  <input type="text" value={productForm.name} onChange={e => setProductForm(p => ({ ...p, name: e.target.value }))} placeholder="Nissan GT-R R35" className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ff5500]/40" required />
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">Scale</label>
-                  <input type="text" value={productForm.scale} onChange={e => setProductForm(p => ({ ...p, scale: e.target.value }))} placeholder="1:64" className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ff5500]/40" required />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">Cost Price (Casting)</label>
-                  <input type="number" value={productForm.purchasePrice} onChange={e => setProductForm(p => ({ ...p, purchasePrice: e.target.value }))} placeholder="450" className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ff5500]/40 font-mono" required />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">Selling Price</label>
-                  <input type="number" value={productForm.price} onChange={e => setProductForm(p => ({ ...p, price: e.target.value }))} placeholder="1200" className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ff5500]/40 font-mono" required />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">Category</label>
-                  <input type="text" value={productForm.category} onChange={e => setProductForm(p => ({ ...p, category: e.target.value }))} className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ff5500]/40" required />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">Available Stock</label>
-                  <input type="number" value={productForm.availableStock} onChange={e => setProductForm(p => ({ ...p, availableStock: Number(e.target.value) }))} className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ff5500]/40 font-mono" required />
-                  {editingProductId && (
-                    <div className="text-[9px] text-[#888888] font-bold uppercase tracking-wider mt-1">
-                      Total: <span className="text-white">{Number(productForm.availableStock) + Number(productForm.lockedStock) + Number(productForm.soldStock)}</span> • 
-                      Locked: <span className="text-amber-400">{productForm.lockedStock}</span> • 
-                      Sold: <span className="text-emerald-400">{productForm.soldStock}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-1 bg-[#141414]/40 border border-white/5 p-4 rounded-xl">
-                <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block mb-2">Applicable Casings</label>
-                <div className="flex gap-6 items-center">
-                  <label className="flex items-center gap-2 text-white cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={productForm.casingTypes?.includes('box')}
-                      onChange={(e) => {
-                        const checked = e.target.checked;
-                        setProductForm(p => {
-                          const current = p.casingTypes || [];
-                          const updated = checked 
-                            ? [...current, 'box'] 
-                            : current.filter(x => x !== 'box');
-                          return { ...p, casingTypes: updated.length > 0 ? updated : ['box'] };
-                        });
-                      }}
-                      className="accent-[#ff5500]"
-                    />
-                    <span className="text-xs">Box</span>
-                  </label>
-
-                  <label className="flex items-center gap-2 text-white cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={productForm.casingTypes?.includes('blister')}
-                      onChange={(e) => {
-                        const checked = e.target.checked;
-                        setProductForm(p => {
-                          const current = p.casingTypes || [];
-                          const updated = checked 
-                            ? [...current, 'blister'] 
-                            : current.filter(x => x !== 'blister');
-                          return { ...p, casingTypes: updated };
-                        });
-                      }}
-                      className="accent-[#ff5500]"
-                    />
-                    <span className="text-xs">Blister</span>
-                  </label>
-
-                  <label className="flex items-center gap-2 text-white cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={productForm.casingTypes?.includes('acrylic casing')}
-                      onChange={(e) => {
-                        const checked = e.target.checked;
-                        setProductForm(p => {
-                          const current = p.casingTypes || [];
-                          const updated = checked 
-                            ? [...current, 'acrylic casing'] 
-                            : current.filter(x => x !== 'acrylic casing');
-                          return { ...p, casingTypes: updated };
-                        });
-                      }}
-                      className="accent-[#ff5500]"
-                    />
-                    <span className="text-xs">Acrylic Casing</span>
-                  </label>
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">Upload Casting Image</label>
-                <div className="flex gap-4 items-center">
-                  <input type="file" onChange={handleImageUpload} accept="image/*" className="hidden" id="admin-prod-image-file" />
-                  <label htmlFor="admin-prod-image-file" className="bg-white/5 hover:bg-white/10 active:bg-white/15 border border-white/10 text-white font-bold px-4 py-3.5 rounded-xl uppercase tracking-wider transition-all cursor-pointer flex-1 text-center">
-                    {uploadingImage ? 'Uploading image...' : 'Browse image'}
-                  </label>
-                  {productForm.image && (
-                    <img src={productForm.image} className="w-12 h-10 object-cover rounded border border-white/5" />
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">Description</label>
-                <textarea value={productForm.description} onChange={e => setProductForm(p => ({ ...p, description: e.target.value }))} rows="3" placeholder="Additional details..." className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none" />
-              </div>
-
-              {/* Purchase Limit Fields */}
-              <div className="bg-[#141414]/50 border border-white/5 rounded-xl p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="admin-prod-has-limit"
-                    checked={productForm.hasLimit}
-                    onChange={e => setProductForm(p => ({
-                      ...p,
-                      hasLimit: e.target.checked,
-                      maxQtyPerCustomer: e.target.checked ? (p.maxQtyPerCustomer || '1') : ''
-                    }))}
-                    className="accent-[#ff5500]"
-                  />
-                  <label htmlFor="admin-prod-has-limit" className="text-xs font-bold text-white uppercase tracking-wider cursor-pointer">
-                    Add purchase limit per customer
-                  </label>
-                </div>
-                {productForm.hasLimit && (
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">
-                      Max Quantity Allowed Per Customer
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={productForm.maxQtyPerCustomer}
-                      onChange={e => setProductForm(p => ({ ...p, maxQtyPerCustomer: e.target.value }))}
-                      placeholder="e.g. 1"
-                      className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ff5500]/40 font-mono"
-                      required
-                    />
-                  </div>
-                )}
-              </div>
-
-              <button type="submit" className="w-full bg-[#ff5500] hover:bg-[#ff6611] text-black font-extrabold py-3.5 rounded-xl uppercase tracking-wider shadow-lg transition-colors cursor-pointer">
-                Save Casting
-              </button>
-            </form>
+            <div className="p-6 max-h-[80vh] overflow-y-auto" data-lenis-prevent>
+              <ProductForm 
+                productId={editingProductId}
+                initialData={editingProductId ? cars.find(c => c.id === editingProductId) : null}
+                onSave={handleSaveProduct}
+                onCancel={() => { setIsAddingProduct(false); setEditingProductId(null); }}
+                creatorEmail={user?.email}
+              />
+            </div>
           </div>
         </div>
       )}
