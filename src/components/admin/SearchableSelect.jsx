@@ -9,7 +9,8 @@ export default function SearchableSelect({
   onCreateNew,
   placeholder = 'Select option...',
   disabled = false,
-  required = false
+  required = false,
+  valueKey = 'name'
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -22,7 +23,8 @@ export default function SearchableSelect({
     if (typeof opt === 'string') {
       return { label: opt, value: opt };
     }
-    return { label: opt.label || opt.name || '', value: opt.value ?? opt.id ?? '' };
+    const val = opt[valueKey] || opt.value || opt.id || '';
+    return { label: opt.label || opt.name || '', value: val };
   });
 
   const filteredOptions = normalizedOptions.filter(opt =>
