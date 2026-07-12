@@ -38,10 +38,65 @@ export default function ReserveModal({ product, cartItems, onClose }) {
     : (import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1');
 
   const isCart = !!cartItems;
-  const totalPrice = isCart 
-    ? cartItems.reduce((sum, item) => sum + Number(item.price || 0) * (item.quantity || 1), 0)
-    : Number(product?.price || 0);
-  const advanceAmount = isPreOrder ? Math.round(totalPrice * advancePercent / 100) : totalPrice;
+  const [calculation, setCalculation] = useState({
+    subtotal: 0,
+    shippingFee: 0,
+    totalPrice: 0,
+    advanceAmount: 0,
+    remainingAmount: 0,
+    items: []
+  });
+  const [calculating, setCalculating] = useState(false);
+
+  useEffect(() => {
+    async function performCalculation() {
+      if (isCart && cartItems.length === 0) return;
+      if (!isCart && !product) return;
+
+      setCalculating(true);
+      try {
+        const payload = {
+          bookingType: isPreOrder ? 'pre_order' : 'standard',
+          items: isCart ? cartItems.map(item => ({
+            productId: item.id,
+            qty: item.quantity || 1
+          })) : [{
+            productId: product.id,
+            qty: 1
+          }]
+        };
+
+        if (isPreOrder) {
+          const estSubtotal = isCart 
+            ? cartItems.reduce((sum, item) => sum + Number(item.price || 0) * (item.quantity || 1), 0)
+            : Number(product?.price || 0);
+          payload.advanceAmount = Math.round(estSubtotal * advancePercent / 100);
+        }
+
+        const token = localStorage.getItem('gk_token');
+        const res = await fetch(`${API_BASE_URL}/products/calculate-checkout`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setCalculation(data);
+        }
+      } catch (e) {
+        console.error("Calculation failed", e);
+      } finally {
+        setCalculating(false);
+      }
+    }
+    performCalculation();
+  }, [isCart, cartItems, product, isPreOrder, advancePercent, API_BASE_URL]);
+
+  const totalPrice = calculation.totalPrice;
+  const advanceAmount = calculation.advanceAmount;
 
   // Generate unique idempotency key once per modal mount and lock/unlock body scroll
   useEffect(() => {
@@ -255,9 +310,21 @@ export default function ReserveModal({ product, cartItems, onClose }) {
                       </div>
                     ))}
                   </div>
-                  <div className="border-t border-white/5 pt-2 flex justify-between items-center text-xs font-bold">
-                    <span className="text-[#888888] uppercase tracking-wider">Aggregated Total</span>
-                    <span className="font-mono text-[#ff5500]">₹{totalPrice}</span>
+                  <div className="border-t border-white/5 pt-2 space-y-1 text-xs">
+                    <div className="flex justify-between items-center text-white/40">
+                      <span>Subtotal</span>
+                      <span className="font-mono text-white/80">₹{calculation.subtotal}</span>
+                    </div>
+                    {calculation.shippingFee > 0 && (
+                      <div className="flex justify-between items-center text-white/40">
+                        <span>Flat Shipping</span>
+                        <span className="font-mono text-white/80">₹{calculation.shippingFee}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center font-bold pt-1 border-t border-white/5">
+                      <span className="text-[#888888] uppercase tracking-wider">Aggregated Total</span>
+                      <span className="font-mono text-[#ff5500]">₹{calculation.totalPrice}</span>
+                    </div>
                   </div>
                 </div>
               )}
@@ -355,7 +422,7 @@ export default function ReserveModal({ product, cartItems, onClose }) {
                       <span className="text-[10px] text-white/40 flex-shrink-0">75%</span>
                     </div>
                     <div className="text-[9px] text-white/30 text-center">
-                      Remaining ₹{totalPrice - advanceAmount} due before dispatch
+                      Remaining ₹{calculation.remainingAmount} due before dispatch
                     </div>
                   </div>
                 )}
@@ -378,7 +445,7 @@ export default function ReserveModal({ product, cartItems, onClose }) {
                 <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
                   <div className="text-[10px] font-black text-amber-400 uppercase tracking-wider">Pre-Order Mode</div>
                   <div className="text-[10px] text-amber-300/70 mt-0.5">
-                    Pay only the advance amount now. The remaining ₹{totalPrice - advanceAmount} will be collected before dispatch.
+                    Pay only the advance amount now. The remaining ₹{calculation.remainingAmount} will be collected before dispatch.
                   </div>
                 </div>
               )}
@@ -407,7 +474,7 @@ export default function ReserveModal({ product, cartItems, onClose }) {
                 {isPreOrder && (
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-white/60">Remaining (due later):</span>
-                    <span className="font-mono text-amber-400/80">₹{totalPrice - advanceAmount}</span>
+                    <span className="font-mono text-amber-400/80">₹{calculation.remainingAmount}</span>
                   </div>
                 )}
                 <div className="flex justify-between items-center text-xs">
@@ -442,8 +509,8 @@ export default function ReserveModal({ product, cartItems, onClose }) {
                 </h3>
                 <p className="text-xs text-[#888888] leading-relaxed max-w-sm mx-auto">
                   {isPreOrder
-                    ? `Your advance payment screenshot is uploaded. We will verify and reserve your item. You'll be notified to pay the remaining ₹${totalPrice - advanceAmount} when stock is ready to ship.`
-                    : 'Your UPI screenshot is uploaded and pending verification by our founders. We will verify it on a first-come, first-served basis. We will notify you once verified.'}
+                    ? `Your advance payment screenshot is uploaded. We will verify and reserve your item. You'll be notified to pay the remaining ₹${calculation.remainingAmount} when stock is ready to ship.`
+                    : 'Your UPI screenshot is uploaded and pending verification by our founders. We will verify it on a first-come, first-saved basis. We will notify you once verified.'}
                 </p>
               </div>
 
@@ -453,7 +520,7 @@ export default function ReserveModal({ product, cartItems, onClose }) {
                   <>
                     <div><span className="text-amber-400">TYPE:</span> PRE-ORDER</div>
                     <div><span className="text-white">ADVANCE PAID:</span> ₹{advanceAmount}</div>
-                    <div><span className="text-amber-400">REMAINING DUE:</span> ₹{totalPrice - advanceAmount}</div>
+                    <div><span className="text-amber-400">REMAINING DUE:</span> ₹{calculation.remainingAmount}</div>
                   </>
                 )}
                 {isCart ? (

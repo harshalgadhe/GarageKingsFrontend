@@ -801,4 +801,258 @@ export async function deleteSeries(id) {
   return await res.json();
 }
 
+// ── ERP DASHBOARD AGGREGATES ──────────────────────────────────────
+export async function getDashboardAggregates() {
+  const res = await fetch(`${API_BASE_URL}/admin/dashboard/aggregates`, {
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error("Failed to fetch dashboard aggregates");
+  return await res.json();
+}
+
+// ── ERP VARIANTS ──────────────────────────────────────────────────
+export async function getAdminVariants(page = 1, limit = 50, search = "") {
+  const res = await fetch(`${API_BASE_URL}/admin/variants?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}`, {
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error("Failed to fetch admin variants");
+  return await res.json();
+}
+
+export async function getInventoryVariantDetails(variantId) {
+  const res = await fetch(`${API_BASE_URL}/admin/inventory/variants/${variantId}/details`, {
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error("Failed to fetch variant inventory details");
+  return await res.json();
+}
+
+// ── NEW ERP LOOKUPS ───────────────────────────────────────────────
+
+// Categories
+export async function getCategories() {
+  const res = await fetch(`${API_BASE_URL}/categories`, {
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error("Failed to fetch categories");
+  return await res.json();
+}
+export async function createCategory(category) {
+  const res = await fetch(`${API_BASE_URL}/admin/categories`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(category)
+  });
+  if (!res.ok) throw new Error("Failed to create category");
+  return await res.json();
+}
+export async function updateCategory(id, category) {
+  const res = await fetch(`${API_BASE_URL}/admin/categories/${id}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(category)
+  });
+  if (!res.ok) throw new Error("Failed to update category");
+  return await res.json();
+}
+export async function deleteCategory(id) {
+  const res = await fetch(`${API_BASE_URL}/admin/categories/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error("Failed to delete category");
+  return await res.json();
+}
+
+// Tags
+export async function getTags() {
+  const res = await fetch(`${API_BASE_URL}/tags`, {
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error("Failed to fetch tags");
+  return await res.json();
+}
+export async function createTag(tag) {
+  const res = await fetch(`${API_BASE_URL}/admin/tags`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(tag)
+  });
+  if (!res.ok) throw new Error("Failed to create tag");
+  return await res.json();
+}
+export async function updateTag(id, tag) {
+  const res = await fetch(`${API_BASE_URL}/admin/tags/${id}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(tag)
+  });
+  if (!res.ok) throw new Error("Failed to update tag");
+  return await res.json();
+}
+export async function deleteTag(id) {
+  const res = await fetch(`${API_BASE_URL}/admin/tags/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error("Failed to delete tag");
+  return await res.json();
+}
+
+// Expense Categories
+export async function getExpenseCategories(adminMode = false) {
+  const res = await fetch(`${API_BASE_URL}/expense-categories?adminMode=${adminMode}`, {
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error("Failed to fetch expense categories");
+  return await res.json();
+}
+export async function createExpenseCategory(cat) {
+  const res = await fetch(`${API_BASE_URL}/admin/expense-categories`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(cat)
+  });
+  if (!res.ok) throw new Error("Failed to create expense category");
+  return await res.json();
+}
+export async function updateExpenseCategory(id, cat) {
+  const res = await fetch(`${API_BASE_URL}/admin/expense-categories/${id}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(cat)
+  });
+  if (!res.ok) throw new Error("Failed to update expense category");
+  return await res.json();
+}
+export async function deleteExpenseCategory(id) {
+  const res = await fetch(`${API_BASE_URL}/admin/expense-categories/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error("Failed to delete expense category");
+  return await res.json();
+}
+
+// Payment Methods
+export async function getPaymentMethods(adminMode = false) {
+  const res = await fetch(`${API_BASE_URL}/payment-methods?adminMode=${adminMode}`, {
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error("Failed to fetch payment methods");
+  return await res.json();
+}
+export async function createPaymentMethod(method) {
+  const res = await fetch(`${API_BASE_URL}/admin/payment-methods`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(method)
+  });
+  if (!res.ok) throw new Error("Failed to create payment method");
+  return await res.json();
+}
+export async function updatePaymentMethod(id, method) {
+  const res = await fetch(`${API_BASE_URL}/admin/payment-methods/${id}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(method)
+  });
+  if (!res.ok) throw new Error("Failed to update payment method");
+  return await res.json();
+}
+export async function deletePaymentMethod(id) {
+  const res = await fetch(`${API_BASE_URL}/admin/payment-methods/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error("Failed to delete payment method");
+  return await res.json();
+}
+
+// Shipping Providers
+export async function getShippingProviders(adminMode = false) {
+  const res = await fetch(`${API_BASE_URL}/shipping-providers?adminMode=${adminMode}`, {
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error("Failed to fetch shipping providers");
+  return await res.json();
+}
+export async function createShippingProvider(provider) {
+  const res = await fetch(`${API_BASE_URL}/admin/shipping-providers`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(provider)
+  });
+  if (!res.ok) throw new Error("Failed to create shipping provider");
+  return await res.json();
+}
+export async function updateShippingProvider(id, provider) {
+  const res = await fetch(`${API_BASE_URL}/admin/shipping-providers/${id}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(provider)
+  });
+  if (!res.ok) throw new Error("Failed to update shipping provider");
+  return await res.json();
+}
+export async function deleteShippingProvider(id) {
+  const res = await fetch(`${API_BASE_URL}/admin/shipping-providers/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error("Failed to delete shipping provider");
+  return await res.json();
+}
+
+// Read-Only Lookups
+export async function getOrderStatuses() {
+  const res = await fetch(`${API_BASE_URL}/order-statuses`, { headers: getAuthHeaders() });
+  if (!res.ok) throw new Error("Failed to fetch order statuses");
+  return await res.json();
+}
+export async function getPurchaseStatuses() {
+  const res = await fetch(`${API_BASE_URL}/purchase-statuses`, { headers: getAuthHeaders() });
+  if (!res.ok) throw new Error("Failed to fetch purchase statuses");
+  return await res.json();
+}
+export async function getLogisticsStatuses() {
+  const res = await fetch(`${API_BASE_URL}/logistics-statuses`, { headers: getAuthHeaders() });
+  if (!res.ok) throw new Error("Failed to fetch logistics statuses");
+  return await res.json();
+}
+export async function getCurrencies() {
+  const res = await fetch(`${API_BASE_URL}/currencies`, { headers: getAuthHeaders() });
+  if (!res.ok) throw new Error("Failed to fetch currencies");
+  return await res.json();
+}
+export async function getCountries() {
+  const res = await fetch(`${API_BASE_URL}/countries`, { headers: getAuthHeaders() });
+  if (!res.ok) throw new Error("Failed to fetch countries");
+  return await res.json();
+}
+
+export async function getAllInventoryBatches(page = 1, limit = 50) {
+  const res = await fetch(`${API_BASE_URL}/admin/inventory/batches/all?page=${page}&limit=${limit}`, {
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error("Failed to fetch all inventory batches");
+  return await res.json();
+}
+
+export async function getAllInventoryLedger(page = 1, limit = 50) {
+  const res = await fetch(`${API_BASE_URL}/admin/inventory/ledger/all?page=${page}&limit=${limit}`, {
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error("Failed to fetch all inventory ledger entries");
+  return await res.json();
+}
+
+export async function getSupplierReceipts(page = 1, limit = 50) {
+  const res = await fetch(`${API_BASE_URL}/admin/supplier-purchases/receipts?page=${page}&limit=${limit}`, {
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error("Failed to fetch supplier receipts");
+  return await res.json();
+}
+
 

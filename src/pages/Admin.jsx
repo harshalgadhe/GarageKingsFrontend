@@ -3,14 +3,21 @@ import { useNavigate, Link } from 'react-router-dom';
 import { 
   Plus, Trash2, Edit2, Save, X, Settings, Eye, EyeOff, LogOut, User, Search, RefreshCw,
   DollarSign, TrendingUp, Bell, FileText, Users, AlertTriangle, Layers, Calendar, Receipt,
-  Activity, Server, Shield, Truck
+  Activity, Server, Shield, Truck, FolderOpen, BarChart3, ChevronDown, ArrowUpRight
 } from 'lucide-react';
 import { getCurrentUser, signOutCognito } from '../lib/auth';
 import { 
   getCars, addCar, updateCar, deleteCar, uploadImageToStorage, getGlobalSettings, updateGlobalSettings,
   getReceipts, addReceipt, deleteReceipt,
   getSuppliers, createSupplier, getSupplierPurchases, getSupplierPurchaseDetails, addSupplierPurchase,
-  recordSupplierPayment, receiveSupplierShipment, updateSupplierPurchaseStatus, getSupplierMetrics
+  recordSupplierPayment, receiveSupplierShipment, updateSupplierPurchaseStatus, getSupplierMetrics,
+  getDashboardAggregates, getAdminVariants, getInventoryVariantDetails, getCategories, createCategory,
+  updateCategory, deleteCategory, getTags, createTag, updateTag, deleteTag, getExpenseCategories,
+  createExpenseCategory, updateExpenseCategory, deleteExpenseCategory, getPaymentMethods,
+  createPaymentMethod, updatePaymentMethod, deletePaymentMethod, getShippingProviders,
+  createShippingProvider, updateShippingProvider, deleteShippingProvider, getOrderStatuses,
+  getPurchaseStatuses, getLogisticsStatuses, getCurrencies, getCountries, getAllInventoryBatches,
+  getAllInventoryLedger, getCustomers, getSupplierReceipts
 } from '../lib/db';
 import Navigation from '../components/Navigation';
 import ReceiptModal from '../components/ReceiptModal';
@@ -19,6 +26,7 @@ import ReceiveShipmentForm from '../components/ReceiveShipmentForm';
 import RecordPaymentForm from '../components/RecordPaymentForm';
 import MasterData from './admin/MasterData';
 import ProductForm from '../components/admin/ProductForm';
+import InventoryDetails from './admin/InventoryDetails';
 
 const Pagination = ({ currentPage, totalPages, totalItems, onPageChange }) => {
   if (totalPages <= 1) return null;
@@ -339,6 +347,67 @@ export default function Admin() {
   const [productForm, setProductForm] = useState({ name: '', brand: '', price: '', scale: '1:64', lane: '', totalStock: 10, availableStock: 10, lockedStock: 0, soldStock: 0, description: '', image: '', category: 'JDM', purchasePrice: '', maxQtyPerCustomer: '', hasLimit: false });
   const [uploadingImage, setUploadingImage] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ERP State variables
+  const [catalogSubTab, setCatalogSubTab] = useState('products'); // 'products', 'variants', 'lookups'
+  const [procurementSubTab, setProcurementSubTab] = useState('suppliers'); // 'suppliers', 'purchase_orders', 'receipts', 'expenses'
+  const [inventorySubTab, setInventorySubTab] = useState('overview'); // 'overview', 'batches', 'ledger', 'adjustments'
+  const [ordersSubTab, setOrdersSubTab] = useState('list'); // 'list', 'invoices'
+  const [reportsSubTab, setReportsSubTab] = useState('analytics'); // 'analytics', 'founder_splits'
+
+  // Dashboard Aggregates
+  const [dashboardAggregates, setDashboardAggregates] = useState(null);
+  const [dashboardAggregatesLoading, setDashboardAggregatesLoading] = useState(false);
+
+  // Variants list (operational inventory & catalog)
+  const [variantsList, setVariantsList] = useState([]);
+  const [variantsLoading, setVariantsLoading] = useState(false);
+  const [variantsPage, setVariantsPage] = useState(1);
+  const [variantsTotalPages, setVariantsTotalPages] = useState(1);
+  const [variantsTotal, setVariantsTotal] = useState(0);
+  const [variantsSearchQuery, setVariantsSearchQuery] = useState('');
+
+  // Drill down details variant ID
+  const [selectedVariantId, setSelectedVariantId] = useState(null);
+
+  // All inventory batches list
+  const [allBatches, setAllBatches] = useState([]);
+  const [allBatchesLoading, setAllBatchesLoading] = useState(false);
+  const [allBatchesPage, setAllBatchesPage] = useState(1);
+  const [allBatchesTotalPages, setAllBatchesTotalPages] = useState(1);
+  const [allBatchesTotal, setAllBatchesTotal] = useState(0);
+
+  // All inventory ledger list
+  const [allLedger, setAllLedger] = useState([]);
+  const [allLedgerLoading, setAllLedgerLoading] = useState(false);
+  const [allLedgerPage, setAllLedgerPage] = useState(1);
+  const [allLedgerTotalPages, setAllLedgerTotalPages] = useState(1);
+  const [allLedgerTotal, setAllLedgerTotal] = useState(0);
+
+  // Manual stock adjustment state
+  const [manualAdjustmentForm, setManualAdjustmentForm] = useState({
+    batchId: '',
+    quantityChange: 0,
+    type: 'Adjusted',
+    reason: ''
+  });
+  const [isAdjustingStock, setIsAdjustingStock] = useState(false);
+  const [isAdjustingSubmitting, setIsAdjustingSubmitting] = useState(false);
+
+  // Customers CRM State
+  const [customersList, setCustomersList] = useState([]);
+  const [customersLoading, setCustomersLoading] = useState(false);
+  const [customersPage, setCustomersPage] = useState(1);
+  const [customersTotalPages, setCustomersTotalPages] = useState(1);
+  const [customersTotal, setCustomersTotal] = useState(0);
+  const [customersSearchQuery, setCustomersSearchQuery] = useState('');
+
+  // Goods Receipts List
+  const [goodsReceiptsList, setGoodsReceiptsList] = useState([]);
+  const [goodsReceiptsLoading, setGoodsReceiptsLoading] = useState(false);
+  const [goodsReceiptsPage, setGoodsReceiptsPage] = useState(1);
+  const [goodsReceiptsTotalPages, setGoodsReceiptsTotalPages] = useState(1);
+  const [goodsReceiptsTotal, setGoodsReceiptsTotal] = useState(0);
   const [editingOrder, setEditingOrder] = useState(null);
   const [orderForm, setOrderForm] = useState({ totalPrice: 0, advanceAmount: 0, remainingAmount: 0, shippingAddress: '', status: '', courierPartner: 'Delhivery', trackingNumber: '', shippingCost: 0, packagingCost: 0 });
 
@@ -616,23 +685,51 @@ export default function Admin() {
 
   const triggerTabFetch = (tab) => {
     if (tab === 'dashboard') {
-      fetchKPIs();
+      fetchDashboardAggregates();
       fetchNotifications();
+    } else if (tab === 'catalog') {
+      if (catalogSubTab === 'products') {
+        fetchInventory(inventoryPage, inventorySearchQuery);
+      } else if (catalogSubTab === 'variants') {
+        fetchVariants(variantsPage, variantsSearchQuery);
+      } else if (catalogSubTab === 'lookups') {
+        fetchSettings();
+      }
+    } else if (tab === 'procurement') {
+      fetchSuppliersList();
+      fetchSupplierPurchases(supplierPurchasesPage, supplierPurchasesSearch);
+      fetchSupplierMetrics();
+      fetchCatalogList();
+      if (selectedPurchaseId) {
+        fetchSupplierPurchaseDetailsData(selectedPurchaseId);
+      }
+      if (procurementSubTab === 'receipts') {
+        fetchGoodsReceiptsData(goodsReceiptsPage);
+      } else if (procurementSubTab === 'expenses') {
+        fetchExpenses(expensesPage, expensesSearch);
+      }
     } else if (tab === 'inventory') {
-      fetchInventory(inventoryPage, inventorySearchQuery);
-      fetchSettings();
+      if (inventorySubTab === 'overview') {
+        fetchVariants(variantsPage, variantsSearchQuery);
+      } else if (inventorySubTab === 'batches') {
+        fetchAllBatchesData(allBatchesPage);
+      } else if (inventorySubTab === 'ledger') {
+        fetchAllLedgerData(allLedgerPage);
+      }
     } else if (tab === 'orders') {
-      fetchOrders(ordersPage, orderSearchQuery, orderFilter);
-    } else if (tab === 'receipts') {
-      fetchReceipts(receiptsPage, receiptsSearch);
-    } else if (tab === 'expenses') {
-      fetchExpenses(expensesPage, expensesSearch);
-    } else if (tab === 'finance') {
+      if (ordersSubTab === 'list') {
+        fetchOrders(ordersPage, orderSearchQuery, orderFilter);
+      } else if (ordersSubTab === 'invoices') {
+        fetchReceipts(receiptsPage, receiptsSearch);
+      }
+    } else if (tab === 'customers') {
+      fetchCustomersData(customersPage, customersSearchQuery);
+    } else if (tab === 'reports') {
       fetchKPIs();
-      fetchCashAccounts();
       fetchFounderLedger();
       fetchLedger();
       fetchSplits();
+      fetchCashAccounts();
     } else if (tab === 'diagnostics') {
       fetchDiagnosticsData();
     } else if (tab === 'settings') {
@@ -640,14 +737,6 @@ export default function Admin() {
       fetchCMS();
     } else if (tab === 'notifications') {
       fetchNotifications();
-    } else if (tab === 'supplier_purchases') {
-      fetchSupplierPurchases(supplierPurchasesPage, supplierPurchasesSearch);
-      fetchSupplierMetrics();
-      fetchSuppliersList();
-      fetchCatalogList();
-      if (selectedPurchaseId) {
-        fetchSupplierPurchaseDetailsData(selectedPurchaseId);
-      }
     }
   };
 
@@ -757,6 +846,89 @@ export default function Admin() {
       }
     } catch (e) {
       console.error("Error loading inventory:", e);
+    }
+  };
+
+  const fetchDashboardAggregates = async () => {
+    setDashboardAggregatesLoading(true);
+    try {
+      const data = await getDashboardAggregates();
+      setDashboardAggregates(data);
+    } catch (e) {
+      console.error("Error loading aggregates:", e);
+    } finally {
+      setDashboardAggregatesLoading(false);
+    }
+  };
+
+  const fetchVariants = async (page, search) => {
+    setVariantsLoading(true);
+    try {
+      const data = await getAdminVariants(page, 50, search);
+      setVariantsList(data.variants || []);
+      setVariantsTotalPages(data.totalPages || 1);
+      setVariantsTotal(data.total || 0);
+    } catch (e) {
+      console.error("Error loading variants:", e);
+    } finally {
+      setVariantsLoading(false);
+    }
+  };
+
+  const fetchAllBatchesData = async (page) => {
+    setAllBatchesLoading(true);
+    try {
+      const data = await getAllInventoryBatches(page, 50);
+      setAllBatches(data.batches || []);
+      setAllBatchesTotalPages(data.totalPages || 1);
+      setAllBatchesTotal(data.total || 0);
+    } catch (e) {
+      console.error("Error loading all batches:", e);
+    } finally {
+      setAllBatchesLoading(false);
+    }
+  };
+
+  const fetchAllLedgerData = async (page) => {
+    setAllLedgerLoading(true);
+    try {
+      const data = await getAllInventoryLedger(page, 50);
+      setAllLedger(data.ledger || []);
+      setAllLedgerTotalPages(data.totalPages || 1);
+      setAllLedgerTotal(data.total || 0);
+    } catch (e) {
+      console.error("Error loading all ledger:", e);
+    } finally {
+      setAllLedgerLoading(false);
+    }
+  };
+
+  const fetchCustomersData = async (page, search) => {
+    setCustomersLoading(true);
+    try {
+      const data = await getCustomers(page, 50, search);
+      const list = Array.isArray(data) ? data : (data.customers || []);
+      setCustomersList(list);
+      setCustomersTotal(list.length);
+      setCustomersTotalPages(1);
+    } catch (e) {
+      console.error("Error loading customers:", e);
+    } finally {
+      setCustomersLoading(false);
+    }
+  };
+
+  const fetchGoodsReceiptsData = async (page) => {
+    setGoodsReceiptsLoading(true);
+    try {
+      const data = await getSupplierReceipts(page, 50);
+      setGoodsReceiptsList(data.receipts || []);
+      setGoodsReceiptsTotalPages(data.totalPages || 1);
+      setGoodsReceiptsTotal(data.total || 0);
+    } catch (e) {
+      console.error("Error loading goods receipts:", e);
+    } finally {
+      setGoodsReceiptsLoading(false);
     }
   };
 
@@ -938,21 +1110,41 @@ export default function Admin() {
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
       if (isAuthenticated && isAdmin) {
-        if (adminTab === 'inventory') {
-          setInventoryPage(1);
-          fetchInventory(1, inventorySearchQuery);
+        if (adminTab === 'catalog') {
+          if (catalogSubTab === 'products') {
+            setInventoryPage(1);
+            fetchInventory(1, inventorySearchQuery);
+          } else if (catalogSubTab === 'variants') {
+            setVariantsPage(1);
+            fetchVariants(1, variantsSearchQuery);
+          }
+        } else if (adminTab === 'inventory') {
+          if (inventorySubTab === 'overview') {
+            setVariantsPage(1);
+            fetchVariants(1, variantsSearchQuery);
+          }
         } else if (adminTab === 'orders') {
-          setOrdersPage(1);
-          fetchOrders(1, orderSearchQuery, orderFilter);
-        } else if (adminTab === 'receipts') {
-          setReceiptsPage(1);
-          fetchReceipts(1, receiptsSearch);
-        } else if (adminTab === 'expenses') {
-          setExpensesPage(1);
-          fetchExpenses(1, expensesSearch);
-        } else if (adminTab === 'supplier_purchases') {
-          setSupplierPurchasesPage(1);
-          fetchSupplierPurchases(1, supplierPurchasesSearch);
+          if (ordersSubTab === 'list') {
+            setOrdersPage(1);
+            fetchOrders(1, orderSearchQuery, orderFilter);
+          } else if (ordersSubTab === 'invoices') {
+            setReceiptsPage(1);
+            fetchReceipts(1, receiptsSearch);
+          }
+        } else if (adminTab === 'procurement') {
+          if (procurementSubTab === 'purchase_orders') {
+            setSupplierPurchasesPage(1);
+            fetchSupplierPurchases(1, supplierPurchasesSearch);
+          } else if (procurementSubTab === 'receipts') {
+            setReceiptsPage(1);
+            fetchReceipts(1, receiptsSearch);
+          } else if (procurementSubTab === 'expenses') {
+            setExpensesPage(1);
+            fetchExpenses(1, expensesSearch);
+          }
+        } else if (adminTab === 'customers') {
+          setCustomersPage(1);
+          fetchCustomersData(1, customersSearchQuery);
         } else if (adminTab === 'diagnostics') {
           if (diagnosticsSubTab === 'errors') {
             setTelemetryPage(1);
@@ -966,14 +1158,14 @@ export default function Admin() {
     }, 350);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [inventorySearchQuery, orderSearchQuery, receiptsSearch, expensesSearch, telemetrySearch, auditLogsSearch, supplierPurchasesSearch]);
+  }, [inventorySearchQuery, variantsSearchQuery, orderSearchQuery, receiptsSearch, expensesSearch, telemetrySearch, auditLogsSearch, supplierPurchasesSearch, customersSearchQuery, catalogSubTab, inventorySubTab, procurementSubTab, ordersSubTab]);
 
   // Tab and page state change triggers
   useEffect(() => {
     if (isAuthenticated && isAdmin) {
       triggerTabFetch(adminTab);
     }
-  }, [adminTab, inventoryPage, ordersPage, orderFilter, receiptsPage, expensesPage, telemetryPage, telemetryFilter, auditLogsPage, auditLogsCategory, supplierPurchasesPage, selectedPurchaseId]);
+  }, [adminTab, catalogSubTab, procurementSubTab, inventorySubTab, ordersSubTab, inventoryPage, variantsPage, ordersPage, orderFilter, receiptsPage, expensesPage, telemetryPage, telemetryFilter, auditLogsPage, auditLogsCategory, supplierPurchasesPage, selectedPurchaseId, allBatchesPage, allLedgerPage, customersPage, goodsReceiptsPage]);
 
 
   const handleViewReceipt = (dbReceipt) => {
@@ -1356,14 +1548,12 @@ export default function Admin() {
         <aside className="lg:w-64 flex-shrink-0 flex flex-row lg:flex-col overflow-x-auto lg:overflow-x-visible gap-2 bg-[#111111] border border-white/5 rounded-2xl p-3 h-fit lg:sticky lg:top-24 scrollbar-none">
           {[
             { id: 'dashboard', label: 'Dashboard', icon: TrendingUp },
+            { id: 'catalog', label: 'Catalog', icon: FolderOpen },
+            { id: 'procurement', label: 'Procurement', icon: Truck },
             { id: 'inventory', label: 'Inventory', icon: Layers },
-            { id: 'master_data', label: 'Master Data', icon: Server },
-            { id: 'supplier_purchases', label: 'Supplier Orders', icon: Truck },
             { id: 'orders', label: 'Orders', icon: FileText, badge: pendingOrdersCount },
-            { id: 'receipts', label: 'Invoices', icon: Receipt },
-            { id: 'expenses', label: 'Expenses', icon: DollarSign },
-            { id: 'finance', label: 'Founder Splits', icon: DollarSign },
-            { id: 'analytics', label: 'Analytics', icon: TrendingUp },
+            { id: 'customers', label: 'Customers', icon: Users },
+            { id: 'reports', label: 'Reports', icon: BarChart3 },
             { id: 'notifications', label: 'Alerts', icon: Bell, badge: notifications.length },
             { id: 'diagnostics', label: 'Diagnostics', icon: Activity },
             { id: 'settings', label: 'Settings', icon: Settings }
@@ -1430,204 +1620,729 @@ export default function Admin() {
           )}
 
           {/* 1. DASHBOARD TAB */}
+          {/* 1. DASHBOARD TAB */}
           {adminTab === 'dashboard' && (
             <div className="space-y-8">
-              {/* Financial KPI Cards */}
-              {!kpis ? (
+              {/* Aggregates Calculation */}
+              {!dashboardAggregates ? (
                 <div className="bg-[#141414] border border-white/5 rounded-2xl p-8 text-center space-y-4">
                   <div className="max-w-md mx-auto space-y-2">
                     <h3 className="text-sm font-black uppercase tracking-wider text-white">
-                      Financial Performance Metrics
+                      Dashboard Aggregations
                     </h3>
                     <p className="text-xs text-[#888888] leading-relaxed">
-                      Perform database aggregations to retrieve total revenue, expenses, profit/loss, and inventory asset value.
+                      Perform database aggregations to retrieve total inventory valuation, available count, incoming counts, and diagnostics.
                     </p>
                   </div>
                   <button
-                    onClick={fetchKPIs}
-                    disabled={kpisLoading}
+                    onClick={fetchDashboardAggregates}
+                    disabled={dashboardAggregatesLoading}
                     className="inline-flex items-center gap-2 px-6 py-3 bg-[#ff5500] hover:bg-[#ff6611] active:bg-[#e64d00] disabled:bg-[#ff5500]/50 text-black font-extrabold text-xs rounded-xl uppercase tracking-wider transition-all shadow-[0_4px_20px_-4px_rgba(255,85,0,0.3)] cursor-pointer"
                   >
-                    {kpisLoading ? (
+                    {dashboardAggregatesLoading ? (
                       <>
                         <div className="w-3.5 h-3.5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                        Calculating KPIs...
+                        Calculating Dashboard...
                       </>
                     ) : (
-                      'Load KPI Metrics'
+                      'Load Dashboard Data'
                     )}
                   </button>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-6">
                   <div className="flex justify-between items-center">
                     <h3 className="text-xs font-black uppercase tracking-wider text-white/40">
-                      Financial KPIs (On-Demand)
+                      Operational KPIs
                     </h3>
                     <button 
-                      onClick={fetchKPIs}
-                      disabled={kpisLoading}
+                      onClick={fetchDashboardAggregates}
+                      disabled={dashboardAggregatesLoading}
                       className="text-[10px] font-black text-[#ff5500] hover:underline uppercase tracking-widest bg-transparent border-none cursor-pointer"
                     >
-                      {kpisLoading ? 'Recalculating...' : 'Refresh KPIs'}
+                      {dashboardAggregatesLoading ? 'Recalculating...' : 'Refresh Dashboard'}
                     </button>
                   </div>
                   
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+                  {/* Dashboard Cards Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     {[
-                      { label: 'Total Revenue', val: kpis.revenue, color: 'text-white' },
-                      { label: 'Total Expenses', val: kpis.expenses, color: 'text-white' },
-                      { label: 'Net profit / loss', val: kpis.profit, color: kpis.profit >= 0 ? 'text-emerald-400' : 'text-red-400' },
-                      { label: 'Pending Payments', val: kpis.pendingPayments, color: 'text-amber-400' },
-                      { label: 'Inventory asset value', val: kpis.inventoryValue, color: 'text-[#ff5500]' }
-                    ].map((kpi, i) => (
+                      { label: 'Available Stock (Units)', val: dashboardAggregates.availableInventory, suffix: ' Units', color: 'text-emerald-400' },
+                      { label: 'Incoming Stock (Units)', val: dashboardAggregates.incomingInventory, suffix: ' Units', color: 'text-blue-400' },
+                      { label: 'Open Purchase Orders', val: dashboardAggregates.totalPurchaseOrders, suffix: ' POs', color: 'text-amber-400' },
+                      { label: 'Total Valuation (Cost)', val: `₹${dashboardAggregates.totalInventoryValue.toLocaleString('en-IN')}`, suffix: '', color: 'text-[#ff5500]' }
+                    ].map((card, i) => (
                       <div key={i} className="bg-[#141414] border border-white/5 rounded-2xl p-5 shadow-sm">
                         <p className="text-[9px] font-bold text-[#888888] uppercase tracking-widest">
-                          {kpi.label}
+                          {card.label}
                         </p>
-                        <h3 className={`text-xl font-black mt-2 font-mono ${kpi.color}`}>
-                          ₹{kpi.val.toLocaleString('en-IN')}
+                        <h3 className={`text-xl font-black mt-2 font-mono ${card.color}`}>
+                          {card.val}{card.suffix}
                         </h3>
                       </div>
                     ))}
                   </div>
+
+                  {/* Financial KPIs if loaded */}
+                  {kpis && (
+                    <div className="bg-[#141414] border border-white/5 rounded-2xl p-5 space-y-4">
+                      <h4 className="text-[10px] font-black uppercase tracking-widest text-[#ff5500]">Financial Performance</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                          <span className="text-[9px] text-[#888] block uppercase">Monthly Revenue</span>
+                          <span className="text-sm font-bold font-mono text-white">₹{kpis.revenue.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div>
+                          <span className="text-[9px] text-[#888] block uppercase">Monthly Expenses</span>
+                          <span className="text-sm font-bold font-mono text-white">₹{kpis.expenses.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div>
+                          <span className="text-[9px] text-[#888] block uppercase">Net profit / loss</span>
+                          <span className={`text-sm font-bold font-mono ${kpis.profit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>₹{kpis.profit.toLocaleString('en-IN')}</span>
+                        </div>
+                      </div>
+                      
+                      {/* Sub-grid for Gross Profit and Margins */}
+                      <div className="border-t border-white/5 pt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                          <span className="text-[9px] text-[#888] block uppercase">Today's Gross Profit</span>
+                          <span className={`text-sm font-bold font-mono ${(dashboardAggregates?.todayGrossProfit || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                            ₹{Number(dashboardAggregates?.todayGrossProfit || 0).toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[9px] text-[#888] block uppercase">Monthly Gross Profit</span>
+                          <span className={`text-sm font-bold font-mono ${(dashboardAggregates?.monthlyGrossProfit || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                            ₹{Number(dashboardAggregates?.monthlyGrossProfit || 0).toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[9px] text-[#888] block uppercase">Average Margin</span>
+                          <span className="text-sm font-bold font-mono text-white">
+                            {Number(dashboardAggregates?.averageMargin || 0).toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Quick Diagnostics Widgets */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="bg-[#141414] border border-white/5 rounded-2xl p-6 space-y-4">
+                      <h3 className="text-xs font-black uppercase tracking-wider text-white">
+                        Operational Diagnostics
+                      </h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl">
+                          <span className="text-[9px] text-[#888] block uppercase">Low Stock Variants</span>
+                          <span className="text-lg font-black text-amber-500 font-mono">{dashboardAggregates.lowStockAlerts}</span>
+                        </div>
+                        <div className="p-4 bg-[#141414] border border-white/5 rounded-xl cursor-pointer hover:bg-white/5" onClick={() => { setAdminTab('catalog'); setCatalogSubTab('variants'); }}>
+                          <span className="text-[9px] text-[#888] block uppercase">Preorder Variants</span>
+                          <span className="text-lg font-black text-blue-500 font-mono">{dashboardAggregates.preorderCount}</span>
+                        </div>
+                        <div className="p-4 bg-[#141414] border border-white/5 rounded-xl cursor-pointer hover:bg-white/5" onClick={() => { setAdminTab('catalog'); setCatalogSubTab('variants'); }}>
+                          <span className="text-[9px] text-[#888] block uppercase">Without SKU</span>
+                          <span className="text-lg font-black text-red-400 font-mono">{dashboardAggregates.productsWithoutSKU}</span>
+                        </div>
+                        <div className="p-4 bg-[#141414] border border-white/5 rounded-xl cursor-pointer hover:bg-white/5" onClick={() => { setAdminTab('catalog'); setCatalogSubTab('variants'); }}>
+                          <span className="text-[9px] text-[#888] block uppercase">Without Price</span>
+                          <span className="text-lg font-black text-red-400 font-mono">{dashboardAggregates.productsWithoutPrice}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-[#141414] border border-white/5 rounded-2xl p-6 space-y-4">
+                      <div className="flex justify-between items-center pb-3 border-b border-white/5">
+                        <h3 className="text-xs font-black uppercase tracking-wider text-white">
+                          Critical System Notifications
+                        </h3>
+                        <button onClick={() => setAdminTab('notifications')} className="text-[9px] font-bold text-[#ff5500] uppercase tracking-wider hover:underline bg-transparent border-0 cursor-pointer">
+                          View All
+                        </button>
+                      </div>
+                      <div className="space-y-3 max-h-[220px] overflow-y-auto" data-lenis-prevent>
+                        {notifications.length === 0 ? (
+                          <p className="text-xs text-[#888888]">No critical updates.</p>
+                        ) : (
+                          notifications.slice(0, 5).map(n => (
+                            <div key={n.id} className="flex gap-3 text-xs border-b border-white/5 pb-2">
+                              <AlertTriangle className="text-amber-500 shrink-0 mt-0.5" size={14} />
+                              <div>
+                                <span className="font-bold text-white block">{n.title}</span>
+                                <span className="text-[#888888]">{n.message}</span>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
-
-              {/* Alert Feed Widget */}
-              <div className="grid grid-cols-1 gap-8">
-                <div className="bg-[#141414] border border-white/5 rounded-2xl p-6 space-y-4">
-                  <div className="flex justify-between items-center pb-3 border-b border-white/5">
-                    <h3 className="text-xs font-black uppercase tracking-wider text-white">
-                      Critical System Notifications
-                    </h3>
-                    <button onClick={() => setAdminTab('notifications')} className="text-[9px] font-bold text-[#ff5500] uppercase tracking-wider hover:underline bg-transparent border-0 cursor-pointer">
-                      View All
-                    </button>
-                  </div>
-                  <div className="space-y-3 max-h-[220px] overflow-y-auto" data-lenis-prevent>
-                    {notifications.length === 0 ? (
-                      <p className="text-xs text-[#888888]">No critical updates.</p>
-                    ) : (
-                      notifications.slice(0, 5).map(n => (
-                        <div key={n.id} className="flex gap-3 text-xs border-b border-white/5 pb-2">
-                          <AlertTriangle className="text-amber-500 shrink-0 mt-0.5" size={14} />
-                          <div>
-                            <span className="font-bold text-white block">{n.title}</span>
-                            <span className="text-[#888888]">{n.message}</span>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </div>
             </div>
           )}
 
           {/* 2. INVENTORY TAB */}
-          {adminTab === 'inventory' && (
+          {/* 2. CATALOG TAB */}
+          {adminTab === 'catalog' && (
             <div className="space-y-6">
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center border-b border-white/5 pb-2">
                 <h3 className="text-xs font-black uppercase tracking-wider text-white">
-                  Grails Inventory Catalog
+                  Commercial Catalog Management
                 </h3>
+                {catalogSubTab === 'products' && (
+                  <button
+                    onClick={() => {
+                      setProductForm({ name: '', brand: '', price: '', scale: '1:64', lane: 'Standard Edition', totalStock: 10, availableStock: 10, lockedStock: 0, soldStock: 0, description: '', image: '', category: 'JDM', purchasePrice: '', maxQtyPerCustomer: '', hasLimit: false, casingTypes: ['box'] });
+                      setEditingProductId(null);
+                      setIsAddingProduct(true);
+                    }}
+                    className="bg-[#ff5500] hover:bg-[#ff6611] text-black font-extrabold text-[10px] px-4 py-2.5 rounded-xl uppercase tracking-wider flex items-center gap-1.5 shadow-[0_4px_15px_-4px_rgba(255,85,0,0.3)] cursor-pointer"
+                  >
+                    <Plus size={14} /> Add Casting
+                  </button>
+                )}
+              </div>
+
+              {/* Sub Navigation */}
+              <div className="flex border-b border-white/5 gap-6 pb-2 mb-6 overflow-x-auto">
                 <button
-                  onClick={() => {
-                    setProductForm({ name: '', brand: '', price: '', scale: '1:64', lane: 'Standard Edition', totalStock: 10, availableStock: 10, lockedStock: 0, soldStock: 0, description: '', image: '', category: 'JDM', purchasePrice: '', maxQtyPerCustomer: '', hasLimit: false, casingTypes: ['box'] });
-                    setEditingProductId(null);
-                    setIsAddingProduct(true);
-                  }}
-                  className="bg-[#ff5500] hover:bg-[#ff6611] text-black font-extrabold text-[10px] px-4 py-2.5 rounded-xl uppercase tracking-wider flex items-center gap-1.5 shadow-[0_4px_15px_-4px_rgba(255,85,0,0.3)] cursor-pointer"
+                  onClick={() => setCatalogSubTab('products')}
+                  className={`pb-2 text-xs font-black uppercase tracking-wider transition-colors cursor-pointer border-b-2 ${
+                    catalogSubTab === 'products' ? 'border-[#ff5500] text-white' : 'border-transparent text-zinc-500 hover:text-white'
+                  }`}
                 >
-                  <Plus size={14} /> Add Casting
+                  Products Catalog
+                </button>
+                <button
+                  onClick={() => setCatalogSubTab('variants')}
+                  className={`pb-2 text-xs font-black uppercase tracking-wider transition-colors cursor-pointer border-b-2 ${
+                    catalogSubTab === 'variants' ? 'border-[#ff5500] text-white' : 'border-transparent text-zinc-500 hover:text-white'
+                  }`}
+                >
+                  Variants & SKUs
+                </button>
+                <button
+                  onClick={() => setCatalogSubTab('lookups')}
+                  className={`pb-2 text-xs font-black uppercase tracking-wider transition-colors cursor-pointer border-b-2 ${
+                    catalogSubTab === 'lookups' ? 'border-[#ff5500] text-white' : 'border-transparent text-zinc-500 hover:text-white'
+                  }`}
+                >
+                  Lookup Settings
                 </button>
               </div>
 
-              {/* Search Bar */}
-              <div className="flex items-center gap-2 bg-[#141414] border border-white/5 rounded-xl px-3.5 py-2.5 w-full max-w-md">
-                <Search size={14} className="text-zinc-500" />
-                <input
-                  type="text"
-                  placeholder="Search castings by name, SKU, brand, or category..."
-                  value={inventorySearchQuery}
-                  onChange={(e) => setInventorySearchQuery(e.target.value)}
-                  className="bg-transparent border-none text-xs text-white placeholder-zinc-600 focus:outline-none w-full"
-                />
-              </div>
+              {catalogSubTab === 'products' && (
+                <div className="space-y-6">
+                  {/* Search Bar */}
+                  <div className="flex items-center gap-2 bg-[#141414] border border-white/5 rounded-xl px-3.5 py-2.5 w-full max-w-md">
+                    <Search size={14} className="text-zinc-500" />
+                    <input
+                      type="text"
+                      placeholder="Search castings by name, SKU, brand..."
+                      value={inventorySearchQuery}
+                      onChange={(e) => setInventorySearchQuery(e.target.value)}
+                      className="bg-transparent border-none text-xs text-white placeholder-zinc-600 focus:outline-none w-full"
+                    />
+                  </div>
 
-              {/* Table list */}
-              <div className="overflow-x-auto border border-white/5 rounded-2xl">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-[#141414] border-b border-white/5 text-[#888888] uppercase tracking-widest text-[9px]">
-                      <th className="p-4 font-bold">Casting</th>
-                      <th className="p-4 font-bold">SKU</th>
-                      <th className="p-4 font-bold">Cost / Sale</th>
-                      <th className="p-4 font-bold text-center">Available Stock</th>
-                      <th className="p-4 font-bold text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredCars.map(car => {
-                      const isLowStock = Number(car.availableStock) <= 3;
-                      return (
-                        <tr 
-                          key={car.id} 
-                          className={`border-b border-white/5 hover:bg-white/[0.02] transition-colors ${
-                            isLowStock ? 'bg-[#ff5500]/5 hover:bg-[#ff5500]/10' : ''
-                          }`}
-                        >
-                          <td className="p-4 flex items-center gap-3">
-                            <img src={car.image || '/vault-1.png'} className="w-10 h-8 object-cover rounded border border-white/5" />
-                            <div>
-                              <span className="font-bold text-white block">{car.name}</span>
-                              <span className="text-[10px] text-[#888888] uppercase tracking-wider">{car.brand} • {car.category} • {Array.isArray(car.casing_types || car.casingTypes) ? (car.casing_types || car.casingTypes).join(', ') : 'box'}{car.maxQtyPerCustomer ? ` • Limit: ${car.maxQtyPerCustomer}` : ''}</span>
-                            </div>
-                          </td>
-                          <td className="p-4 font-mono text-[#888888]">{car.sku}</td>
-                          <td className="p-4 font-mono">
-                            <div className="text-[#888888]">C: ₹{car.purchasePrice}</div>
-                            <div className="text-white font-bold">S: ₹{car.price}</div>
-                          </td>
-                          <td className="p-4 text-center">
-                            <span className={`font-mono font-bold ${isLowStock ? 'text-[#ff5500]' : 'text-white'}`}>
-                              {car.availableStock}
-                            </span>
-                            {isLowStock && (
-                              <span className="block text-[8px] font-black uppercase text-[#ff5500] tracking-widest mt-0.5">
-                                Low Stock
-                              </span>
-                            )}
-                          </td>
-                          <td className="p-4 text-right space-x-2">
-                             <button 
-                               onClick={() => handleEditProduct(car)} 
-                               disabled={loadingProductId !== null || isArchivingProductId !== null}
-                               className="text-white hover:text-[#ff5500] p-1.5 rounded bg-white/5 hover:bg-white/10 transition-colors border border-white/5 cursor-pointer inline-flex disabled:opacity-40 disabled:cursor-not-allowed"
-                             >
-                               {loadingProductId === car.id ? <RefreshCw className="animate-spin" size={12} /> : <Edit2 size={12} />}
-                             </button>
-                             <button 
-                               onClick={() => handleDeleteProduct(car.id)} 
-                               disabled={loadingProductId !== null || isArchivingProductId !== null}
-                               className="text-red-400 hover:text-red-300 p-1.5 rounded bg-red-500/5 hover:bg-red-500/10 transition-colors border border-red-500/10 cursor-pointer inline-flex disabled:opacity-40 disabled:cursor-not-allowed"
-                             >
-                               {isArchivingProductId === car.id ? <RefreshCw className="animate-spin" size={12} /> : <Trash2 size={12} />}
-                             </button>
-                          </td>
+                  {/* Table list */}
+                  <div className="overflow-x-auto border border-white/5 rounded-2xl">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-[#141414] border-b border-white/5 text-[#888888] uppercase tracking-widest text-[9px]">
+                          <th className="p-4 font-bold">Casting</th>
+                          <th className="p-4 font-bold">SKU</th>
+                          <th className="p-4 font-bold">Selling Price</th>
+                          <th className="p-4 font-bold text-right">Actions</th>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-              <Pagination
-                currentPage={inventoryPage}
-                totalPages={inventoryTotalPages}
-                totalItems={inventoryTotal}
-                onPageChange={setInventoryPage}
-              />
+                      </thead>
+                      <tbody>
+                        {filteredCars.map(car => {
+                          return (
+                            <tr 
+                              key={car.id} 
+                              className="border-b border-white/5 hover:bg-white/[0.02] transition-colors"
+                            >
+                              <td className="p-4 flex items-center gap-3">
+                                <img src={car.image || '/vault-1.png'} className="w-10 h-8 object-cover rounded border border-white/5" />
+                                <div>
+                                  <span className="font-bold text-white block">{car.name}</span>
+                                  <span className="text-[10px] text-[#888888] uppercase tracking-wider">{car.brand} • {car.category} • {Array.isArray(car.casing_types || car.casingTypes) ? (car.casing_types || car.casingTypes).join(', ') : 'box'}{car.maxQtyPerCustomer ? ` • Limit: ${car.maxQtyPerCustomer}` : ''}</span>
+                                </div>
+                              </td>
+                              <td className="p-4 font-mono text-[#888888]">{car.sku}</td>
+                              <td className="p-4 font-mono">
+                                <div className="text-white font-bold">₹{car.price}</div>
+                              </td>
+                              <td className="p-4 text-right space-x-2">
+                                 <button 
+                                   onClick={() => handleEditProduct(car)} 
+                                   disabled={loadingProductId !== null || isArchivingProductId !== null}
+                                   className="text-white hover:text-[#ff5500] p-1.5 rounded bg-white/5 hover:bg-white/10 transition-colors border border-white/5 cursor-pointer inline-flex disabled:opacity-40 disabled:cursor-not-allowed"
+                                 >
+                                   {loadingProductId === car.id ? <RefreshCw className="animate-spin" size={12} /> : <Edit2 size={12} />}
+                                 </button>
+                                 <button 
+                                   onClick={() => handleDeleteProduct(car.id)} 
+                                   disabled={loadingProductId !== null || isArchivingProductId !== null}
+                                   className="text-red-400 hover:text-red-300 p-1.5 rounded bg-red-500/5 hover:bg-red-500/10 transition-colors border border-red-500/10 cursor-pointer inline-flex disabled:opacity-40 disabled:cursor-not-allowed"
+                                 >
+                                   {isArchivingProductId === car.id ? <RefreshCw className="animate-spin" size={12} /> : <Trash2 size={12} />}
+                                 </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  <Pagination
+                    currentPage={inventoryPage}
+                    totalPages={inventoryTotalPages}
+                    totalItems={inventoryTotal}
+                    onPageChange={setInventoryPage}
+                  />
+                </div>
+              )}
+
+              {catalogSubTab === 'variants' && (
+                <div className="space-y-6">
+                  {/* Search Bar */}
+                  <div className="flex items-center gap-2 bg-[#141414] border border-white/5 rounded-xl px-3.5 py-2.5 w-full max-w-md">
+                    <Search size={14} className="text-zinc-500" />
+                    <input
+                      type="text"
+                      placeholder="Search variants by SKU, barcode, name..."
+                      value={variantsSearchQuery}
+                      onChange={(e) => setVariantsSearchQuery(e.target.value)}
+                      className="bg-transparent border-none text-xs text-white placeholder-zinc-600 focus:outline-none w-full"
+                    />
+                  </div>
+
+                  {/* Variants Grid - STRICTLY COMMERCIAL DETAILS ONLY */}
+                  {variantsLoading ? (
+                    <div className="py-8 text-center text-xs text-zinc-500 font-mono">Loading variants...</div>
+                  ) : variantsList.length === 0 ? (
+                    <div className="py-8 text-center text-xs text-zinc-500 font-mono">No variants found.</div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                      {variantsList.map(variant => {
+                        const isPreorder = variant.sales_status === 'Preorder';
+                        const isOutOfStock = Number(variant.quantity_available || 0) <= 0 && !isPreorder;
+                        const isHidden = variant.visibility === 'Hidden';
+                        const isDraft = variant.status === 'Draft';
+                        const isPublished = variant.status === 'Active' || variant.status === 'Published';
+                        
+                        return (
+                          <div key={variant.id} className="bg-[#141414] border border-white/5 rounded-2xl p-5 space-y-4 hover:border-white/10 transition-colors">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <h4 className="font-extrabold text-white text-sm">{variant.name || variant.productName}</h4>
+                                <p className="text-[10px] text-zinc-500 font-mono mt-0.5">{variant.sku}</p>
+                                {variant.barcode && <p className="text-[9px] text-zinc-600 font-mono">BC: {variant.barcode}</p>}
+                              </div>
+                              <div className="flex flex-wrap gap-1 justify-end max-w-[150px]">
+                                {isPreorder && (
+                                  <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/20 text-blue-400">Preorder</span>
+                                )}
+                                {isOutOfStock && (
+                                  <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded bg-red-500/10 border border-red-500/20 text-red-400">Out of Stock</span>
+                                )}
+                                {isHidden && (
+                                  <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded bg-zinc-500/10 border border-zinc-500/20 text-zinc-400">Hidden</span>
+                                )}
+                                {isDraft && (
+                                  <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400">Draft</span>
+                                )}
+                                {isPublished && (
+                                  <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">Published</span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="border-t border-white/5 pt-3 flex justify-between items-center text-xs">
+                              <div>
+                                <span className="text-[8px] text-zinc-500 block uppercase">Selling Price</span>
+                                <span className="font-mono font-extrabold text-[#ff5500]">₹{(Number(variant.selling_price || 0)).toLocaleString('en-IN')}</span>
+                              </div>
+                              {variant.customer_eta && (
+                                <div className="text-right">
+                                  <span className="text-[8px] text-zinc-500 block uppercase">ETA</span>
+                                  <span className="text-[9px] text-[#ff5500] font-black uppercase tracking-wider">{variant.customer_eta}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <Pagination
+                    currentPage={variantsPage}
+                    totalPages={variantsTotalPages}
+                    totalItems={variantsTotal}
+                    onPageChange={setVariantsPage}
+                  />
+                </div>
+              )}
+
+              {catalogSubTab === 'lookups' && (
+                <div className="bg-[#141414] border border-white/5 rounded-2xl p-6">
+                  <MasterData />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 2b. INVENTORY OPERATIONS TAB */}
+          {adminTab === 'inventory' && (
+            <div className="space-y-6">
+              {selectedVariantId ? (
+                <InventoryDetails variantId={selectedVariantId} onBack={() => setSelectedVariantId(null)} />
+              ) : (
+                <div className="space-y-6">
+                  <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                    <h3 className="text-xs font-black uppercase tracking-wider text-white">
+                      Physical Inventory Operations
+                    </h3>
+                  </div>
+
+                  {/* Sub Navigation */}
+                  <div className="flex border-b border-white/5 gap-6 pb-2 mb-6 overflow-x-auto">
+                    {['overview', 'batches', 'ledger', 'adjustments'].map(sub => (
+                      <button
+                        key={sub}
+                        onClick={() => setInventorySubTab(sub)}
+                        className={`pb-2 text-xs font-black uppercase tracking-wider transition-colors cursor-pointer border-b-2 ${
+                          inventorySubTab === sub ? 'border-[#ff5500] text-white' : 'border-transparent text-zinc-500 hover:text-white'
+                        }`}
+                      >
+                        {sub.replace('_', ' ')}
+                      </button>
+                    ))}
+                  </div>
+
+                  {inventorySubTab === 'overview' && (
+                    <div className="space-y-6">
+                      <div className="flex items-center gap-2 bg-[#141414] border border-white/5 rounded-xl px-3.5 py-2.5 w-full max-w-md">
+                        <Search size={14} className="text-zinc-500" />
+                        <input
+                          type="text"
+                          placeholder="Search stock overview by SKU, name..."
+                          value={variantsSearchQuery}
+                          onChange={(e) => setVariantsSearchQuery(e.target.value)}
+                          className="bg-transparent border-none text-xs text-white placeholder-zinc-600 focus:outline-none w-full"
+                        />
+                      </div>
+
+                      <div className="overflow-x-auto border border-white/5 rounded-2xl">
+                        <table className="w-full text-left border-collapse text-xs">
+                          <thead>
+                            <tr className="bg-[#141414] border-b border-white/5 text-[#888888] uppercase tracking-widest text-[9px]">
+                              <th className="p-4 font-bold">Variant (SKU)</th>
+                              <th className="p-4 font-bold text-center">Available</th>
+                              <th className="p-4 font-bold text-center">Reserved</th>
+                              <th className="p-4 font-bold text-center">Sold</th>
+                              <th className="p-4 font-bold text-center">Incoming</th>
+                              <th className="p-4 font-bold text-center">Damaged</th>
+                              <th className="p-4 font-bold text-center">Returned</th>
+                              <th className="p-4 font-bold text-center">Batches</th>
+                              <th className="p-4 font-bold text-right">Avg Cost</th>
+                              <th className="p-4 font-bold text-right">Holding Value</th>
+                              <th className="p-4 font-bold text-center">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {variantsLoading ? (
+                              <tr>
+                                <td colSpan="11" className="p-8 text-center text-zinc-500 font-mono">Loading inventory dataset...</td>
+                              </tr>
+                            ) : variantsList.length === 0 ? (
+                              <tr>
+                                <td colSpan="11" className="p-8 text-center text-zinc-500 font-mono">No inventory records found.</td>
+                              </tr>
+                            ) : (
+                              variantsList.map(v => {
+                                const avgCost = Number(v.avgCost || 0);
+                                const isCostConfigured = avgCost > 0;
+                                const inventoryValue = Number(v.inventory_value || 0);
+
+                                return (
+                                  <tr 
+                                    key={v.id} 
+                                    onClick={() => setSelectedVariantId(v.id)}
+                                    className="border-b border-white/5 hover:bg-white/[0.02] transition-colors cursor-pointer"
+                                  >
+                                    <td className="p-4">
+                                      <span className="font-bold text-white block">{v.name || v.productName}</span>
+                                      <span className="text-[10px] text-zinc-500 font-mono">{v.sku}</span>
+                                    </td>
+                                    <td className="p-4 text-center font-mono font-bold text-white">{v.quantity_available ?? 0}</td>
+                                    <td className="p-4 text-center font-mono text-zinc-400">{v.quantity_reserved ?? 0}</td>
+                                    <td className="p-4 text-center font-mono text-zinc-400">{v.quantity_sold ?? 0}</td>
+                                    <td className="p-4 text-center font-mono text-zinc-400">{v.quantity_incoming ?? 0}</td>
+                                    <td className="p-4 text-center font-mono text-zinc-400">{v.quantity_damaged ?? 0}</td>
+                                    <td className="p-4 text-center font-mono text-zinc-400">{v.quantity_returned ?? 0}</td>
+                                    <td className="p-4 text-center font-mono text-zinc-400">{v.batchCount ?? 0}</td>
+                                    <td className="p-4 text-right font-mono text-zinc-400">
+                                      {isCostConfigured ? `₹${avgCost.toFixed(2)}` : <span className="text-[10px] italic text-zinc-600">Not Configured</span>}
+                                    </td>
+                                    <td className="p-4 text-right font-mono text-[#ff5500]">₹{inventoryValue.toLocaleString('en-IN')}</td>
+                                    <td className="p-4 text-center">
+                                      <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${
+                                        v.salesStatus === 'Preorder' ? 'bg-blue-500/10 border border-blue-500/20 text-blue-400' :
+                                        Number(v.quantity_available || 0) <= 0 ? 'bg-red-500/10 border border-red-500/20 text-red-400' :
+                                        'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
+                                      }`}>
+                                        {v.salesStatus === 'Preorder' ? 'Preorder' : Number(v.quantity_available || 0) <= 0 ? 'OOS' : 'Active'}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                );
+                              })
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <Pagination
+                        currentPage={variantsPage}
+                        totalPages={variantsTotalPages}
+                        totalItems={variantsTotal}
+                        onPageChange={setVariantsPage}
+                      />
+                    </div>
+                  )}
+
+                  {inventorySubTab === 'batches' && (
+                    <div className="space-y-6">
+                      <div className="overflow-x-auto border border-white/5 rounded-2xl">
+                        <table className="w-full text-left border-collapse text-xs">
+                          <thead>
+                            <tr className="bg-[#141414] border-b border-white/5 text-[#888888] uppercase tracking-widest text-[9px]">
+                              <th className="p-4 font-bold">Variant (SKU)</th>
+                              <th className="p-4 font-bold">Batch ID</th>
+                              <th className="p-4 font-bold text-center">Qty Received</th>
+                              <th className="p-4 font-bold text-center">Qty Available</th>
+                              <th className="p-4 font-bold text-right">Purchase Price</th>
+                              <th className="p-4 font-bold">Supplier</th>
+                              <th className="p-4 font-bold">Received Date</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {allBatchesLoading ? (
+                              <tr>
+                                <td colSpan="7" className="p-8 text-center text-zinc-500 font-mono">Loading inventory batches...</td>
+                              </tr>
+                            ) : allBatches.length === 0 ? (
+                              <tr>
+                                <td colSpan="7" className="p-8 text-center text-zinc-500 font-mono">No inventory batches recorded.</td>
+                              </tr>
+                            ) : (
+                              allBatches.map(b => (
+                                <tr key={b.id} className="border-b border-white/5 hover:bg-white/[0.01]">
+                                  <td className="p-4">
+                                    <span className="font-bold text-white block">{b.variantName || b.productName}</span>
+                                    <span className="text-[10px] text-zinc-500 font-mono">{b.sku}</span>
+                                  </td>
+                                  <td className="p-4 font-mono text-zinc-400 text-[10px]">{b.id.slice(0, 8)}...</td>
+                                  <td className="p-4 text-center font-mono font-bold text-white">{b.quantity_received}</td>
+                                  <td className="p-4 text-center font-mono font-bold text-emerald-400">{b.quantity_available}</td>
+                                  <td className="p-4 text-right font-mono text-zinc-400">₹{Number(b.purchase_price).toFixed(2)}</td>
+                                  <td className="p-4 text-zinc-400">{b.supplierName || 'System'}</td>
+                                  <td className="p-4 text-zinc-500 font-mono text-[10px]">{new Date(b.received_at).toLocaleDateString()}</td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                      <Pagination
+                        currentPage={allBatchesPage}
+                        totalPages={allBatchesTotalPages}
+                        totalItems={allBatchesTotal}
+                        onPageChange={setAllBatchesPage}
+                      />
+                    </div>
+                  )}
+
+                  {inventorySubTab === 'ledger' && (
+                    <div className="space-y-6">
+                      <div className="overflow-x-auto border border-white/5 rounded-2xl">
+                        <table className="w-full text-left border-collapse text-xs">
+                          <thead>
+                            <tr className="bg-[#141414] border-b border-white/5 text-[#888888] uppercase tracking-widest text-[9px]">
+                              <th className="p-4 font-bold">Variant (SKU)</th>
+                              <th className="p-4 font-bold text-center">Qty Change</th>
+                              <th className="p-4 font-bold text-center">Action Type</th>
+                              <th className="p-4 font-bold">Notes</th>
+                              <th className="p-4 font-bold">Operator</th>
+                              <th className="p-4 font-bold">Date</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {allLedgerLoading ? (
+                              <tr>
+                                <td colSpan="6" className="p-8 text-center text-zinc-500 font-mono">Loading inventory ledger...</td>
+                              </tr>
+                            ) : allLedger.length === 0 ? (
+                              <tr>
+                                <td colSpan="6" className="p-8 text-center text-zinc-500 font-mono">No inventory ledger transactions recorded.</td>
+                              </tr>
+                            ) : (
+                              allLedger.map(l => (
+                                <tr key={l.id} className="border-b border-white/5 hover:bg-white/[0.01]">
+                                  <td className="p-4">
+                                    <span className="font-bold text-white block">{l.variantName || l.productName}</span>
+                                    <span className="text-[10px] text-zinc-500 font-mono">{l.sku}</span>
+                                  </td>
+                                  <td className={`p-4 text-center font-mono font-bold ${l.quantity_change > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                    {l.quantity_change > 0 ? `+${l.quantity_change}` : l.quantity_change}
+                                  </td>
+                                  <td className="p-4 text-center">
+                                    <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${
+                                      l.action_type === 'Received' ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400' :
+                                      l.action_type === 'Sold' ? 'bg-blue-500/10 border border-blue-500/20 text-blue-400' :
+                                      'bg-amber-500/10 border border-amber-500/20 text-amber-400'
+                                    }`}>
+                                      {l.action_type}
+                                    </span>
+                                  </td>
+                                  <td className="p-4 text-zinc-400">{l.notes || '-'}</td>
+                                  <td className="p-4 text-zinc-400 font-mono text-[10px]">{l.created_by || 'System'}</td>
+                                  <td className="p-4 text-zinc-500 font-mono text-[10px]">{new Date(l.created_at).toLocaleString()}</td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                      <Pagination
+                        currentPage={allLedgerPage}
+                        totalPages={allLedgerTotalPages}
+                        totalItems={allLedgerTotal}
+                        onPageChange={setAllLedgerPage}
+                      />
+                    </div>
+                  )}
+
+                  {inventorySubTab === 'adjustments' && (
+                    <div className="max-w-xl bg-[#141414] border border-white/5 rounded-2xl p-6 space-y-6">
+                      <div className="space-y-1">
+                        <h4 className="text-xs font-black uppercase tracking-wider text-white">Record Manual Inventory Adjustment</h4>
+                        <p className="text-[10px] text-zinc-500">Record stock shrinkage, damage write-offs, or manual returns directly into the transactional ledger.</p>
+                      </div>
+
+                      <form 
+                        onSubmit={async (e) => {
+                          e.preventDefault();
+                          if (!manualAdjustmentForm.batchId) {
+                            alert("Please select a batch first.");
+                            return;
+                          }
+                          if (Number(manualAdjustmentForm.quantityChange) === 0) {
+                            alert("Quantity change cannot be zero.");
+                            return;
+                          }
+
+                          setIsAdjustingSubmitting(true);
+                          try {
+                            const res = await fetch(`${API_BASE_URL}/admin/inventory/adjust`, {
+                              method: 'POST',
+                              headers: {
+                                'Content-Type': 'application/json',
+                                ...getAuthHeaders()
+                              },
+                              body: JSON.stringify({
+                                batchId: manualAdjustmentForm.batchId,
+                                quantityChange: Number(manualAdjustmentForm.quantityChange),
+                                type: manualAdjustmentForm.type,
+                                reason: manualAdjustmentForm.reason
+                              })
+                            });
+
+                            if (res.ok) {
+                              showToast("Inventory adjusted successfully!");
+                              setManualAdjustmentForm({ batchId: '', quantityChange: 0, type: 'Adjusted', reason: '' });
+                              triggerTabFetch('inventory');
+                            } else {
+                              const errData = await res.json();
+                              showToast(errData.message || "Failed to adjust stock", "error");
+                            }
+                          } catch (err) {
+                            console.error(err);
+                            showToast("Failed to connect to backend api.", "error");
+                          } finally {
+                            setIsAdjustingSubmitting(false);
+                          }
+                        }}
+                        className="space-y-4"
+                      >
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">Target Batch ID</label>
+                          <input
+                            type="text"
+                            placeholder="Enter the UUID of the target inventory batch"
+                            value={manualAdjustmentForm.batchId}
+                            onChange={e => setManualAdjustmentForm(prev => ({ ...prev, batchId: e.target.value }))}
+                            className="w-full bg-[#111111] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ff5500]/40 font-mono text-xs"
+                            required
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">Quantity Change</label>
+                            <input
+                              type="number"
+                              placeholder="e.g. -2 for breakage, +1 for return"
+                              value={manualAdjustmentForm.quantityChange || ''}
+                              onChange={e => setManualAdjustmentForm(prev => ({ ...prev, quantityChange: parseInt(e.target.value) || 0 }))}
+                              className="w-full bg-[#111111] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ff5500]/40 font-mono text-xs"
+                              required
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">Adjustment Type</label>
+                            <select
+                              value={manualAdjustmentForm.type}
+                              onChange={e => setManualAdjustmentForm(prev => ({ ...prev, type: e.target.value }))}
+                              className="w-full bg-[#111111] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ff5500]/40 text-xs"
+                            >
+                              <option value="Adjusted">Shrinkage / Audit Adjustment</option>
+                              <option value="Damaged">Damaged Write-off</option>
+                              <option value="Returned">Customer Return</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">Adjustment Reason / Notes</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Broken packaging, physical stock reconciliation"
+                            value={manualAdjustmentForm.reason}
+                            onChange={e => setManualAdjustmentForm(prev => ({ ...prev, reason: e.target.value }))}
+                            className="w-full bg-[#111111] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ff5500]/40 text-xs"
+                            required
+                          />
+                        </div>
+
+                        <button
+                          type="submit"
+                          disabled={isAdjustingSubmitting}
+                          className="w-full py-3 bg-[#ff5500] hover:bg-[#ff6611] active:bg-[#e64d00] disabled:bg-[#ff5500]/50 text-black font-extrabold text-xs rounded-xl uppercase tracking-wider transition-all shadow-[0_4px_20px_-4px_rgba(255,85,0,0.3)] cursor-pointer"
+                        >
+                          {isAdjustingSubmitting ? 'Recording Adjustment...' : 'Record Adjustment'}
+                        </button>
+                      </form>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -1971,212 +2686,8 @@ export default function Admin() {
 
 
 
-          {/* Receipts / Invoices Tab */}
-          {adminTab === 'receipts' && (
-            <div className="space-y-6">
-              {/* Header block */}
-              <div className="flex justify-between items-center bg-[#141414] border border-white/5 rounded-2xl p-6">
-                <div>
-                  <h3 className="text-base font-black uppercase tracking-wider text-white">Invoice Hub</h3>
-                  <p className="text-[10px] text-[#888888] mt-0.5">Manage auto-generated billing records and create manual invoices.</p>
-                </div>
-                <button
-                  onClick={() => {
-                    const randomId = Math.floor(1000 + Math.random() * 9000);
-                    setManualReceiptForm({
-                      receiptNumber: `GK-INV-${new Date().getFullYear()}-${randomId}`,
-                      customerName: '',
-                      customerPhone: '',
-                      customerInstagram: '',
-                      customerAddress: '',
-                      shippingCharges: 0,
-                      advancePaid: 0,
-                      formatType: 'standard',
-                      footerNote: 'Thank you for choosing Garage Kings!',
-                      items: [{ productId: '', description: '', qty: 1, unitPrice: 0, maxQty: 0 }]
-                    });
-                    setPreviewInvoiceData(null);
-                    setIsCreatingReceipt(true);
-                  }}
-                  className="bg-[#ff5500] hover:bg-[#ff6611] text-black font-extrabold text-xs px-4 py-2.5 rounded-xl uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1.5"
-                >
-                  <Plus size={14} strokeWidth={3} />
-                  New Invoice
-                </button>
-              </div>
-
-              {/* Search Bar */}
-              <div className="flex items-center gap-2 bg-[#141414] border border-white/5 rounded-xl px-3.5 py-2.5 w-full max-w-md">
-                <Search size={14} className="text-zinc-500" />
-                <input
-                  type="text"
-                  placeholder="Search invoices by receipt #, customer name, or phone..."
-                  value={receiptsSearch}
-                  onChange={(e) => setReceiptsSearch(e.target.value)}
-                  className="bg-transparent border-none text-xs text-white placeholder-zinc-600 focus:outline-none w-full"
-                />
-              </div>
-
-              {/* Invoices List */}
-              <div className="bg-[#141414] border border-white/5 rounded-2xl overflow-hidden">
-                <div className="p-4 border-b border-white/5 bg-black/10">
-                  <span className="text-[10px] font-mono tracking-[0.25em] text-[#ff5500] uppercase font-bold">Billing Archives</span>
-                </div>
-                <div className="divide-y divide-white/5">
-                  {receiptsList.length === 0 ? (
-                    <div className="p-8 text-center text-[#888888] text-xs">No invoices found. Click "New Invoice" to create one.</div>
-                  ) : (
-                    receiptsList.map(rec => {
-                      const totalQty = rec.items.reduce((sum, item) => sum + parseInt(item.qty, 10), 0);
-                      const isPreOrder = rec.format_type === 'pre_order';
-                      const balance = Number(rec.pending_balance);
-                      
-                      return (
-                        <div key={rec.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-white/[0.01] transition-colors">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono text-xs font-black text-white">{rec.receipt_number}</span>
-                              <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded border ${
-                                balance > 0 
-                                  ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' 
-                                  : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                              }`}>
-                                {balance > 0 ? `Unpaid: ₹${balance}` : 'Fully Paid'}
-                              </span>
-                              {isPreOrder && (
-                                <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded border bg-purple-500/10 text-purple-400 border-purple-500/20">
-                                  Pre-Order
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-xs font-bold text-white/80">{rec.customer_name || 'Instagram / Walk-in Customer'}</p>
-                            <div className="flex gap-3 text-[10px] text-white/40">
-                              {rec.customer_phone && <span>📞 {rec.customer_phone}</span>}
-                              {rec.customer_instagram && <span>📸 @{rec.customer_instagram}</span>}
-                              <span>📅 {new Date(rec.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center justify-between sm:justify-end gap-6 border-t sm:border-t-0 border-white/5 pt-2 sm:pt-0">
-                            <div className="text-right sm:space-y-0.5">
-                              <p className="text-[9px] text-white/40 uppercase font-mono">Invoice Total</p>
-                              <p className="text-sm font-black text-[#ff5500] font-mono">₹{Number(rec.total_amount).toLocaleString('en-IN')}</p>
-                              <p className="text-[8px] text-white/30 uppercase font-mono">{totalQty} Items</p>
-                            </div>
-                            
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => handleViewReceipt(rec)}
-                                className="p-2 rounded-xl bg-white/5 border border-white/5 text-white/60 hover:text-white hover:bg-white/10 hover:border-white/10 transition-all cursor-pointer"
-                                title="View/Print Receipt"
-                              >
-                                <Eye size={14} />
-                              </button>
-                              <button
-                                onClick={async () => {
-                                  if (!confirm(`Are you sure you want to delete invoice ${rec.receipt_number}?`)) return;
-                                  try {
-                                    await deleteReceipt(rec.id);
-                                    showToast('Invoice deleted successfully', 'success');
-                                    fetchReceipts(receiptsPage, receiptsSearch);
-                                  } catch (err) {
-                                    showToast('Failed to delete invoice', 'error');
-                                  }
-                                }}
-                                className="p-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-all cursor-pointer"
-                                title="Delete Invoice"
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-              <Pagination
-                currentPage={receiptsPage}
-                totalPages={receiptsTotalPages}
-                totalItems={receiptsTotal}
-                onPageChange={setReceiptsPage}
-              />
-            </div>
-          )}
-
-
-
-
-          {/* 5. EXPENSES TAB */}
-          {adminTab === 'expenses' && (
-            <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <h3 className="text-xs font-black uppercase tracking-wider text-white">
-                  Expenses & Stock Purchases Ledger
-                </h3>
-                <button
-                  onClick={() => setIsAddingExpense(true)}
-                  className="bg-[#ff5500] hover:bg-[#ff6611] text-black font-extrabold text-[10px] px-4 py-2.5 rounded-xl uppercase tracking-wider flex items-center gap-1.5 shadow-[0_4px_15px_-4px_rgba(255,85,0,0.3)] cursor-pointer"
-                >
-                  <Plus size={14} /> Log Expense
-                </button>
-              </div>
-
-              {/* Search Bar */}
-              <div className="flex items-center gap-2 bg-[#141414] border border-white/5 rounded-xl px-3.5 py-2.5 w-full max-w-md">
-                <Search size={14} className="text-zinc-500" />
-                <input
-                  type="text"
-                  placeholder="Search expenses by title, category, or notes..."
-                  value={expensesSearch}
-                  onChange={(e) => setExpensesSearch(e.target.value)}
-                  className="bg-transparent border-none text-xs text-white placeholder-zinc-600 focus:outline-none w-full"
-                />
-              </div>
-
-              <div className="overflow-x-auto border border-white/5 rounded-2xl">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-[#141414] border-b border-white/5 text-[#888888] uppercase tracking-widest text-[9px]">
-                      <th className="p-4 font-bold">Category & Title</th>
-                      <th className="p-4 font-bold">Date Logged</th>
-                      <th className="p-4 font-bold">Paid By</th>
-                      <th className="p-4 font-bold text-right">Amount</th>
-                      <th className="p-4 font-bold text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {expenses.map(e => (
-                      <tr key={e.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
-                        <td className="p-4">
-                          <span className="font-bold text-white block">{e.title}</span>
-                          <span className="text-[10px] text-[#888888] uppercase tracking-widest">{e.category}</span>
-                        </td>
-                        <td className="p-4 text-[#888888] font-mono">{new Date(e.date).toLocaleDateString('en-IN')}</td>
-                        <td className="p-4 font-bold text-white">{e.paidBy}</td>
-                        <td className="p-4 text-right font-mono font-bold text-white">₹{Number(e.amount).toLocaleString('en-IN')}</td>
-                        <td className="p-4 text-right">
-                          <button onClick={() => handleDeleteExpense(e.id)} className="text-red-400 hover:text-red-300 p-1.5 rounded bg-red-500/5 hover:bg-red-500/10 border border-red-500/10 cursor-pointer">
-                            <Trash2 size={12} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <Pagination
-                currentPage={expensesPage}
-                totalPages={expensesTotalPages}
-                totalItems={expensesTotal}
-                onPageChange={setExpensesPage}
-              />
-            </div>
-          )}
-
-          {/* SUPPLIER PURCHASES MODULE */}
-          {adminTab === 'supplier_purchases' && (
+          {/* 3. PROCUREMENT TAB */}
+          {adminTab === 'procurement' && (
             <div className="space-y-6">
               {isAddingSupplierPurchase ? (
                 <BookPurchaseForm
@@ -2557,398 +3068,201 @@ export default function Admin() {
             </div>
           )}
 
-          {/* 6. ADVANCED FINANCE MODULE */}
-          {adminTab === 'finance' && (
-            <div className="space-y-8">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-3 border-b border-white/5">
-                <div className="flex gap-2">
-                  {[
-                    { id: 'overview', label: 'Financial Performance' },
-                    { id: 'cash_drawer', label: 'Cash Drawer' },
-                    { id: 'founder_capital', label: 'Founder Capital' },
-                    { id: 'cash_ledger', label: 'Cash Ledger' }
-                  ].map(tab => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setFinanceSubTab(tab.id)}
-                      className={`px-3 py-1.5 rounded-lg border text-[10px] font-mono font-bold transition-all cursor-pointer ${
-                        financeSubTab === tab.id
-                          ? 'bg-[#ff5500]/10 border-[#ff5500]/30 text-[#ff5500]'
-                          : 'border-white/5 bg-transparent text-[#888888] hover:text-white hover:bg-white/5'
-                      }`}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-                
-                {financeSubTab === 'cash_drawer' && (
-                  <button
-                    onClick={() => setIsAddingCashAccount(true)}
-                    className="bg-[#ff5500] hover:bg-[#ff6611] text-black font-extrabold text-[10px] px-4 py-2.5 rounded-xl uppercase tracking-wider flex items-center gap-1.5 shadow-[0_4px_15px_-4px_rgba(255,85,0,0.3)] cursor-pointer"
-                  >
-                    <Plus size={14} /> Add Cash Account
-                  </button>
-                )}
-
-                {financeSubTab === 'founder_capital' && (
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setIsAddingFounderTx(true)}
-                      className="bg-[#ff5500] hover:bg-[#ff6611] text-black font-extrabold text-[10px] px-4 py-2.5 rounded-xl uppercase tracking-wider flex items-center gap-1.5 shadow-[0_4px_15px_-4px_rgba(255,85,0,0.3)] cursor-pointer"
-                    >
-                      <Plus size={14} /> Record Founder Tx
-                    </button>
-                    <button
-                      onClick={() => setIsAddingSettlement(true)}
-                      className="border border-white/10 hover:border-white/20 text-white font-extrabold text-[10px] px-4 py-2.5 rounded-xl uppercase tracking-wider flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Plus size={14} /> Record Settlement
-                    </button>
-                  </div>
-                )}
+          {/* 4. CUSTOMERS TAB */}
+          {adminTab === 'customers' && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                <h3 className="text-xs font-black uppercase tracking-wider text-white">
+                  Customer Relationship Management
+                </h3>
               </div>
 
-              {/* OVERVIEW SUB-TAB */}
-              {financeSubTab === 'overview' && kpis && (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {[
-                      { label: 'Total Revenue', val: kpis.revenue, color: 'text-white', sub: `${kpis.trends?.revenueGrowth >= 0 ? '▲' : '▼'} ${Math.abs(kpis.trends?.revenueGrowth || 0).toFixed(1)}% vs prev period` },
-                      { label: 'Cost of Goods Sold (COGS)', val: kpis.cogs, color: 'text-[#888888]', sub: `Gross Margin: ${kpis.grossMarginPct?.toFixed(1)}%` },
-                      { label: 'Gross Profit', val: kpis.grossProfit, color: 'text-emerald-400', sub: 'Revenue minus product costs' },
-                      { label: 'Operating Expenses', val: kpis.expenses, color: 'text-[#888888]', sub: 'Operational costs' },
-                      { label: 'Net Profit / Loss', val: kpis.netProfit, color: kpis.netProfit >= 0 ? 'text-emerald-400' : 'text-red-400', sub: `${kpis.trends?.netProfitGrowth >= 0 ? '▲' : '▼'} ${Math.abs(kpis.trends?.netProfitGrowth || 0).toFixed(1)}% vs prev period` },
-                      { label: 'Current Cash Balance', val: kpis.currentCashBalance, color: 'text-amber-400', sub: 'Liquid capital across accounts' },
-                      { label: 'Inventory Asset Value', val: kpis.inventoryAssetValue, color: 'text-[#ff5500]', sub: 'FIFO valuation of stock' },
-                      { label: 'Outstanding Founder Capital', val: kpis.outstandingFounderCapital, color: 'text-[#ff5500]', sub: 'Total unpaid founder contributions' }
-                    ].map((card, i) => (
-                      <div key={i} className="bg-[#141414] border border-white/5 rounded-2xl p-5 relative overflow-hidden">
-                        <p className="text-[9px] font-bold text-[#888888] uppercase tracking-widest">{card.label}</p>
-                        <h3 className={`text-xl font-black mt-2 font-mono ${card.color}`}>
-                          ₹{card.val?.toLocaleString('en-IN') || 0}
-                        </h3>
-                        <p className="text-[9px] text-[#666666] uppercase mt-1.5">{card.sub}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <div className="flex items-center gap-2 bg-[#141414] border border-white/5 rounded-xl px-3.5 py-2.5 w-full max-w-md">
+                <Search size={14} className="text-zinc-500" />
+                <input
+                  type="text"
+                  placeholder="Search customers by name, email, instagram..."
+                  value={customersSearchQuery}
+                  onChange={(e) => setCustomersSearchQuery(e.target.value)}
+                  className="bg-transparent border-none text-xs text-white placeholder-zinc-600 focus:outline-none w-full"
+                />
+              </div>
 
-              {/* CASH DRAWER SUB-TAB */}
-              {financeSubTab === 'cash_drawer' && (
-                <div className="bg-[#141414] border border-white/5 rounded-2xl p-6">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs border-collapse">
-                      <thead>
-                        <tr className="border-b border-white/5 text-[#888888] font-bold uppercase tracking-wider text-[10px]">
-                          <th className="pb-3">Account Name</th>
-                          <th className="pb-3">Type</th>
-                          <th className="pb-3">Opening Balance</th>
-                          <th className="pb-3">Currency</th>
-                          <th className="pb-3 text-right">Status</th>
+              <div className="overflow-x-auto border border-white/5 rounded-2xl">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-[#141414] border-b border-white/5 text-[#888888] uppercase tracking-widest text-[9px]">
+                      <th className="p-4 font-bold">Collector Name</th>
+                      <th className="p-4 font-bold">Instagram</th>
+                      <th className="p-4 font-bold">Email Address</th>
+                      <th className="p-4 font-bold">Phone</th>
+                      <th className="p-4 font-bold">City</th>
+                      <th className="p-4 font-bold">Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {customersLoading ? (
+                      <tr>
+                        <td colSpan="6" className="p-8 text-center text-zinc-500 font-mono">Loading customers directory...</td>
+                      </tr>
+                    ) : customersList.length === 0 ? (
+                      <tr>
+                        <td colSpan="6" className="p-8 text-center text-zinc-500 font-mono">No customers registered in database.</td>
+                      </tr>
+                    ) : (
+                      customersList.map(c => (
+                        <tr key={c.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                          <td className="p-4 font-bold text-white">{c.name}</td>
+                          <td className="p-4 text-[#ff5500] font-bold">
+                            {c.instagram_username ? (
+                              <a href={`https://instagram.com/${c.instagram_username}`} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                                @{c.instagram_username}
+                              </a>
+                            ) : '-'}
+                          </td>
+                          <td className="p-4 font-mono text-zinc-400">{c.email || '-'}</td>
+                          <td className="p-4 font-mono text-zinc-400">{c.phone || '-'}</td>
+                          <td className="p-4 text-zinc-400">{c.city || '-'}</td>
+                          <td className="p-4 text-zinc-500 max-w-[200px] truncate">{c.notes || '-'}</td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {cashAccounts.length === 0 ? (
-                          <tr>
-                            <td colSpan={5} className="py-4 text-center text-[#666666]">No cash accounts registered.</td>
-                          </tr>
-                        ) : (
-                          cashAccounts.map(acc => (
-                            <tr key={acc.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
-                              <td className="py-3 font-bold text-white">{acc.name}</td>
-                              <td className="py-3 font-mono text-[#888888]">{acc.type}</td>
-                              <td className="py-3 font-mono text-white">₹{Number(acc.opening_balance).toLocaleString('en-IN')}</td>
-                              <td className="py-3 font-mono text-[#666666]">{acc.currency}</td>
-                              <td className="py-3 text-right">
-                                <span className={`inline-block px-2 py-0.5 rounded text-[8px] font-mono uppercase tracking-widest font-black ${
-                                  acc.is_active ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-white/5 text-[#666666] border border-white/5'
-                                }`}>
-                                  {acc.is_active ? 'Active' : 'Archived'}
-                                </span>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {/* FOUNDER CAPITAL SUB-TAB */}
-              {financeSubTab === 'founder_capital' && founderLedger && (
-                <div className="space-y-8">
-                  {/* Founder capital metrics */}
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    {founderLedger.founders.map(f => {
-                      const bal = founderLedger.balances[f] || 0;
-                      const owes = bal < 0;
-                      return (
-                        <div key={f} className="bg-[#141414] border border-white/5 rounded-2xl p-5 relative overflow-hidden">
-                          <p className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">{f}</p>
-                          <h3 className={`text-xl font-black mt-2 font-mono ${owes ? 'text-red-400' : 'text-emerald-400'}`}>
-                            {owes ? '-' : '+'}₹{Math.abs(Number(bal.toFixed(2))).toLocaleString('en-IN')}
-                          </h3>
-                          <p className="text-[9px] text-[#666666] uppercase mt-1">
-                            Outstanding Balance
-                          </p>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Balancing Pipeline settlements transfers */}
-                  <div className="bg-[#141414] border border-white/5 rounded-2xl p-6 space-y-4">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-white">
-                      Settlement Balancing Pipeline (Ledger Transfers)
-                    </h4>
-                    <div className="space-y-3">
-                      {splitsData.owesWho?.length === 0 ? (
-                        <p className="text-xs text-[#888888]">Founder split balances are fully settled.</p>
-                      ) : (
-                        splitsData.owesWho?.map((tr, i) => (
-                          <div key={i} className="flex items-center gap-3 text-xs bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-3">
-                            <span className="font-bold text-red-400">{tr.from}</span>
-                            <span className="text-[#888888]">needs to transfer</span>
-                            <span className="font-bold font-mono text-white">₹{tr.amount.toLocaleString('en-IN')}</span>
-                            <span className="text-[#888888]">to</span>
-                            <span className="font-bold text-emerald-400">{tr.to}</span>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Founder capital ledger timeline */}
-                  <div className="bg-[#141414] border border-white/5 rounded-2xl p-6 space-y-4">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-white">
-                      Founder Capital timeline history
-                    </h4>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs border-collapse">
-                        <thead>
-                          <tr className="border-b border-white/5 text-[#888888] font-bold uppercase tracking-wider text-[10px]">
-                            <th className="pb-3">Date</th>
-                            <th className="pb-3">Founder</th>
-                            <th className="pb-3">Type</th>
-                            <th className="pb-3">Amount</th>
-                            <th className="pb-3">Reason</th>
-                            <th className="pb-3">Notes</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {founderLedger.timeline.length === 0 ? (
-                            <tr>
-                              <td colSpan={6} className="py-4 text-center text-[#666666]">No capital transactions recorded.</td>
-                            </tr>
-                          ) : (
-                            founderLedger.timeline.map(tx => (
-                              <tr key={tx.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
-                                <td className="py-3 font-mono text-white">{new Date(tx.date).toLocaleDateString('en-IN')}</td>
-                                <td className="py-3 font-bold text-white">{tx.founderName}</td>
-                                <td className="py-3 font-mono text-[#888888]">{tx.type}</td>
-                                <td className={`py-3 font-bold font-mono ${Number(tx.amount) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                  {Number(tx.amount) >= 0 ? '+' : ''}₹{Math.abs(Number(tx.amount)).toLocaleString('en-IN')}
-                                </td>
-                                <td className="py-3 text-white">{tx.reason}</td>
-                                <td className="py-3 text-[#666666] max-w-[200px] truncate">{tx.notes}</td>
-                              </tr>
-                            ))
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* CASH LEDGER TIMELINE SUB-TAB */}
-              {financeSubTab === 'cash_ledger' && (
-                <div className="space-y-6">
-                  {/* Filters & CSV exporter */}
-                  <div className="flex flex-wrap justify-between items-center gap-4 bg-[#141414] border border-white/5 rounded-2xl p-5">
-                    <div className="flex flex-wrap gap-3">
-                      <select
-                        value={ledgerFilters.timeRange}
-                        onChange={e => setLedgerFilters(prev => ({ ...prev, timeRange: e.target.value }))}
-                        className="bg-[#1c1c1c] border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-[#ff5500]/50"
-                      >
-                        {['Today', 'Yesterday', 'Last 7 Days', 'Last 30 Days', 'This Month', 'Previous Month', 'Quarter', 'Year To Date', 'Previous Year', 'Lifetime'].map(r => (
-                          <option key={r} value={r}>{r}</option>
-                        ))}
-                      </select>
-
-                      <select
-                        value={ledgerFilters.cashAccountId}
-                        onChange={e => setLedgerFilters(prev => ({ ...prev, cashAccountId: e.target.value }))}
-                        className="bg-[#1c1c1c] border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-[#ff5500]/50"
-                      >
-                        <option value="">All Accounts</option>
-                        {cashAccounts.map(acc => (
-                          <option key={acc.id} value={acc.id}>{acc.name}</option>
-                        ))}
-                      </select>
-
-                      <select
-                        value={ledgerFilters.type}
-                        onChange={e => setLedgerFilters(prev => ({ ...prev, type: e.target.value }))}
-                        className="bg-[#1c1c1c] border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-[#ff5500]/50"
-                      >
-                        <option value="">All Types</option>
-                        {['Customer Payment', 'Pre-order Advance', 'Pre-order Remaining Payment', 'Founder Contribution', 'Founder Reimbursement', 'Inventory Purchase', 'Operating Expense', 'Refund', 'Manual Adjustment', 'Settlement Between Founders'].map(t => (
-                          <option key={t} value={t}>{t}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <button
-                      onClick={exportLedgerToCSV}
-                      disabled={ledgerTransactions.length === 0}
-                      className="border border-white/10 hover:border-white/20 disabled:opacity-30 disabled:hover:border-white/10 text-white font-extrabold text-[10px] px-4 py-2.5 rounded-xl uppercase tracking-wider flex items-center gap-1.5 cursor-pointer"
-                    >
-                      Export CSV
-                    </button>
-                  </div>
-
-                  {/* Cash ledger table */}
-                  <div className="bg-[#141414] border border-white/5 rounded-2xl p-6">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs border-collapse">
-                        <thead>
-                          <tr className="border-b border-white/5 text-[#888888] font-bold uppercase tracking-wider text-[10px]">
-                            <th className="pb-3">Date</th>
-                            <th className="pb-3">Account</th>
-                            <th className="pb-3">Type</th>
-                            <th className="pb-3">Amount</th>
-                            <th className="pb-3">Ref Number</th>
-                            <th className="pb-3">Reason</th>
-                            <th className="pb-3">Created By</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {ledgerTransactions.length === 0 ? (
-                            <tr>
-                              <td colSpan={7} className="py-4 text-center text-[#666666]">No ledger records match current filters.</td>
-                            </tr>
-                          ) : (
-                            ledgerTransactions.map(tx => (
-                              <tr key={tx.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
-                                <td className="py-3 font-mono text-[#888888]">{new Date(tx.date).toLocaleDateString('en-IN')}</td>
-                                <td className="py-3 font-bold text-white">{tx.cash_account_name || 'N/A'}</td>
-                                <td className="py-3 font-mono text-[#888888]">{tx.type}</td>
-                                <td className={`py-3 font-bold font-mono ${Number(tx.amount) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                  {Number(tx.amount) >= 0 ? '+' : ''}₹{Math.abs(Number(tx.amount)).toLocaleString('en-IN')}
-                                </td>
-                                <td className="py-3 font-mono text-[#666666]">{tx.reference_number || '—'}</td>
-                                <td className="py-3 text-white max-w-[200px] truncate" title={tx.reason}>{tx.reason}</td>
-                                <td className="py-3 text-[#666666]">{tx.created_by.split('@')[0]}</td>
-                              </tr>
-                            ))
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              )}
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              <Pagination
+                currentPage={customersPage}
+                totalPages={customersTotalPages}
+                totalItems={customersTotal}
+                onPageChange={setCustomersPage}
+              />
             </div>
           )}
 
-          {/* 7. ANALYTICS TAB */}
-          {adminTab === 'analytics' && (
-            <div className="space-y-8">
-              {!analytics ? (
-                <div className="bg-[#141414] border border-white/5 rounded-2xl p-8 text-center space-y-4">
-                  <div className="max-w-md mx-auto space-y-2">
-                    <h3 className="text-sm font-black uppercase tracking-wider text-white">
-                      Database Analytics & Reports
-                    </h3>
-                    <p className="text-xs text-[#888888] leading-relaxed">
-                      Execute aggregated queries to calculate top selling brands, best models, average order value, top buyers, and catalog dead stock.
-                    </p>
-                  </div>
-                  <button
-                    onClick={fetchAnalytics}
-                    disabled={analyticsLoading}
-                    className="inline-flex items-center gap-2 px-6 py-3 bg-[#ff5500] hover:bg-[#ff6611] active:bg-[#e64d00] disabled:bg-[#ff5500]/50 text-black font-extrabold text-xs rounded-xl uppercase tracking-wider transition-all shadow-[0_4px_20px_-4px_rgba(255,85,0,0.3)] cursor-pointer"
-                  >
-                    {analyticsLoading ? (
-                      <>
-                        <div className="w-3.5 h-3.5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                        Running Queries...
-                      </>
-                    ) : (
-                      'Generate Analytics Report'
-                    )}
-                  </button>
-                </div>
-              ) : (
+          {/* 5. REPORTS & FINANCIALS TAB */}
+          {adminTab === 'reports' && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                <h3 className="text-xs font-black uppercase tracking-wider text-white">
+                  Business Intelligence & Financial Reports
+                </h3>
+              </div>
+
+              <div className="flex border-b border-white/5 gap-6 pb-2 mb-6 overflow-x-auto">
+                <button
+                  onClick={() => setReportsSubTab('founder_splits')}
+                  className={`pb-2 text-xs font-black uppercase tracking-wider transition-colors cursor-pointer border-b-2 ${
+                    reportsSubTab === 'founder_splits' ? 'border-[#ff5500] text-white' : 'border-transparent text-zinc-500 hover:text-white'
+                  }`}
+                >
+                  Founder Splits Ledger
+                </button>
+              </div>
+
+              {reportsSubTab === 'founder_splits' && (
                 <div className="space-y-8">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-xs font-black uppercase tracking-wider text-white/40">
-                      Aggregated Metrics (On-Demand)
-                    </h3>
-                    <button 
-                      onClick={fetchAnalytics}
-                      disabled={analyticsLoading}
-                      className="text-[10px] font-black text-[#ff5500] hover:underline uppercase tracking-widest bg-transparent border-none cursor-pointer"
-                    >
-                      {analyticsLoading ? 'Regenerating...' : 'Refresh Report'}
-                    </button>
-                  </div>
-
-                  {/* Analytics summary details */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {[
-                      { label: 'Top Selling Brand', val: analytics.topBrand || 'N/A' },
-                      { label: 'Top Casting Model', val: analytics.topSellingProduct ? `${analytics.topSellingProduct.brand} ${analytics.topSellingProduct.name}` : 'N/A' },
-                      { label: 'Average Order Value', val: `₹${Number((analytics.averageOrderValue || 0).toFixed(2)).toLocaleString('en-IN')}` },
-                      { label: 'Top Customer Buyer', val: analytics.topCustomer ? `${analytics.topCustomer.name}` : 'N/A' }
-                    ].map((stat, i) => (
-                      <div key={i} className="bg-[#141414] border border-white/5 rounded-2xl p-5">
-                        <p className="text-[9px] font-bold text-[#888888] uppercase tracking-widest">{stat.label}</p>
-                        <h3 className="text-sm font-extrabold text-white mt-3 uppercase tracking-wide truncate">
-                          {stat.val}
-                        </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-[#141414] border border-white/5 rounded-2xl p-6 space-y-4">
+                      <div className="flex justify-between items-center pb-3 border-b border-white/5">
+                        <h4 className="text-xs font-black uppercase tracking-wider text-white">Cash Accounts</h4>
+                        <button
+                          onClick={() => {
+                            setCashAccountForm({ name: '', balance: 0, currency: 'INR' });
+                            setIsAddingCashAccount(true);
+                          }}
+                          className="text-[9px] font-black text-[#ff5500] uppercase tracking-widest bg-transparent border-none cursor-pointer"
+                        >
+                          + New Account
+                        </button>
                       </div>
-                    ))}
+                      <div className="space-y-3">
+                        {cashAccounts.map(acc => (
+                          <div key={acc.id} className="flex justify-between items-center py-1 text-xs">
+                            <span className="font-bold text-white">{acc.name}</span>
+                            <div className="flex items-center gap-3">
+                              <span className="font-mono font-bold text-[#ff5500]">₹{Number(acc.balance).toLocaleString('en-IN')}</span>
+                              <button
+                                onClick={() => {
+                                  setCashAdjustmentForm({ cashAccountId: acc.id, amount: 0, type: 'Audit Adjustment', notes: '' });
+                                  setIsAdjustingCash(true);
+                                }}
+                                className="text-[8px] font-bold text-zinc-400 hover:text-white uppercase tracking-wider bg-white/5 border border-white/5 px-2 py-1 rounded"
+                              >
+                                Adjust
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="bg-[#141414] border border-white/5 rounded-2xl p-6 space-y-4">
+                      <div className="flex justify-between items-center pb-3 border-b border-white/5">
+                        <h4 className="text-xs font-black uppercase tracking-wider text-white">Settle Capital Balance</h4>
+                        <button
+                          onClick={() => {
+                            setSettlementForm({ fromFounder: 'Harshal', toFounder: 'Naman', amount: 0, notes: '', date: new Date().toISOString().split('T')[0] });
+                            setIsAddingSettlement(true);
+                          }}
+                          className="text-[9px] font-black text-[#ff5500] uppercase tracking-widest bg-transparent border-none cursor-pointer"
+                        >
+                          + Record Transfer
+                        </button>
+                      </div>
+                      <div className="space-y-3 text-xs">
+                        {splits.map((s, idx) => (
+                          <div key={idx} className="flex justify-between items-center py-1">
+                            <span className="font-bold text-white">{s.founder} Capital</span>
+                            <span className="font-mono font-bold text-emerald-400">₹{Number(s.contribution).toLocaleString('en-IN')}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Dead stock catalog check */}
                   <div className="bg-[#141414] border border-white/5 rounded-2xl p-6 space-y-4">
-                    <div>
-                      <h4 className="text-xs font-black uppercase tracking-wider text-white">
-                        Dead Stock Catalog (90+ Days Unsold)
-                      </h4>
-                      <p className="text-[10px] text-[#888888] mt-0.5">Inventory assets locked in low-velocity castings.</p>
+                    <div className="flex justify-between items-center pb-3 border-b border-white/5">
+                      <h4 className="text-xs font-black uppercase tracking-wider text-white">Capital Contribution / Reimbursement Logs</h4>
+                      <button
+                        onClick={() => {
+                          setFounderLedgerForm({ founder: 'Harshal', amount: 0, type: 'Contribution', notes: '', date: new Date().toISOString().split('T')[0] });
+                          setIsReimbursing(true);
+                        }}
+                        className="text-[9px] font-black text-[#ff5500] uppercase tracking-widest bg-transparent border-none cursor-pointer"
+                      >
+                        + Log Capital
+                      </button>
                     </div>
-                    
-                    <div className="overflow-x-auto border border-white/5 rounded-xl">
+                    <div className="overflow-x-auto">
                       <table className="w-full text-left border-collapse text-xs">
                         <thead>
-                          <tr className="bg-[#1c1c1c] border-b border-white/5 text-[#888888] uppercase tracking-widest text-[9px]">
-                            <th className="p-3 font-bold">Casting</th>
-                            <th className="p-3 font-bold">Added Date</th>
-                            <th className="p-3 font-bold text-center">Remaining Stock</th>
+                          <tr className="border-b border-white/5 text-[#888888] uppercase tracking-widest text-[9px] bg-black/10">
+                            <th className="p-3 font-bold">Founder</th>
+                            <th className="p-3 font-bold">Type</th>
+                            <th className="p-3 font-bold">Amount</th>
+                            <th className="p-3 font-bold">Date</th>
+                            <th className="p-3 font-bold">Notes</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {analytics.deadStock && analytics.deadStock.length > 0 ? (
-                            analytics.deadStock.map(car => (
-                              <tr key={car.id} className="border-b border-white/5 hover:bg-white/[0.02]">
-                                <td className="p-3 font-bold text-white">{car.brand} {car.name}</td>
-                                <td className="p-3 font-mono text-[#888888]">{new Date(car.createdAt).toLocaleDateString('en-IN')}</td>
-                                <td className="p-3 text-center font-mono font-bold text-white">{car.available}</td>
+                          {founderLedger.length === 0 ? (
+                            <tr>
+                              <td colSpan="5" className="p-4 text-center text-zinc-500 font-mono">No capital ledger transactions logged.</td>
+                            </tr>
+                          ) : (
+                            founderLedger.map(l => (
+                              <tr key={l.id} className="border-b border-white/5 hover:bg-white/[0.01]">
+                                <td className="p-3 font-bold text-white">{l.founder}</td>
+                                <td className="p-3">
+                                  <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${
+                                    l.type === 'Contribution' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                  }`}>{l.type}</span>
+                                </td>
+                                <td className="p-3 font-mono font-bold text-white">₹{Number(l.amount).toLocaleString('en-IN')}</td>
+                                <td className="p-3 text-zinc-500 font-mono">{new Date(l.date).toLocaleDateString()}</td>
+                                <td className="p-3 text-zinc-400">{l.notes || '-'}</td>
                               </tr>
                             ))
-                          ) : (
-                            <tr>
-                              <td colSpan="3" className="p-4 text-center text-white/30 uppercase text-[10px] tracking-wider font-bold">
-                                No Dead Stock Detected
-                              </td>
-                            </tr>
                           )}
                         </tbody>
                       </table>
@@ -2958,7 +3272,6 @@ export default function Admin() {
               )}
             </div>
           )}
-
           {/* 8. ALERTS TAB */}
           {adminTab === 'notifications' && (
             <div className="space-y-6">

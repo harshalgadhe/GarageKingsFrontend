@@ -115,10 +115,16 @@ export default function Checkout() {
     loadData()
   }, [singleProductId])
 
-  const totalPrice = isCart 
-    ? cartItems.reduce((sum, item) => sum + Number(item.price || 0) * (item.quantity || 1), 0)
-    : Number(product?.price || 0) * urlQty
-  
+  const [calculation, setCalculation] = useState({
+    subtotal: 0,
+    shippingFee: 0,
+    totalPrice: 0,
+    advanceAmount: 0,
+    remainingAmount: 0,
+    items: []
+  })
+  const [calculating, setCalculating] = useState(false)
+
   const canPreOrder = isCart 
     ? cartItems.some(item => item.isPrebook === true || item.is_prebook === true)
     : !!(product && (product.isPrebook === true || product.is_prebook === true))
@@ -129,7 +135,55 @@ export default function Checkout() {
     }
   }, [canPreOrder])
 
-  const advanceAmount = isPreOrder ? Math.round(totalPrice * advancePercent / 100) : totalPrice
+  useEffect(() => {
+    async function performCalculation() {
+      if (isCart && cartItems.length === 0) return
+      if (!isCart && !product) return
+
+      setCalculating(true)
+      try {
+        const payload = {
+          bookingType: isPreOrder ? 'pre_order' : 'standard',
+          items: isCart ? cartItems.map(item => ({
+            productId: item.id,
+            qty: item.quantity || 1
+          })) : [{
+            productId: product.id,
+            qty: urlQty
+          }]
+        }
+
+        if (isPreOrder) {
+          const estSubtotal = isCart 
+            ? cartItems.reduce((sum, item) => sum + Number(item.price || 0) * (item.quantity || 1), 0)
+            : Number(product?.price || 0) * urlQty
+          payload.advanceAmount = Math.round(estSubtotal * advancePercent / 100)
+        }
+
+        const token = localStorage.getItem('gk_token')
+        const res = await fetch(`${API_BASE_URL}/products/calculate-checkout`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify(payload)
+        })
+        if (res.ok) {
+          const data = await res.json()
+          setCalculation(data)
+        }
+      } catch (e) {
+        console.error("Calculation failed", e)
+      } finally {
+        setCalculating(false)
+      }
+    }
+    performCalculation()
+  }, [isCart, cartItems, product, urlQty, isPreOrder, advancePercent])
+
+  const totalPrice = calculation.totalPrice
+  const advanceAmount = calculation.advanceAmount
 
   const handleReserve = async (e) => {
     e.preventDefault()
@@ -299,9 +353,21 @@ export default function Checkout() {
                 </div>
                 
                 {settings.showPrices && (
-                  <div className="border-t border-white/5 pt-3 flex justify-between items-center text-xs font-black">
-                    <span className="text-white/40 uppercase tracking-wider">Total price</span>
-                    <span className="font-mono text-gk-orange text-sm">₹{totalPrice.toLocaleString('en-IN')}</span>
+                  <div className="border-t border-white/5 pt-3 space-y-1.5 text-xs">
+                    <div className="flex justify-between items-center text-white/40">
+                      <span>Subtotal</span>
+                      <span className="font-mono text-white/80">₹{calculation.subtotal.toLocaleString('en-IN')}</span>
+                    </div>
+                    {calculation.shippingFee > 0 && (
+                      <div className="flex justify-between items-center text-white/40">
+                        <span>Flat Shipping</span>
+                        <span className="font-mono text-white/80">₹{calculation.shippingFee}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center font-black pt-1.5 border-t border-white/5">
+                      <span className="text-white/40 uppercase tracking-wider">Total price</span>
+                      <span className="font-mono text-gk-orange text-sm">₹{calculation.totalPrice.toLocaleString('en-IN')}</span>
+                    </div>
                   </div>
                 )}
               </div>
@@ -402,7 +468,7 @@ export default function Checkout() {
                         <span className="text-[10px] text-white/40">75%</span>
                       </div>
                       <div className="text-[9px] text-white/30 text-center font-bold">
-                        Remaining balance of ₹{totalPrice - advanceAmount} is due before final shipping.
+                        Remaining balance of ₹{calculation.remainingAmount} is due before final shipping.
                       </div>
                     </div>
                   )}
@@ -425,7 +491,7 @@ export default function Checkout() {
                 <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
                   <div className="text-[10px] font-black text-amber-400 uppercase tracking-wider">Pre-Order Activated</div>
                   <div className="text-[10px] text-amber-300/70 mt-1">
-                    Pay only the advance amount now. The remaining balance of ₹{totalPrice - advanceAmount} will be due before dispatch.
+                    Pay only the advance amount now. The remaining balance of ₹{calculation.remainingAmount} will be due before dispatch.
                   </div>
                 </div>
               )}
@@ -461,7 +527,7 @@ export default function Checkout() {
                 {isPreOrder && settings.showPrices && (
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-white/60">Remaining balance due later:</span>
-                    <span className="font-mono text-amber-400">₹{totalPrice - advanceAmount}</span>
+                    <span className="font-mono text-amber-400">₹{calculation.remainingAmount}</span>
                   </div>
                 )}
                 <div className="flex justify-between items-center text-xs">
@@ -496,7 +562,7 @@ export default function Checkout() {
                 </h3>
                 <p className="text-xs text-white/40 leading-relaxed max-w-md mx-auto font-medium">
                   {isPreOrder
-                    ? `Your advance payment proof is uploaded. We will verify and lock in your prebooking. We'll contact you to transfer the remaining ₹${totalPrice - advanceAmount} once stock is ready.`
+                    ? `Your advance payment proof is uploaded. We will verify and lock in your prebooking. We'll contact you to transfer the remaining ₹${calculation.remainingAmount} once stock is ready.`
                     : 'Your payment screenshot is uploaded and pending verification by the Garage Kings team. We process entries on a first-come, first-served basis and will confirm shortly.'}
                 </p>
               </div>
@@ -509,7 +575,7 @@ export default function Checkout() {
                     {settings.showPrices && (
                       <>
                         <div><span className="text-white">ADVANCE TRANSFER:</span> ₹{advanceAmount}</div>
-                        <div><span className="text-amber-400">REMAINING DUE:</span> ₹{totalPrice - advanceAmount}</div>
+                        <div><span className="text-amber-400">REMAINING DUE:</span> ₹{calculation.remainingAmount}</div>
                       </>
                     )}
                   </>
