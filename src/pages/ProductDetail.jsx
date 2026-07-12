@@ -140,7 +140,7 @@ export default function ProductDetail() {
                 e.target.src = '/brand-logo.png';
                 e.target.className = "w-full h-full object-contain p-12 bg-zinc-950/80 pointer-events-none select-none";
               }}
-              className={product.image ? "w-full h-full object-cover pointer-events-none select-none" : "w-full h-full object-contain p-12 bg-zinc-950/80 pointer-events-none select-none"}
+              className="w-full h-full object-contain p-6 pointer-events-none select-none"
               style={{ WebkitUserDrag: 'none' }}
               onContextMenu={(e) => e.preventDefault()}
             />
@@ -167,8 +167,15 @@ export default function ProductDetail() {
                 {product.name}
               </h2>
               {(product.brand || product.carBrand) && (
-                <div className="text-sm font-black uppercase tracking-widest text-gk-orange">
+                <div className="text-sm font-black uppercase tracking-widest text-gk-orange mb-3">
                   {product.carBrand ? `${product.brand} • ${product.carBrand}` : product.brand}
+                </div>
+              )}
+              {product.isPrebook && (
+                <div className="inline-flex mb-4">
+                  <span className="px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider border bg-gk-orange/15 text-gk-orange border-gk-orange/30 shadow-[0_0_10px_rgba(225,6,0,0.15)] animate-pulse">
+                    Pre-Booking Release
+                  </span>
                 </div>
               )}
             </div>
@@ -313,7 +320,7 @@ export default function ProductDetail() {
                           e.target.src = '/brand-logo.png';
                           e.target.className = "w-full h-full object-contain p-4 bg-zinc-950/80 pointer-events-none select-none";
                         }}
-                        className={car.image ? "w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-[0.16,1,0.3,1]" : "w-full h-full object-contain p-4 bg-zinc-950/80"}
+                        className="w-full h-full object-contain p-2 group-hover:scale-103 transition-transform duration-500 ease-[0.16,1,0.3,1]"
                       />
                       {isCarSoldOut && (
                         <div className="absolute inset-0 bg-black/50 backdrop-blur-[1.5px] flex items-center justify-center pointer-events-none z-10">

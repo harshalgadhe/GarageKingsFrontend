@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import PaymentInstructions from '../components/checkout/PaymentInstructions'
 import ScreenshotUploader from '../components/checkout/ScreenshotUploader'
 import { getCurrentUser } from '../lib/auth'
-import { getProduct } from '../lib/db'
+import { getProduct, getPublicSettings } from '../lib/db'
 import { logError } from '../lib/telemetry'
 import Navigation from '../components/Navigation'
 import Footer from '../components/Footer'
@@ -59,9 +59,20 @@ export default function Checkout() {
     async function loadData() {
       setLoading(true)
       try {
-        // If product parameter is set, load single product. Otherwise load cart.
+        const [settingsData, prodData] = await Promise.all([
+          getPublicSettings(),
+          singleProductId ? getProduct(singleProductId) : Promise.resolve(null)
+        ])
+
+        if (settingsData) {
+          setSettings(prev => ({
+            ...prev,
+            ...settingsData,
+            showPrices: true
+          }))
+        }
+
         if (singleProductId) {
-          const prodData = await getProduct(singleProductId)
           if (prodData) {
             setProduct(prodData)
             setIsCart(false)

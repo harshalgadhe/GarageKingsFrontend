@@ -232,7 +232,7 @@ export default function Marketplace() {
                           e.target.src = '/brand-logo.png';
                           e.target.className = "w-full h-full object-contain p-6 bg-zinc-950/80 transition-transform duration-700 ease-[0.22,1,0.36,1] pointer-events-none select-none";
                         }}
-                        className={car.image ? "w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-[0.22,1,0.36,1] pointer-events-none select-none" : "w-full h-full object-contain p-6 bg-zinc-950/80 transition-transform duration-700 ease-[0.22,1,0.36,1] pointer-events-none select-none"}
+                        className="w-full h-full object-contain p-3 group-hover:scale-103 transition-transform duration-700 ease-[0.22,1,0.36,1] pointer-events-none select-none"
                         style={{ WebkitUserDrag: 'none' }}
                       />
                       {isSoldOut && (
@@ -260,9 +260,14 @@ export default function Marketplace() {
                         </div>
                       )}
                       
-                      {car.tags && car.tags.length > 0 && (
+                      {(car.isPrebook || (car.tags && car.tags.length > 0)) && (
                         <div className="flex flex-wrap gap-1.5 mb-2.5">
-                          {car.tags.map(tag => {
+                          {car.isPrebook && (
+                            <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider border bg-gk-orange/15 text-gk-orange border-gk-orange/30 shadow-[0_0_10px_rgba(225,6,0,0.15)] animate-pulse">
+                              Pre-Booking
+                            </span>
+                          )}
+                          {car.tags && car.tags.map(tag => {
                             let colorClass = 'bg-white/10 text-white/70 border-white/10';
                             if (tag === 'Hot') colorClass = 'bg-[#E10600]/15 text-[#E10600] border-[#E10600]/30 shadow-[0_0_10px_rgba(225,6,0,0.15)]';
                             if (tag === 'Trending') colorClass = 'bg-purple-500/15 text-purple-400 border-purple-500/30 shadow-[0_0_10px_rgba(168,85,247,0.15)]';
