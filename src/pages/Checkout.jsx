@@ -99,13 +99,13 @@ export default function Checkout() {
         }
         
         setEmail(user.email || '')
-        setName(user.displayName || '')
+        setFullName(user.displayName || '')
 
         const res = await fetch(`${API_BASE_URL}/profile/my`)
         if (res.ok) {
           const prof = await res.json()
           if (prof) {
-            if (prof.fullName) setName(prof.fullName)
+            if (prof.fullName) setFullName(prof.fullName)
             if (prof.phone && !prof.phone.startsWith('unknown_')) setPhone(prof.phone)
             if (prof.address) setAddress(prof.address)
           }
@@ -384,8 +384,8 @@ export default function Checkout() {
                   </label>
                   <input
                     type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
                     placeholder="Enter full name"
                     className="w-full bg-[#080808] border border-white/10 rounded-xl px-4 py-3.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-gk-orange transition-colors"
                     required
@@ -435,49 +435,7 @@ export default function Checkout() {
                 />
               </div>
 
-              {/* Pre-order toggle (only if prices are visible and products allow pre-order) */}
-              {settings.showPrices && canPreOrder && (
-                <div className="bg-black/30 border border-white/5 rounded-2xl p-5 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-xs font-bold text-white">Pre-Order Booking Options</div>
-                      <div className="text-[10px] text-white/40 mt-1">Pay a partial amount now, and the rest when stock arrives.</div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setIsPreOrder(v => !v)}
-                      className={`relative w-11 h-6 rounded-full transition-colors duration-200 flex-shrink-0 cursor-pointer ${isPreOrder ? 'bg-gk-orange' : 'bg-white/10'}`}
-                    >
-                      <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform duration-200 ${isPreOrder ? 'translate-x-6' : 'translate-x-1'}`} />
-                    </button>
-                  </div>
-                  
-                  {isPreOrder && (
-                    <div className="space-y-3 pt-3 border-t border-white/5">
-                      <div className="flex items-center justify-between text-[11px] font-bold">
-                        <span className="text-white/60">Advance amount to transfer now</span>
-                        <span className="text-gk-orange font-mono">₹{advanceAmount}</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-[10px] text-white/40">25%</span>
-                        <input
-                          type="range"
-                          min={25}
-                          max={75}
-                          step={5}
-                          value={advancePercent}
-                          onChange={(e) => setAdvancePercent(Number(e.target.value))}
-                          className="flex-1 accent-gk-orange cursor-pointer"
-                        />
-                        <span className="text-[10px] text-white/40">75%</span>
-                      </div>
-                      <div className="text-[9px] text-white/30 text-center font-bold">
-                        Remaining balance of ₹{calculation.remainingAmount} is due before final shipping.
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
+
 
               <button
                 type="submit"

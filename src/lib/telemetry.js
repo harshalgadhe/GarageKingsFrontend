@@ -68,11 +68,20 @@ export function initTelemetry() {
 export async function logError(message, stack = '', level = 'error') {
   try {
     const user = getCurrentUser();
+    let safeStack = '';
+    if (stack) {
+      try {
+        safeStack = btoa(unescape(encodeURIComponent(stack)));
+      } catch (e) {
+        safeStack = stack;
+      }
+    }
+
     const payload = {
       source: 'frontend',
       level,
       message,
-      stack,
+      stack: safeStack,
       url: window.location.href,
       userAgent: navigator.userAgent,
       userEmail: user ? user.email : null,
