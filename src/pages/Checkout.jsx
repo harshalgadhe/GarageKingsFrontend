@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import PaymentInstructions from '../components/checkout/PaymentInstructions'
 import ScreenshotUploader from '../components/checkout/ScreenshotUploader'
 import { getCurrentUser } from '../lib/auth'
-import { getProduct, getGlobalSettings } from '../lib/db'
+import { getProduct } from '../lib/db'
 import { logError } from '../lib/telemetry'
 import Navigation from '../components/Navigation'
 import Footer from '../components/Footer'
@@ -21,29 +21,32 @@ export default function Checkout() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const singleProductId = searchParams.get('product')
+  const purchaseCasingType = searchParams.get('casing')
   const urlQty = Math.max(1, parseInt(searchParams.get('qty') || '1', 10))
 
+  const [user, setUser] = useState(null)
   const [product, setProduct] = useState(null)
   const [cartItems, setCartItems] = useState([])
-  const [step, setStep] = useState(1) // 1 = Details, 2 = Pay, 3 = Upload, 4 = Complete
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
+  const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
   const [address, setAddress] = useState('')
+  const [email, setEmail] = useState('')
   const [idempotencyKey, setIdempotencyKey] = useState('')
   const [isPreOrder, setIsPreOrder] = useState(false)
   const [advancePercent, setAdvancePercent] = useState(50)
   
   const [orderId, setOrderId] = useState('')
   const [orderMeta, setOrderMeta] = useState({ bookingType: 'standard', advanceAmount: 0, remainingAmount: 0 })
-  const [loading, setLoading] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [isCart, setIsCart] = useState(false)
+  const [step, setStep] = useState(1) // 1 = Details, 2 = Pay, 3 = Upload, 4 = Complete
 
   const [settings, setSettings] = useState({
     companyUpiId: 'garagekings@upi',
     upiQrImage: '/upi-qr.png',
-    showPrices: false
+    showPrices: true
   })
 
   const API_BASE_URL = import.meta.env.PROD 
@@ -56,16 +59,6 @@ export default function Checkout() {
     async function loadData() {
       setLoading(true)
       try {
-        // Fetch upi details from settings
-        const settingsData = await getGlobalSettings()
-        if (settingsData) {
-          setSettings({
-            companyUpiId: settingsData.companyUpiId || 'garagekings@upi',
-            upiQrImage: settingsData.upiQrImage || '/upi-qr.png',
-            showPrices: settingsData.showPrices === true
-          })
-        }
-
         // If product parameter is set, load single product. Otherwise load cart.
         if (singleProductId) {
           const prodData = await getProduct(singleProductId)

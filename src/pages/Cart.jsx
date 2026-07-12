@@ -3,28 +3,24 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Trash2, ShoppingCart, ArrowLeft, ArrowRight, Plus, Minus } from 'lucide-react'
 import Navigation from '../components/Navigation'
 import Footer from '../components/Footer'
-import { getGlobalSettings } from '../lib/db'
 
 export default function Cart() {
   const navigate = useNavigate()
   const [cartItems, setCartItems] = useState([])
-  const [settings, setSettings] = useState({ showPrices: false })
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    async function loadSettings() {
+    async function loadCart() {
       try {
         const saved = localStorage.getItem('gk_cart')
         setCartItems(saved ? JSON.parse(saved) : [])
-        const settingsData = await getGlobalSettings()
-        setSettings({ showPrices: settingsData?.showPrices === true })
       } catch (err) {
         console.error('Error loading cart settings:', err)
       } finally {
         setIsLoading(false)
       }
     }
-    loadSettings()
+    loadCart()
   }, [])
 
   const saveCart = (newCart) => {
@@ -147,18 +143,12 @@ export default function Cart() {
                   {/* Quantity & Price controls Group */}
                   <div className="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto border-t sm:border-t-0 border-white/5 pt-4 sm:pt-0">
                     {/* Pricing */}
-                    {settings.showPrices === true ? (
                       <div className="text-left sm:text-right">
                         <div className="text-[8px] uppercase tracking-widest text-white/30 mb-0.5">Valuation</div>
                         <div className="font-mono text-sm font-bold text-white">
                           ₹{Number(item.price) * (item.quantity || 1)}
                         </div>
                       </div>
-                    ) : (
-                      <div className="text-xs uppercase tracking-wider text-gk-orange font-bold">
-                        DM for Price
-                      </div>
-                    )}
 
                     {/* Quantity adjuster */}
                     <div className="flex items-center gap-3">
@@ -215,15 +205,9 @@ export default function Cart() {
 
                 <div className="flex justify-between items-end pt-2">
                   <span className="text-xs font-bold text-white/40 uppercase tracking-widest">Order Total</span>
-                  {settings.showPrices === true ? (
                     <span className="font-mono text-2xl font-black text-gk-orange">
                       ₹{getSubtotal()}
                     </span>
-                  ) : (
-                    <span className="text-sm font-black text-gk-orange uppercase tracking-wider">
-                      DM for Price
-                    </span>
-                  )}
                 </div>
               </div>
 

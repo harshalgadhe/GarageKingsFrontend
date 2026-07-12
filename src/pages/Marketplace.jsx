@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { getCars, isFirebaseConfigured, getGlobalSettings } from '../lib/db'
+import { getCars, isFirebaseConfigured, getBrands } from '../lib/db'
 import { logError } from '../lib/telemetry'
 import Navigation from '../components/Navigation'
 import { useNavigate } from 'react-router-dom'
@@ -10,7 +10,7 @@ import Footer from '../components/Footer'
 
 export default function Marketplace() {
   const [cars, setCars] = useState([])
-  const [settings, setSettings] = useState({ showPrices: false })
+  const [backendBrands, setBackendBrands] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -30,6 +30,13 @@ export default function Marketplace() {
   const [preBookingOnly, setPreBookingOnly] = useState(false)
 
   const navigate = useNavigate()
+
+  // Load brands from backend on mount
+  useEffect(() => {
+    getBrands()
+      .then(data => setBackendBrands(data || []))
+      .catch(err => console.error("Error loading brands from backend:", err));
+  }, []);
 
   // Debounce search query changes to prevent database thrashing
   useEffect(() => {
@@ -54,14 +61,10 @@ export default function Marketplace() {
           inStock: inStockOnly ? true : undefined,
           preBooking: preBookingOnly ? true : undefined
         }
-        const [carData, settingsData] = await Promise.all([
-          getCars(params),
-          getGlobalSettings()
-        ])
+        const carData = await getCars(params)
         setCars(carData.products || [])
         setTotalPages(carData.totalPages || 1)
         setTotalItems(carData.total || 0)
-        setSettings({ showPrices: settingsData?.showPrices === true })
       } catch (err) {
         setError("Unable to retrieve catalog listings. Please verify your connection or try again shortly.")
         logError(err.message || 'Catalog Load Failed', err.stack);
@@ -122,14 +125,7 @@ export default function Marketplace() {
           <div className="flex flex-wrap gap-2 justify-center items-center mb-8 bg-white/[0.02] border border-white/5 p-2 rounded-2xl max-w-4xl mx-auto backdrop-blur-md">
             {[
               { label: 'All Brands', value: 'All' },
-              { label: 'Mini GT', value: 'Mini GT' },
-              { label: 'Kaido House', value: 'Kaido House' },
-              { label: 'Hot Wheels', value: 'Hotwheels' },
-              { label: 'Takara Tomy', value: 'Takara Tomy' },
-              { label: 'POP Race', value: 'POP Race' },
-              { label: 'Cool Car', value: 'COOLCAR' },
-              { label: 'Solido', value: 'Solido' },
-              { label: 'Flame', value: 'Flame' }
+              ...backendBrands.map(b => ({ label: b.name, value: b.name }))
             ].map(brand => {
               const isActive = brandFilter === brand.value;
               return (
@@ -291,14 +287,10 @@ export default function Marketplace() {
                           <div className="text-red-500 font-bold text-xs uppercase tracking-wider">
                             Sold Out
                           </div>
-                        ) : settings.showPrices === true ? (
+                        ) : (
                           <div>
                             <div className="text-[9px] uppercase tracking-wider text-white/40 mb-0.5">Price</div>
                             <div className="font-mono text-base text-white font-bold">{car.currency || '₹'}{car.price}</div>
-                          </div>
-                        ) : (
-                          <div className="text-xs uppercase tracking-wider text-gk-orange font-bold">
-                            DM for Price
                           </div>
                         )}
                         <div className="text-[10px] font-bold text-white/40 uppercase tracking-wider group-hover:text-gk-orange transition-colors">

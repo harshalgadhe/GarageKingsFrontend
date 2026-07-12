@@ -2,7 +2,7 @@
 
 import { useEffect, useState, forwardRef } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
-import { getGlobalSettings } from '../../lib/db'
+import { getPublicSettings } from '../../lib/db'
 
 // Helper function to resolve target countdown time from backend settings
 function getTargetTime(settings) {
@@ -49,7 +49,7 @@ const ReleaseBoard = forwardRef(function ReleaseBoard(props, ref) {
   const [remaining, setRemaining] = useState(() => Math.max(0, targetTime - Date.now()))
 
   useEffect(() => {
-    getGlobalSettings().then(data => {
+    getPublicSettings().then(data => {
       if (data) {
         setSettings(prev => ({
           ...prev,

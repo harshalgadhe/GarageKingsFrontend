@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { getProduct, getCars, getGlobalSettings } from '../lib/db'
+import { getProduct, getCars } from '../lib/db'
 import { logError } from '../lib/telemetry'
 import Navigation from '../components/Navigation'
 import Footer from '../components/Footer'
@@ -12,7 +12,6 @@ export default function ProductDetail() {
   const navigate = useNavigate()
   const [product, setProduct] = useState(null)
   const [bestSellers, setBestSellers] = useState([])
-  const [settings, setSettings] = useState({ showPrices: false })
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const [addedToCart, setAddedToCart] = useState(false)
@@ -23,10 +22,9 @@ export default function ProductDetail() {
     async function loadProductData() {
       setIsLoading(true)
       try {
-        const [prodData, allCars, settingsData] = await Promise.all([
+        const [prodData, allCars] = await Promise.all([
           getProduct(id),
-          getCars(),
-          getGlobalSettings()
+          getCars()
         ])
 
         if (!prodData) {
@@ -35,7 +33,6 @@ export default function ProductDetail() {
         }
 
         setProduct(prodData)
-        setSettings({ showPrices: settingsData?.showPrices === true })
 
         // Filter out current product, sort by sold_stock descending to get top 5 best sellers
         const otherCars = allCars
@@ -213,22 +210,15 @@ export default function ProductDetail() {
 
             {/* Price Display */}
             <div className="mb-6 flex items-center justify-between border-t border-white/5 pt-8">
-              {settings.showPrices === true ? (
-                <div>
-                  <div className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-1">Total Valuation</div>
-                  <div className="font-mono text-3xl font-black text-white">₹{(Number(product.price) * qty).toLocaleString('en-IN')}</div>
-                  {qty > 1 && <div className="text-xs text-white/40 mt-0.5">₹{Number(product.price).toLocaleString('en-IN')} × {qty}</div>}
-                </div>
-              ) : (
-                <div>
-                  <div className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-1">Pricing Option</div>
-                  <div className="text-lg font-black text-gk-orange uppercase tracking-wider">Direct Message for Pricing</div>
-                </div>
-              )}
+              <div>
+                <div className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-1">Total Valuation</div>
+                <div className="font-mono text-3xl font-black text-white">₹{(Number(product.price) * qty).toLocaleString('en-IN')}</div>
+                {qty > 1 && <div className="text-xs text-white/40 mt-0.5">₹{Number(product.price).toLocaleString('en-IN')} × {qty}</div>}
+              </div>
             </div>
 
-            {/* Quantity Selector — only when in stock and prices shown */}
-            {settings.showPrices === true && !isSoldOut && (() => {
+            {/* Quantity Selector — only when in stock */}
+            {!isSoldOut && (() => {
               const maxAvail = Math.max(1, Number(product.availableStock ?? (Number(product.totalStock || 1) - Number(product.soldStock || 0))))
               const maxAllowed = product.maxQtyPerCustomer ? Math.min(maxAvail, Number(product.maxQtyPerCustomer)) : maxAvail
               return (
@@ -265,7 +255,7 @@ export default function ProductDetail() {
                 >
                   Sold Out
                 </button>
-              ) : settings.showPrices === true ? (
+              ) : (
                 <>
                   <button
                     onClick={handleAddToCart}
@@ -289,13 +279,6 @@ export default function ProductDetail() {
                     Buy Now
                   </button>
                 </>
-              ) : (
-                <button
-                  onClick={handleBuyNow}
-                  className="w-full py-4.5 rounded-2xl bg-white/5 border border-white/10 hover:border-gk-orange/30 hover:bg-gk-orange/5 text-white font-black text-xs uppercase tracking-widest transition-all cursor-pointer text-center active:scale-[0.98]"
-                >
-                  Inquire Now
-                </button>
               )}
             </div>
           </div>
@@ -349,11 +332,11 @@ export default function ProductDetail() {
                     </h4>
                     
                     <div className="mt-auto flex justify-between items-center text-[10px]">
-                      {settings.showPrices === true && !isCarSoldOut ? (
+                      {!isCarSoldOut ? (
                         <span className="font-mono font-bold text-white">₹{car.price}</span>
                       ) : (
                         <span className="text-[8px] uppercase tracking-wider text-gk-orange font-bold">
-                          {isCarSoldOut ? 'Sold Out' : 'DM For Price'}
+                          Sold Out
                         </span>
                       )}
                       <span className="text-[8px] font-black uppercase tracking-wider text-white/30 group-hover:text-gk-orange transition-colors">

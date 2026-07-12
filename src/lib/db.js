@@ -128,6 +128,17 @@ export async function getGlobalSettings() {
   }
 }
 
+export async function getPublicSettings() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/public/settings`);
+    if (!res.ok) throw new Error("Failed to fetch public settings");
+    return await res.json();
+  } catch (err) {
+    console.error("Error fetching public settings:", err);
+    return {};
+  }
+}
+
 export async function updateGlobalSettings(settings) {
   const res = await fetch(`${API_BASE_URL}/settings`, {
     method: 'POST',
@@ -651,7 +662,8 @@ export async function getSupplierMetrics() {
 
 // Brands
 export async function getBrands(adminMode = false) {
-  const res = await fetch(`${API_BASE_URL}/brands?adminMode=${adminMode}`, {
+  const path = adminMode ? 'admin/brands' : 'brands';
+  const res = await fetch(`${API_BASE_URL}/${path}`, {
     headers: getAuthHeaders()
   });
   if (!res.ok) throw new Error("Failed to fetch brands");
@@ -689,7 +701,8 @@ export async function deleteBrand(id) {
 
 // Manufacturers
 export async function getManufacturers(adminMode = false) {
-  const res = await fetch(`${API_BASE_URL}/manufacturers?adminMode=${adminMode}`, {
+  const path = adminMode ? 'admin/manufacturers' : 'manufacturers';
+  const res = await fetch(`${API_BASE_URL}/${path}`, {
     headers: getAuthHeaders()
   });
   if (!res.ok) throw new Error("Failed to fetch manufacturers");
@@ -727,7 +740,8 @@ export async function deleteManufacturer(id) {
 
 // Scales
 export async function getScales(adminMode = false) {
-  const res = await fetch(`${API_BASE_URL}/scales?adminMode=${adminMode}`, {
+  const path = adminMode ? 'admin/scales' : 'scales';
+  const res = await fetch(`${API_BASE_URL}/${path}`, {
     headers: getAuthHeaders()
   });
   if (!res.ok) throw new Error("Failed to fetch scales");
@@ -765,7 +779,8 @@ export async function deleteScale(id) {
 
 // Series
 export async function getSeries(adminMode = false) {
-  const res = await fetch(`${API_BASE_URL}/series?adminMode=${adminMode}`, {
+  const path = adminMode ? 'admin/series' : 'series';
+  const res = await fetch(`${API_BASE_URL}/${path}`, {
     headers: getAuthHeaders()
   });
   if (!res.ok) throw new Error("Failed to fetch series");
