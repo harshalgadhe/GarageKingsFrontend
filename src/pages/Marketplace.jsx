@@ -325,19 +325,29 @@ export default function Marketplace() {
                 <div className="flex items-center gap-1">
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => {
                     const isActive = page === p;
-                    return (
-                      <button
-                        key={p}
-                        onClick={() => setPage(p)}
-                        className={`w-9 h-9 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                          isActive 
-                            ? 'bg-gk-orange text-white font-black shadow-[0_0_15px_rgba(225,6,0,0.3)] border border-gk-orange' 
-                            : 'text-white/50 hover:text-white hover:bg-white/5 border border-white/5'
-                        }`}
-                      >
-                        {p}
-                      </button>
-                    );
+                    if (p === 1 || p === totalPages || Math.abs(p - page) <= 1) {
+                      return (
+                        <button
+                          key={p}
+                          onClick={() => setPage(p)}
+                          className={`w-9 h-9 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                            isActive 
+                              ? 'bg-gk-orange text-white font-black shadow-[0_0_15px_rgba(225,6,0,0.3)] border border-gk-orange' 
+                              : 'text-white/50 hover:text-white hover:bg-white/5 border border-white/5'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      );
+                    }
+                    if (p === 2 || p === totalPages - 1) {
+                      return (
+                        <span key={p} className="text-white/30 text-xs px-1 font-mono">
+                          ...
+                        </span>
+                      );
+                    }
+                    return null;
                   })}
                 </div>
 

@@ -3210,12 +3210,15 @@ export default function Admin() {
                         </button>
                       </div>
                       <div className="space-y-3 text-xs">
-                        {splits.map((s, idx) => (
-                          <div key={idx} className="flex justify-between items-center py-1">
-                            <span className="font-bold text-white">{s.founder} Capital</span>
-                            <span className="font-mono font-bold text-emerald-400">₹{Number(s.contribution).toLocaleString('en-IN')}</span>
-                          </div>
-                        ))}
+                        {['Harshal', 'Anutosh', 'Sanchit', 'Anish'].map((founder, idx) => {
+                          const contribution = splitsData.paidMap?.[founder] || 0;
+                          return (
+                            <div key={idx} className="flex justify-between items-center py-1">
+                              <span className="font-bold text-white">{founder} Capital</span>
+                              <span className="font-mono font-bold text-emerald-400">₹{Number(contribution).toLocaleString('en-IN')}</span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>

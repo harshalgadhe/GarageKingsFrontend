@@ -175,7 +175,6 @@ export default function MasterData() {
         <div className="flex gap-1.5 bg-[#111] p-1.5 rounded-xl border border-white/5">
           {[
             { id: 'brands', label: 'Brands' },
-            { id: 'manufacturers', label: 'Manufacturers' },
             { id: 'scales', label: 'Scales' },
             { id: 'series', label: 'Series' }
           ].map(tab => (

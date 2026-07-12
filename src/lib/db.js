@@ -827,6 +827,19 @@ export async function getInventoryVariantDetails(variantId) {
   return await res.json();
 }
 
+export async function updateInventoryBatch(batchId, dto) {
+  const res = await fetch(`${API_BASE_URL}/admin/inventory/batches/${batchId}`, {
+    method: 'PATCH',
+    headers: {
+      ...getAuthHeaders(),
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(dto)
+  });
+  if (!res.ok) throw new Error("Failed to update inventory batch");
+  return await res.json();
+}
+
 // ── NEW ERP LOOKUPS ───────────────────────────────────────────────
 
 // Categories

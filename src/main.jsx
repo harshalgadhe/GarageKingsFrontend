@@ -55,20 +55,24 @@ window.fetch = async function (resource, config) {
     config = config || {};
     
     // AWS SigV4 requires x-amz-content-sha256 header containing the SHA-256 of the request body
-    const payloadHash = await calculateSHA256(config.body);
-    
-    config.headers = config.headers || {};
-    if (config.headers instanceof Headers) {
-      config.headers.set('x-amz-content-sha256', payloadHash);
-    } else if (Array.isArray(config.headers)) {
-      const idx = config.headers.findIndex(h => h[0].toLowerCase() === 'x-amz-content-sha256');
-      if (idx !== -1) {
-        config.headers[idx][1] = payloadHash;
-      } else {
-        config.headers.push(['x-amz-content-sha256', payloadHash]);
-      }
+    // Skip if body is FormData to prevent browser form boundaries serialization mismatch
+    if (config.body && config.body instanceof FormData) {
+      // Do not inject x-amz-content-sha256 for multipart uploads
     } else {
-      config.headers['x-amz-content-sha256'] = payloadHash;
+      const payloadHash = await calculateSHA256(config.body);
+      config.headers = config.headers || {};
+      if (config.headers instanceof Headers) {
+        config.headers.set('x-amz-content-sha256', payloadHash);
+      } else if (Array.isArray(config.headers)) {
+        const idx = config.headers.findIndex(h => h[0].toLowerCase() === 'x-amz-content-sha256');
+        if (idx !== -1) {
+          config.headers[idx][1] = payloadHash;
+        } else {
+          config.headers.push(['x-amz-content-sha256', payloadHash]);
+        }
+      } else {
+        config.headers['x-amz-content-sha256'] = payloadHash;
+      }
     }
   }
   return originalFetch.call(this, resource, config);

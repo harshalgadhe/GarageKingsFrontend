@@ -1,15 +1,21 @@
 import React, { useEffect, useState } from 'react';
-import { getInventoryVariantDetails } from '../../lib/db';
-import { ArrowLeft, RefreshCw, Calendar, Tag, Shield, Database, ShoppingCart, DollarSign, Archive } from 'lucide-react';
+import { getInventoryVariantDetails, updateInventoryBatch } from '../../lib/db';
+import { ArrowLeft, RefreshCw, Calendar, Tag, Shield, Database, ShoppingCart, DollarSign, Archive, Edit, Check, X } from 'lucide-react';
 
 export default function InventoryDetails({ variantId, onBack }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
 
-  useEffect(() => {
+  // Edit Batch States
+  const [editingBatchId, setEditingBatchId] = useState(null);
+  const [editCost, setEditCost] = useState('');
+  const [editAvailable, setEditAvailable] = useState('');
+  const [editReceived, setEditReceived] = useState('');
+  const [isSavingBatch, setIsSavingBatch] = useState(false);
+
+  const loadDetails = () => {
     if (!variantId) return;
-    setLoading(true);
     getInventoryVariantDetails(variantId)
       .then(res => {
         setData(res);
@@ -20,7 +26,40 @@ export default function InventoryDetails({ variantId, onBack }) {
         setError(err.message || 'Failed to load inventory details');
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    setLoading(true);
+    loadDetails();
   }, [variantId]);
+
+  const handleStartEdit = (b) => {
+    setEditingBatchId(b.id);
+    setEditCost(String(b.purchase_price));
+    setEditReceived(String(b.quantity_received));
+    setEditAvailable(String(b.quantity_available));
+  };
+
+  const handleCancelEdit = () => {
+    setEditingBatchId(null);
+  };
+
+  const handleSaveEdit = async (batchId) => {
+    setIsSavingBatch(true);
+    try {
+      await updateInventoryBatch(batchId, {
+        purchasePrice: Number(editCost),
+        quantityReceived: Number(editReceived),
+        quantityAvailable: Number(editAvailable)
+      });
+      setEditingBatchId(null);
+      loadDetails();
+    } catch (err) {
+      alert(err.message || "Failed to update batch");
+    } finally {
+      setIsSavingBatch(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -154,25 +193,92 @@ export default function InventoryDetails({ variantId, onBack }) {
                   <th className="p-4 font-bold text-center">Received Qty</th>
                   <th className="p-4 font-bold text-center">Available Qty</th>
                   <th className="p-4 font-bold">Receipt Code</th>
+                  <th className="p-4 font-bold text-center">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {batches.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="p-8 text-center text-zinc-500 uppercase tracking-wider text-[10px]">No active inventory batches.</td>
+                    <td colSpan={8} className="p-8 text-center text-zinc-500 uppercase tracking-wider text-[10px]">No active inventory batches.</td>
                   </tr>
                 ) : (
-                  batches.map(b => (
-                    <tr key={b.id} className="border-b border-white/5 hover:bg-white/[0.02]">
-                      <td className="p-4 font-mono text-zinc-400">{b.id.substring(0, 8)}...</td>
-                      <td className="p-4 text-zinc-300">{new Date(b.received_at).toLocaleDateString()}</td>
-                      <td className="p-4 text-white font-bold">{b.supplierName || 'Default Supplier'}</td>
-                      <td className="p-4 font-mono text-white font-bold">₹{Number(b.purchase_price).toFixed(2)}</td>
-                      <td className="p-4 text-center font-mono text-zinc-400">{b.quantity_received}</td>
-                      <td className="p-4 text-center font-mono text-white font-bold">{b.quantity_available}</td>
-                      <td className="p-4 font-mono text-[#ff5500] font-bold">{b.receiptNumber || 'Direct Seeding'}</td>
-                    </tr>
-                  ))
+                  batches.map(b => {
+                    const isEditing = editingBatchId === b.id;
+                    return (
+                      <tr key={b.id} className="border-b border-white/5 hover:bg-white/[0.02]">
+                        <td className="p-4 font-mono text-zinc-400">{b.id.substring(0, 8)}...</td>
+                        <td className="p-4 text-zinc-300">{new Date(b.received_at).toLocaleDateString()}</td>
+                        <td className="p-4 text-white font-bold">{b.supplierName || 'Default Supplier'}</td>
+                        <td className="p-4 font-mono text-white font-bold">
+                          {isEditing ? (
+                            <input
+                              type="number"
+                              value={editCost}
+                              onChange={e => setEditCost(e.target.value)}
+                              className="bg-black/50 border border-white/10 rounded px-2 py-1 text-xs w-20 text-white focus:outline-none focus:border-[#ff5500]"
+                            />
+                          ) : (
+                            `₹${Number(b.purchase_price).toFixed(2)}`
+                          )}
+                        </td>
+                        <td className="p-4 text-center font-mono text-zinc-400">
+                          {isEditing ? (
+                            <input
+                              type="number"
+                              value={editReceived}
+                              onChange={e => setEditReceived(e.target.value)}
+                              className="bg-black/50 border border-white/10 rounded px-2 py-1 text-xs w-16 text-center text-white focus:outline-none focus:border-[#ff5500]"
+                            />
+                          ) : (
+                            b.quantity_received
+                          )}
+                        </td>
+                        <td className="p-4 text-center font-mono text-white font-bold">
+                          {isEditing ? (
+                            <input
+                              type="number"
+                              value={editAvailable}
+                              onChange={e => setEditAvailable(e.target.value)}
+                              className="bg-black/50 border border-white/10 rounded px-2 py-1 text-xs w-16 text-center text-white focus:outline-none focus:border-[#ff5500]"
+                            />
+                          ) : (
+                            b.quantity_available
+                          )}
+                        </td>
+                        <td className="p-4 font-mono text-[#ff5500] font-bold">{b.receiptNumber || 'Direct Seeding'}</td>
+                        <td className="p-4 text-center">
+                          {isEditing ? (
+                            <div className="flex justify-center items-center gap-2">
+                              <button
+                                disabled={isSavingBatch}
+                                onClick={() => handleSaveEdit(b.id)}
+                                className="p-1.5 bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/20 rounded-lg cursor-pointer transition-colors"
+                                title="Save"
+                              >
+                                <Check size={12} />
+                              </button>
+                              <button
+                                disabled={isSavingBatch}
+                                onClick={handleCancelEdit}
+                                className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg cursor-pointer transition-colors"
+                                title="Cancel"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => handleStartEdit(b)}
+                              className="p-1.5 bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white border border-white/5 rounded-lg cursor-pointer transition-colors inline-flex items-center justify-center"
+                              title="Edit Batch"
+                            >
+                              <Edit size={12} />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>

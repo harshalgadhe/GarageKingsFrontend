@@ -402,15 +402,7 @@ export default function ProductForm({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <SearchableSelect 
-                label="Manufacturer"
-                value={manufacturer}
-                onChange={setManufacturer}
-                options={manufacturers}
-                onCreateNew={handleCreateManufacturer}
-                placeholder="Select Manufacturer..."
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <SearchableSelect 
                 label="Scale"
                 value={scale}

@@ -58,6 +58,24 @@ const BRANDS = [
     desc: 'Exclusive, limited-run boutique diecasts showcasing custom tuner culture, unique paint finishes, and high collector appeal.',
     color: 'from-red-500/10 to-transparent',
     glow: 'rgba(248,113,113,0.08)'
+  },
+  {
+    name: 'Solido',
+    dbValue: 'Solido',
+    origin: 'French Heritage since 1932',
+    style: '1:18 & 1:64 Classics',
+    desc: 'French model manufacturer renowned for opening doors, diecast bodies, and exceptional value-for-money classic and modern rally cars.',
+    color: 'from-cyan-500/10 to-transparent',
+    glow: 'rgba(6,182,212,0.08)'
+  },
+  {
+    name: 'Flame',
+    dbValue: 'Flame',
+    origin: 'Boutique Performance',
+    style: 'Premium Details',
+    desc: 'Rising performance diecast specialist featuring high-end wheel rolls, authentic paints, and unique display presentations.',
+    color: 'from-orange-600/10 to-transparent',
+    glow: 'rgba(234,88,12,0.08)'
   }
 ]
 
