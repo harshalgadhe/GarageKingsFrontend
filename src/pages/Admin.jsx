@@ -1552,7 +1552,6 @@ export default function Admin() {
             { id: 'procurement', label: 'Procurement', icon: Truck },
             { id: 'inventory', label: 'Inventory', icon: Layers },
             { id: 'orders', label: 'Orders', icon: FileText, badge: pendingOrdersCount },
-            { id: 'customers', label: 'Customers', icon: Users },
             { id: 'reports', label: 'Reports', icon: BarChart3 },
             { id: 'notifications', label: 'Alerts', icon: Bell, badge: notifications.length },
             { id: 'diagnostics', label: 'Diagnostics', icon: Activity },
