@@ -191,7 +191,7 @@ export default function Checkout() {
 
   const handleReserve = async (e) => {
     e.preventDefault()
-    if (!name || !email || !phone || !address) {
+    if (!fullName || !email || !phone || !address) {
       setError('Please fill in all checkout fields.')
       return
     }
@@ -205,7 +205,7 @@ export default function Checkout() {
         items: cartItems.flatMap(item => 
           Array.from({ length: item.quantity || 1 }, () => ({ productId: item.id, price: item.price }))
         ),
-        name,
+        name: fullName,
         email,
         phone,
         address,
@@ -215,7 +215,7 @@ export default function Checkout() {
         advanceAmount: advanceAmount
       } : {
         productId: product.id,
-        name,
+        name: fullName,
         email,
         phone,
         address,
