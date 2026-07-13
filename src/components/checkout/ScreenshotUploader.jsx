@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { useLoading } from '../../providers/LoadingProvider';
 
 export default function ScreenshotUploader({ orderId, onUploadSuccess }) {
   const [file, setFile] = useState(null);
@@ -6,6 +7,7 @@ export default function ScreenshotUploader({ orderId, onUploadSuccess }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const fileInputRef = useRef(null);
+  const { showLoader, hideLoader } = useLoading();
 
   const API_BASE_URL = import.meta.env.PROD 
     ? '/api/v1' 
@@ -32,6 +34,7 @@ export default function ScreenshotUploader({ orderId, onUploadSuccess }) {
     }
 
     setUploading(true);
+    showLoader('Uploading payment receipt...');
     setError('');
 
     const formData = new FormData();
@@ -59,10 +62,12 @@ export default function ScreenshotUploader({ orderId, onUploadSuccess }) {
 
       const data = await response.json();
 
+      hideLoader();
       if (onUploadSuccess) {
         onUploadSuccess();
       }
     } catch (err) {
+      hideLoader();
       setError(err.message || 'Error uploading receipt.');
     } finally {
       setUploading(false);

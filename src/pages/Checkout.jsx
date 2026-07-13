@@ -8,6 +8,7 @@ import { logError } from '../lib/telemetry'
 import Navigation from '../components/Navigation'
 import Footer from '../components/Footer'
 import { ArrowLeft, Check, ShieldAlert } from 'lucide-react'
+import { useLoading } from '../providers/LoadingProvider'
 
 const generateUUID = () => {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -23,6 +24,7 @@ export default function Checkout() {
   const singleProductId = searchParams.get('product')
   const purchaseCasingType = searchParams.get('casing')
   const urlQty = Math.max(1, parseInt(searchParams.get('qty') || '1', 10))
+  const { showLoader, hideLoader } = useLoading()
 
   const [user, setUser] = useState(null)
   const [product, setProduct] = useState(null)
@@ -58,6 +60,7 @@ export default function Checkout() {
 
     async function loadData() {
       setLoading(true)
+      showLoader('Loading checkout details...')
       try {
         const [settingsData, prodData] = await Promise.all([
           getPublicSettings(),
@@ -93,6 +96,7 @@ export default function Checkout() {
         // Prefill profile information
         const user = getCurrentUser()
         if (!user) {
+          hideLoader()
           // Force login
           window.location.href = `/account?returnTo=${encodeURIComponent(window.location.pathname + window.location.search)}`
           return
@@ -114,6 +118,7 @@ export default function Checkout() {
         logError("Failed to initialize checkout page data", e.stack)
       } finally {
         setLoading(false)
+        hideLoader()
       }
     }
     loadData()
@@ -198,6 +203,7 @@ export default function Checkout() {
     }
 
     setLoading(true)
+    showLoader('Securing your castings...')
     setError('')
 
     try {
@@ -260,6 +266,7 @@ export default function Checkout() {
       logError(err.message || 'Checkout Submission Failed', err.stack)
     } finally {
       setLoading(false)
+      hideLoader()
     }
   }
 

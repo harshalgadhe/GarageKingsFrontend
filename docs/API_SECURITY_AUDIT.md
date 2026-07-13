@@ -20,7 +20,8 @@ This document identifies security exposures, missing authorization checks, IDOR 
 | :--- | :--- | :--- | :--- | :--- |
 | `GET /api/v1/public/products` | GET | Database `products` array | **UNSAFE** (leaks purchasePrice, internal SKU, exact stocks) | Project with `PublicProductResponseDto` showing availability status |
 | `GET /api/v1/public/products/:id` | GET | Complete product details | **UNSAFE** (leaks supplier, margins, exact stocks) | Project with `PublicProductResponseDto` |
-| `GET /api/v1/public/settings` | GET | Global configuration JSON | **SAFE** | Limit to standard public DTO schema |
+| `GET /api/v1/public/settings` | GET | Global configuration JSON | **SAFE** | Filtered to return only safe public UI configurations |
+| `GET /api/v1/settings` | GET | Global configuration JSON | **SAFE** | Filtered to return only safe public UI configurations |
 | `GET /api/v1/public/images/:filename` | GET | Image binary stream | **SAFE** | Public static media router |
 
 ### 2.2 Customer APIs (Collector Auth required)
@@ -51,6 +52,8 @@ This document identifies security exposures, missing authorization checks, IDOR 
 | `GET /api/v1/admin/cash-ledger` | GET | `checkAdmin` | **SAFE** | Ledger details |
 | `GET /api/v1/admin/founder-ledger` | GET | `checkAdmin` | **SAFE** | Splits details |
 | `GET /api/v1/admin/supplier-purchases`| GET | `checkAdmin` | **SAFE** | Purchases details |
+| `GET /api/v1/admin/settings` | GET | `checkAdmin` | **SAFE** | Full internal settings DTO (shipping fee, splits, limits) |
+| `POST /api/v1/admin/settings` | POST | `checkAdmin` | **SAFE** | Save/update global configurations |
 | `GET /api/v1/receipts` | GET | Token only | **VULNERABLE** | Exposes company invoices to standard customers; restrict to Admin/Owner |
 | `DELETE /api/v1/receipts/:id` | DELETE | Token only | **VULNERABLE** | Exposes receipt deletion to standard customers; restrict to Admin/Owner |
 

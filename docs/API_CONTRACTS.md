@@ -83,3 +83,34 @@ export class AdminProductResponseDto {
   updatedAt: string;
 }
 ```
+
+### 2.4 Public Global Settings DTO
+Returned by: `GET /api/v1/settings` and `GET /api/v1/public/settings`
+
+```typescript
+export class PublicSettingsResponseDto {
+  showPrices: boolean;
+  instagramUrl: string;
+  companyUpiId: string;
+  upiQrImage: string;
+  partnerNames: string[];
+}
+```
+
+### 2.5 Admin Settings DTO
+Returned by: `GET /api/v1/admin/settings`
+
+```typescript
+export class AdminSettingsResponseDto extends PublicSettingsResponseDto {
+  splits: Record<string, number>;
+  lowStockThreshold: number;
+  reservationDuration: number;
+  marketplaceMobileInitialPageSize: number;
+  marketplaceDesktopInitialPageSize: number;
+  shippingConfig: {
+    defaultFee: number;
+    freeShippingThreshold: number | null;
+    regions: { code: string; flatRate: number }[];
+  };
+}
+```

@@ -150,31 +150,36 @@ export async function updateGlobalSettings(settings) {
 }
 
 export async function getCars(params = {}) {
+  // Extract signal separately — it's not a query param
+  const { signal, ...queryOptions } = params;
   try {
     const queryParams = new URLSearchParams();
-    if (params.page) queryParams.append('page', params.page);
-    if (params.limit) queryParams.append('limit', params.limit);
-    if (params.offset !== undefined) queryParams.append('offset', params.offset);
-    if (params.brand) queryParams.append('brand', params.brand);
-    if (params.scale) queryParams.append('scale', params.scale);
-    if (params.tag) queryParams.append('tag', params.tag);
-    if (params.search) queryParams.append('search', params.search);
-    if (params.inStock !== undefined) queryParams.append('inStock', params.inStock);
-    if (params.preBooking !== undefined) queryParams.append('preBooking', params.preBooking);
+    if (queryOptions.page) queryParams.append('page', queryOptions.page);
+    if (queryOptions.limit) queryParams.append('limit', queryOptions.limit);
+    if (queryOptions.offset !== undefined) queryParams.append('offset', queryOptions.offset);
+    if (queryOptions.brand) queryParams.append('brand', queryOptions.brand);
+    if (queryOptions.scale) queryParams.append('scale', queryOptions.scale);
+    if (queryOptions.tag) queryParams.append('tag', queryOptions.tag);
+    if (queryOptions.search) queryParams.append('search', queryOptions.search);
+    if (queryOptions.inStock !== undefined) queryParams.append('inStock', queryOptions.inStock);
+    if (queryOptions.preBooking !== undefined) queryParams.append('preBooking', queryOptions.preBooking);
 
     const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
     const res = await fetch(`${API_BASE_URL}/products${queryString}`, {
-      headers: getAuthHeaders()
+      headers: getAuthHeaders(),
+      ...(signal ? { signal } : {})
     });
     if (!res.ok) throw new Error("Failed to fetch castings");
     const data = await res.json();
-    if (params.paginated) {
+    if (queryOptions.paginated) {
       return data;
     }
     return data.products || data;
   } catch (err) {
+    // Re-throw AbortError so callers can detect request cancellation
+    if (err?.name === 'AbortError') throw err;
     console.error("Error fetching cars:", err);
-    return params.paginated ? { products: [], total: 0 } : [];
+    return queryOptions.paginated ? { products: [], total: 0 } : [];
   }
 }export async function getProduct(id) {
   try {

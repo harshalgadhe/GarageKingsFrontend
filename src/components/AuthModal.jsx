@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Mail, Lock, ShieldAlert, CheckCircle2, ArrowRight, ArrowLeft, Loader2, User } from 'lucide-react'
 import { signInCognito, signUpCognito, confirmSignUpCognito, signInWithGoogleProfile, autoConfirmUserBackend, parseJwt } from '../lib/auth'
+import { useLoading } from '../providers/LoadingProvider'
 
 export default function AuthModal({ isOpen, onClose, themeColor = 'purple', onAuthSuccess }) {
   const [mode, setMode] = useState('login') // 'login' | 'signup' | 'verify'
@@ -13,6 +14,7 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'purple', onAu
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
+  const { showLoader, hideLoader } = useLoading()
 
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
   const isGoogleAvailable = clientId && !clientId.includes('dummy') && clientId !== '818913587248-1jgrq7f5d4g3d8a1c9h8t2s1p0c0o0p0.apps.googleusercontent.com';

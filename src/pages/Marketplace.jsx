@@ -1,24 +1,25 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getCars, isFirebaseConfigured, getBrands } from '../lib/db'
 import { logError } from '../lib/telemetry'
 import Navigation from '../components/Navigation'
 import { useNavigate } from 'react-router-dom'
-import { Search, ShoppingCart, Trash2, ShoppingBag, X } from 'lucide-react'
+import { Search } from 'lucide-react'
 import ReserveModal from '../components/checkout/ReserveModal'
 import Footer from '../components/Footer'
+import { MarketplaceGridSkeleton } from '../components/Skeletons'
 
 export default function Marketplace() {
   const [cars, setCars] = useState([])
   const [backendBrands, setBackendBrands] = useState([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isFirstLoad, setIsFirstLoad] = useState(true)
   const [error, setError] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   
   // Pagination & Filtering States
   const [page, setPage] = useState(1)
-  const limit = 12
   const [totalPages, setTotalPages] = useState(1)
   const [totalItems, setTotalItems] = useState(0)
   const [brandFilter, setBrandFilter] = useState(() => {
@@ -30,6 +31,11 @@ export default function Marketplace() {
   const [preBookingOnly, setPreBookingOnly] = useState(false)
 
   const [isMobile, setIsMobile] = useState(false)
+
+  // AbortController ref for request deduplication
+  const abortControllerRef = useRef(null)
+  // Lock flag to prevent concurrent infinite scroll fetches
+  const isFetchingRef = useRef(false)
 
   const navigate = useNavigate()
 
@@ -48,10 +54,12 @@ export default function Marketplace() {
       .catch(err => console.error("Error loading brands from backend:", err));
   }, []);
 
-  // Debounce search query changes to prevent database thrashing
+  // Debounce search — only activate if query is empty (clear) or >= 3 chars
   useEffect(() => {
+    const trimmed = searchQuery.trim()
+    if (trimmed.length > 0 && trimmed.length < 3) return // Suppress short queries
     const timer = setTimeout(() => {
-      setDebouncedSearch(searchQuery)
+      setDebouncedSearch(trimmed)
       setPage(1)
     }, 400)
     return () => clearTimeout(timer)
@@ -59,7 +67,15 @@ export default function Marketplace() {
 
   useEffect(() => {
     async function load() {
+      // Cancel any in-flight request before starting a new one
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+      const controller = new AbortController()
+      abortControllerRef.current = controller
+      isFetchingRef.current = true
       setIsLoading(true)
+
       try {
         const isFirstPage = page === 1;
         const currentLimit = isMobile 
@@ -76,12 +92,23 @@ export default function Marketplace() {
           paginated: true,
           brand: brandFilter !== 'All' ? brandFilter : undefined,
           scale: scaleFilter !== 'All' ? scaleFilter : undefined,
-          search: debouncedSearch.trim() || undefined,
+          search: debouncedSearch || undefined,
           inStock: inStockOnly ? true : undefined,
-          preBooking: preBookingOnly ? true : undefined
+          preBooking: preBookingOnly ? true : undefined,
+          signal: controller.signal
         }
         const carData = await getCars(params)
-        const newProducts = carData.products || [];
+
+        // Bail out silently if request was aborted mid-flight
+        if (controller.signal.aborted) return
+
+        const newProducts = (carData.products || []).map(p => ({
+          ...p,
+          // Normalize price: the paginated endpoint returns sellingPrice, not price
+          price: p.sellingPrice ?? p.price,
+          // Normalize lane: the paginated endpoint returns grade, not lane
+          lane: p.lane ?? p.grade ?? p.manufacturer,
+        }))
         
         if (isMobile) {
           setCars(prev => {
@@ -96,13 +123,23 @@ export default function Marketplace() {
         setTotalPages(carData.totalPages || 1)
         setTotalItems(carData.total || 0)
       } catch (err) {
+        if (err?.name === 'AbortError') return // Expected — not an error
         setError("Unable to retrieve catalog listings. Please verify your connection or try again shortly.")
         logError(err.message || 'Catalog Load Failed', err.stack);
       } finally {
-        setIsLoading(false)
+        if (!controller.signal.aborted) {
+          setIsLoading(false)
+          setIsFirstLoad(false)
+          isFetchingRef.current = false
+        }
       }
     }
     load()
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+    }
   }, [page, brandFilter, scaleFilter, debouncedSearch, inStockOnly, preBookingOnly, isMobile])
 
   // Handle infinite scroll on mobile
@@ -116,15 +153,16 @@ export default function Marketplace() {
       const clientHeight = document.documentElement.clientHeight;
       
       if (scrollHeight - scrollTop - clientHeight < threshold) {
-        if (!isLoading && cars.length < totalItems) {
+        // Guard: never trigger if already fetching or all items loaded
+        if (!isFetchingRef.current && cars.length < totalItems) {
           setPage(prev => prev + 1);
         }
       }
     };
     
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [isMobile, isLoading, cars.length, totalItems]);
+  }, [isMobile, cars.length, totalItems]);
 
   useEffect(() => {
     // Autofocus the search bar if requested via navigation
@@ -172,7 +210,7 @@ export default function Marketplace() {
       <div className="max-w-7xl mx-auto px-6 py-12 md:py-20">
         
         {/* Horizontal Brand Selector (Pills) */}
-        {!error && !isLoading && (
+        {!error && (
           <div className="flex flex-wrap gap-2 justify-center items-center mb-8 bg-white/[0.02] border border-white/5 p-2 rounded-2xl max-w-4xl mx-auto backdrop-blur-md">
             {[
               { label: 'All Brands', value: 'All' },
@@ -197,7 +235,7 @@ export default function Marketplace() {
         )}
 
         {/* Sub-Filters: Scale, Availability & Pre-Booking */}
-        {!error && !isLoading && (
+        {!error && (
           <div className="flex flex-wrap gap-6 items-center justify-center mb-10 bg-white/[0.01] border border-white/5 p-4 rounded-2xl max-w-2xl mx-auto backdrop-blur-md">
             <div className="flex items-center gap-2">
               <label className="text-[10px] uppercase tracking-widest text-white/40 font-black">Scale:</label>
@@ -247,13 +285,8 @@ export default function Marketplace() {
               <p className="text-sm">{error}</p>
             </div>
           </div>
-        ) : (isLoading && cars.length === 0) ? (
-          <div className="flex justify-center py-20 md:py-32">
-            <div className="flex flex-col items-center gap-4">
-              <div className="w-12 h-12 rounded-full border-4 border-gk-orange/30 border-t-gk-orange animate-spin" />
-              <div className="text-sm font-bold uppercase tracking-widest text-gk-orange animate-pulse">Unlocking Vault...</div>
-            </div>
-          </div>
+        ) : (isFirstLoad && isLoading) ? (
+          <MarketplaceGridSkeleton count={isMobile ? 6 : 12} />
         ) : cars.length === 0 ? (
           <div className="text-center py-20 md:py-32 text-white/50">No items found matching your filters.</div>
         ) : (
@@ -364,7 +397,11 @@ export default function Marketplace() {
                         ) : (
                           <div>
                             <div className="text-[9px] uppercase tracking-wider text-white/40 mb-0.5">Price</div>
-                            <div className="font-mono text-base text-white font-bold">{car.currency || '₹'}{car.price}</div>
+                            {(car.price != null && Number(car.price) > 0) ? (
+                              <div className="font-mono text-base text-white font-bold">{car.currency || '₹'}{Number(car.price).toLocaleString('en-IN')}</div>
+                            ) : (
+                              <div className="text-[10px] font-semibold text-white/30 uppercase tracking-wider">Contact Us</div>
+                            )}
                           </div>
                         )}
                         <div className="text-[10px] font-bold text-white/40 uppercase tracking-wider group-hover:text-gk-orange transition-colors">

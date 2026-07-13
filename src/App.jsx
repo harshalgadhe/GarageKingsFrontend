@@ -13,22 +13,26 @@ import Cart from './pages/Cart'
 import Checkout from './pages/Checkout'
 import NotFound from './pages/NotFound'
 
+import { LoadingProvider } from './providers/LoadingProvider'
+
 export default function App() {
   return (
     <Router>
       <SmoothScrollProvider>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/admin" element={<Admin />} />
-          <Route path="/account" element={<Account />} />
-          <Route path="/marketplace" element={<Marketplace />} />
-          <Route path="/help" element={<Help />} />
-          <Route path="/policies" element={<Policies />} />
-          <Route path="/product/:id" element={<ProductDetail />} />
-          <Route path="/cart" element={<Cart />} />
-          <Route path="/checkout" element={<Checkout />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <LoadingProvider>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/admin" element={<Admin />} />
+            <Route path="/account" element={<Account />} />
+            <Route path="/marketplace" element={<Marketplace />} />
+            <Route path="/help" element={<Help />} />
+            <Route path="/policies" element={<Policies />} />
+            <Route path="/product/:id" element={<ProductDetail />} />
+            <Route path="/cart" element={<Cart />} />
+            <Route path="/checkout" element={<Checkout />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </LoadingProvider>
       </SmoothScrollProvider>
       <SpeedInsights />
       <Analytics />

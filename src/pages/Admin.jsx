@@ -660,7 +660,7 @@ export default function Admin() {
 
   const fetchSettings = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/settings`, { credentials: 'include' });
+      const res = await fetch(`${API_BASE_URL}/admin/settings`, { credentials: 'include' });
       if (res.ok) setGlobalSettings(await res.json());
     } catch (e) {
       console.error("Error loading settings:", e);
