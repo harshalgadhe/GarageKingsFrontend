@@ -479,6 +479,7 @@ export default function ThreeDCarShowcase() {
         <pointLight position={[0, 4, 0]} color="#E10600" intensity={1.5} distance={10} />
         <pointLight position={[-6, 2, -3]} color="#FFB300" intensity={1.0} distance={8} />
 
+        {/* Dark fallback prevents transparent void during 3D asset streaming */}
         <Suspense fallback={null}>
           {/* Neon Retro-grid road */}
           <InfiniteRoadGrid scrollProgress={scrollProgress} />

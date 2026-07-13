@@ -1,11 +1,17 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useLocation } from 'react-router-dom'
 
 const LoadingContext = createContext(null)
 
 export function LoadingProvider({ children }) {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
+  const location = useLocation()
+  // Track whether this is a programmatic loader (showLoader call) vs route transition
+  const programmaticRef = useRef(false)
+  // Prevent re-entrance: track if a route-transition overlay is already active
+  const routeTimerRef = useRef(null)
 
   // Disable body scroll when loading is active
   useEffect(() => {
@@ -19,12 +25,48 @@ export function LoadingProvider({ children }) {
     }
   }, [loading])
 
+  // Route transition bridge — show the overlay briefly on every navigation
+  // This masks the unmount/mount seam between pages
+  useEffect(() => {
+    // Don't interrupt programmatic loaders (Checkout, Auth, etc.)
+    if (programmaticRef.current) return
+
+    // Clear any pending route timer
+    if (routeTimerRef.current) {
+      clearTimeout(routeTimerRef.current)
+    }
+
+    // Show overlay immediately on route change
+    setMessage('')
+    setLoading(true)
+
+    // Hide after a short bridge delay — long enough for new page to render its shell
+    routeTimerRef.current = setTimeout(() => {
+      if (!programmaticRef.current) {
+        setLoading(false)
+      }
+    }, 120)
+
+    return () => {
+      if (routeTimerRef.current) {
+        clearTimeout(routeTimerRef.current)
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname])
+
   const showLoader = (msg = '') => {
+    programmaticRef.current = true
+    // Cancel any pending route transition timer
+    if (routeTimerRef.current) {
+      clearTimeout(routeTimerRef.current)
+    }
     setMessage(msg)
     setLoading(true)
   }
 
   const hideLoader = () => {
+    programmaticRef.current = false
     setLoading(false)
     setMessage('')
   }
@@ -37,7 +79,8 @@ export function LoadingProvider({ children }) {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            exit={{ opacity: 0, transition: { duration: 0.15 } }}
+            transition={{ duration: 0.1 }}
             className="fixed inset-0 z-[9999] bg-[#050505]/95 backdrop-blur-lg flex flex-col items-center justify-center pointer-events-auto select-none"
           >
             <div className="relative flex flex-col items-center gap-6">
@@ -61,19 +104,21 @@ export function LoadingProvider({ children }) {
                 </div>
               </div>
 
-              {/* Loader typography */}
-              <div className="text-center space-y-1.5">
-                <motion.div
-                  animate={{ opacity: [0.4, 1, 0.4] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-                  className="text-xs font-black uppercase tracking-[0.25em] text-white"
-                >
-                  {message || 'Securing Vault Connection'}
-                </motion.div>
-                <div className="text-[9px] font-medium text-white/40 uppercase tracking-widest">
-                  Please hold on • Secure Transaction
+              {/* Loader typography — only show for programmatic (non-route-transition) loads */}
+              {message && (
+                <div className="text-center space-y-1.5">
+                  <motion.div
+                    animate={{ opacity: [0.4, 1, 0.4] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                    className="text-xs font-black uppercase tracking-[0.25em] text-white"
+                  >
+                    {message}
+                  </motion.div>
+                  <div className="text-[9px] font-medium text-white/40 uppercase tracking-widest">
+                    Please hold on • Secure Transaction
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </motion.div>
         )}

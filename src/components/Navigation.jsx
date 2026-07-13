@@ -31,10 +31,14 @@ export default function Navigation({ activeSection }) {
   const navigate = useNavigate()
   const [isOpen, setIsOpen] = useState(false)
   const [activeTab, setActiveTab] = useState('hero')
-  const [user, setUser] = useState(null)
+  // Initialize synchronously from localStorage to prevent 1-frame "logged out" flash
+  const [user, setUser] = useState(() => getCurrentUser())
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false)
-  const [cart, setCart] = useState([])
+  // Initialize synchronously from localStorage to prevent 1-frame "empty cart" flash
+  const [cart, setCart] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('gk_cart') || '[]') } catch { return [] }
+  })
 
   useEffect(() => {
     const handleUserUpdate = () => {

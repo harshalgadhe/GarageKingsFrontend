@@ -6,21 +6,18 @@ import Footer from '../components/Footer'
 
 export default function Cart() {
   const navigate = useNavigate()
-  const [cartItems, setCartItems] = useState([])
-  const [isLoading, setIsLoading] = useState(true)
+  // Cart is in localStorage — initialize synchronously to avoid any loading flash
+  const [cartItems, setCartItems] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('gk_cart') || '[]') } catch { return [] }
+  })
 
+  // Keep cart in sync with updates from other components
   useEffect(() => {
-    async function loadCart() {
-      try {
-        const saved = localStorage.getItem('gk_cart')
-        setCartItems(saved ? JSON.parse(saved) : [])
-      } catch (err) {
-        console.error('Error loading cart settings:', err)
-      } finally {
-        setIsLoading(false)
-      }
+    const sync = () => {
+      try { setCartItems(JSON.parse(localStorage.getItem('gk_cart') || '[]')) } catch {}
     }
-    loadCart()
+    window.addEventListener('gk_cart_updated', sync)
+    return () => window.removeEventListener('gk_cart_updated', sync)
   }, [])
 
   const saveCart = (newCart) => {
@@ -49,18 +46,6 @@ export default function Cart() {
     return cartItems.reduce((sum, item) => sum + Number(item.price || 0) * (item.quantity || 1), 0)
   }
 
-  if (isLoading) {
-    return (
-      <div className="min-h-[100svh] bg-gk-black text-white flex flex-col pt-16">
-        <Navigation activeSection="vault" />
-        <div className="flex-1 flex flex-col items-center justify-center py-20">
-          <div className="w-12 h-12 rounded-full border-4 border-gk-orange/30 border-t-gk-orange animate-spin mb-4" />
-          <div className="text-sm font-bold uppercase tracking-widest text-gk-orange animate-pulse">Retrieving Cart...</div>
-        </div>
-        <Footer />
-      </div>
-    )
-  }
 
   return (
     <div className="min-h-[100svh] bg-gk-black text-white selection:bg-gk-yellow selection:text-black pt-16 flex flex-col">

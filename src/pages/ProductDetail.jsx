@@ -6,6 +6,7 @@ import { logError } from '../lib/telemetry'
 import Navigation from '../components/Navigation'
 import Footer from '../components/Footer'
 import { ShoppingBag, ArrowLeft, Plus, Minus, Check } from 'lucide-react'
+import { ProductDetailSkeleton } from '../components/Skeletons'
 
 export default function ProductDetail() {
   const { id } = useParams()
@@ -76,14 +77,12 @@ export default function ProductDetail() {
     navigate(`/checkout?product=${product.id}&qty=${qty}`)
   }
 
+  // Keep nav+footer always mounted. Render skeleton inside the shell during load.
   if (isLoading) {
     return (
       <div className="min-h-[100svh] bg-gk-black text-white flex flex-col pt-16">
         <Navigation activeSection="vault" />
-        <div className="flex-1 flex flex-col items-center justify-center py-20">
-          <div className="w-12 h-12 rounded-full border-4 border-gk-orange/30 border-t-gk-orange animate-spin mb-4" />
-          <div className="text-sm font-bold uppercase tracking-widest text-gk-orange animate-pulse">Scanning Archives...</div>
-        </div>
+        <ProductDetailSkeleton />
         <Footer />
       </div>
     )
@@ -115,7 +114,12 @@ export default function ProductDetail() {
     : (Number(product.totalStock || 0) - Number(product.soldStock || 0) <= 0)
 
   return (
-    <div className="min-h-[100svh] bg-gk-black text-white selection:bg-gk-yellow selection:text-black pt-16 flex flex-col">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+      className="min-h-[100svh] bg-gk-black text-white selection:bg-gk-yellow selection:text-black pt-16 flex flex-col"
+    >
       <Navigation activeSection="vault" />
 
       {/* Main product wrapper */}
@@ -358,6 +362,6 @@ export default function ProductDetail() {
         )}
       </div>
       <Footer />
-    </div>
+    </motion.div>
   )
 }

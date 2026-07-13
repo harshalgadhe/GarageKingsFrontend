@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" style="background:#090909;color:#f5f5f5">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/brand-logo.png" />
@@ -8,6 +8,13 @@
       name="description"
       content="Garage Kings — India's Curated Die-cast Vault. Authenticated. Graded. Delivered."
     />
+    <!-- Critical: dark background applied before any JS or CSS bundle loads.
+         Eliminates the white flash during React hydration on all devices. -->
+    <style>
+      *,::before,::after{box-sizing:border-box}
+      html,body{margin:0;padding:0;background:#090909;color:#f5f5f5;min-height:100%}
+      #root{background:#090909;min-height:100vh;min-height:100dvh}
+    </style>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -17,8 +24,9 @@
     <title>Garage Kings | India's Curated Die-cast Vault</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
   </head>
-  <body>
+  <body style="background:#090909">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
+

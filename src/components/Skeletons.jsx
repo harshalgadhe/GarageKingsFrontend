@@ -139,3 +139,70 @@ export function StatisticsSkeleton() {
     </div>
   )
 }
+
+export function ProductDetailSkeleton() {
+  return (
+    <div className="flex-1 max-w-7xl mx-auto px-6 py-8 md:py-16 w-full">
+      {/* Back link */}
+      <Shimmer className="h-4 w-24 rounded mb-10" />
+      {/* Two-col hero */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16 items-start mb-20">
+        {/* Left — image */}
+        <div className="lg:col-span-7">
+          <Shimmer className="aspect-[4/3] w-full rounded-3xl" />
+        </div>
+        {/* Right — metadata */}
+        <div className="lg:col-span-5 flex flex-col gap-5 pt-4">
+          <Shimmer className="h-3 w-32 rounded" />
+          <Shimmer className="h-10 w-3/4 rounded" />
+          <Shimmer className="h-4 w-24 rounded" />
+          <Shimmer className="h-16 w-full rounded-xl" />
+          <div className="grid grid-cols-2 gap-4 mt-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Shimmer key={i} className="h-14 rounded-xl" />
+            ))}
+          </div>
+          <div className="border-t border-white/10 pt-6 flex gap-4">
+            <Shimmer className="flex-1 h-14 rounded-2xl" />
+            <Shimmer className="flex-1 h-14 rounded-2xl" />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function CartSkeleton() {
+  return (
+    <div className="flex-1 max-w-7xl mx-auto px-6 py-8 md:py-16 w-full">
+      <Shimmer className="h-4 w-24 rounded mb-10" />
+      <Shimmer className="h-10 w-56 rounded mb-10" />
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+        {/* Items */}
+        <div className="lg:col-span-8 space-y-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="flex gap-4 p-4 bg-white/[0.02] border border-white/5 rounded-2xl items-center">
+              <Shimmer className="w-18 h-18 rounded-xl flex-shrink-0" />
+              <div className="flex-1 space-y-2">
+                <Shimmer className="h-3 w-20 rounded" />
+                <Shimmer className="h-4 w-40 rounded" />
+                <Shimmer className="h-3 w-16 rounded" />
+              </div>
+              <Shimmer className="h-8 w-24 rounded-xl" />
+            </div>
+          ))}
+        </div>
+        {/* Summary */}
+        <div className="lg:col-span-4 bg-white/[0.01] border border-white/5 rounded-3xl p-8 space-y-4">
+          <Shimmer className="h-5 w-28 rounded mb-4" />
+          <Shimmer className="h-4 w-full rounded" />
+          <Shimmer className="h-4 w-full rounded" />
+          <Shimmer className="h-4 w-3/4 rounded" />
+          <div className="pt-4">
+            <Shimmer className="h-12 w-full rounded-xl" />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

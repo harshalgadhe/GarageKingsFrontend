@@ -5,6 +5,7 @@ import { getCustomerOrders, getCustomerProfile, updateCustomerProfile } from '..
 import Navigation from '../components/Navigation';
 import Footer from '../components/Footer';
 import { User, FileText, Clock, Settings, LogOut, Package, ExternalLink, Calendar, MapPin, AlertCircle, Shield } from 'lucide-react';
+import { ProfileSkeleton, OrderSkeleton } from '../components/Skeletons';
 
 export default function Account() {
   const [user, setUser] = useState(null);
@@ -259,9 +260,13 @@ export default function Account() {
       <Navigation activeSection="account" />
 
       {loading ? (
-        <div className="flex-1 flex flex-col items-center justify-center py-32">
-          <div className="w-12 h-12 rounded-full border-4 border-gk-orange/20 border-t-gk-orange animate-spin mb-4" />
-          <div className="text-xs uppercase tracking-widest text-gk-orange font-black animate-pulse">Accessing Vault Profile...</div>
+        <div className="flex-1 max-w-6xl w-full mx-auto px-4 md:px-8 py-24 md:py-32">
+          <ProfileSkeleton />
+          <div className="mt-8 space-y-4">
+            <OrderSkeleton />
+            <OrderSkeleton />
+            <OrderSkeleton />
+          </div>
         </div>
       ) : (
         <div className="flex-1 max-w-6xl w-full mx-auto px-4 md:px-8 py-24 md:py-32 flex flex-col lg:flex-row gap-8">
