@@ -864,7 +864,7 @@ export default function Admin() {
   const fetchVariants = async (page, search) => {
     setVariantsLoading(true);
     try {
-      const data = await getAdminVariants(page, 50, search);
+      const data = await getAdminVariants(page, 10, search);
       setVariantsList(data.variants || []);
       setVariantsTotalPages(data.totalPages || 1);
       setVariantsTotal(data.total || 0);
@@ -878,7 +878,7 @@ export default function Admin() {
   const fetchAllBatchesData = async (page) => {
     setAllBatchesLoading(true);
     try {
-      const data = await getAllInventoryBatches(page, 50);
+      const data = await getAllInventoryBatches(page, 10);
       setAllBatches(data.batches || []);
       setAllBatchesTotalPages(data.totalPages || 1);
       setAllBatchesTotal(data.total || 0);
@@ -892,7 +892,7 @@ export default function Admin() {
   const fetchAllLedgerData = async (page) => {
     setAllLedgerLoading(true);
     try {
-      const data = await getAllInventoryLedger(page, 50);
+      const data = await getAllInventoryLedger(page, 10);
       setAllLedger(data.ledger || []);
       setAllLedgerTotalPages(data.totalPages || 1);
       setAllLedgerTotal(data.total || 0);
@@ -906,7 +906,7 @@ export default function Admin() {
   const fetchCustomersData = async (page, search) => {
     setCustomersLoading(true);
     try {
-      const data = await getCustomers(page, 50, search);
+      const data = await getCustomers(page, 10, search);
       const list = Array.isArray(data) ? data : (data.customers || []);
       setCustomersList(list);
       setCustomersTotal(list.length);
@@ -921,7 +921,7 @@ export default function Admin() {
   const fetchGoodsReceiptsData = async (page) => {
     setGoodsReceiptsLoading(true);
     try {
-      const data = await getSupplierReceipts(page, 50);
+      const data = await getSupplierReceipts(page, 10);
       setGoodsReceiptsList(data.receipts || []);
       setGoodsReceiptsTotalPages(data.totalPages || 1);
       setGoodsReceiptsTotal(data.total || 0);

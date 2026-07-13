@@ -29,7 +29,17 @@ export default function Marketplace() {
   const [inStockOnly, setInStockOnly] = useState(false)
   const [preBookingOnly, setPreBookingOnly] = useState(false)
 
+  const [isMobile, setIsMobile] = useState(false)
+
   const navigate = useNavigate()
+
+  // Track mobile view
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   // Load brands from backend on mount
   useEffect(() => {
@@ -51,9 +61,18 @@ export default function Marketplace() {
     async function load() {
       setIsLoading(true)
       try {
+        const isFirstPage = page === 1;
+        const currentLimit = isMobile 
+          ? (isFirstPage ? 12 : 5) 
+          : 12;
+        const currentOffset = isMobile 
+          ? (isFirstPage ? 0 : 12 + (page - 2) * 5) 
+          : undefined;
+
         const params = {
-          page,
-          limit,
+          page: isMobile ? undefined : page,
+          limit: currentLimit,
+          offset: currentOffset,
           paginated: true,
           brand: brandFilter !== 'All' ? brandFilter : undefined,
           scale: scaleFilter !== 'All' ? scaleFilter : undefined,
@@ -62,7 +81,18 @@ export default function Marketplace() {
           preBooking: preBookingOnly ? true : undefined
         }
         const carData = await getCars(params)
-        setCars(carData.products || [])
+        const newProducts = carData.products || [];
+        
+        if (isMobile) {
+          setCars(prev => {
+            const existingIds = new Set(prev.map(p => p.id));
+            const filteredNew = newProducts.filter(p => !existingIds.has(p.id));
+            return isFirstPage ? newProducts : [...prev, ...filteredNew];
+          });
+        } else {
+          setCars(newProducts)
+        }
+
         setTotalPages(carData.totalPages || 1)
         setTotalItems(carData.total || 0)
       } catch (err) {
@@ -73,7 +103,28 @@ export default function Marketplace() {
       }
     }
     load()
-  }, [page, brandFilter, scaleFilter, debouncedSearch, inStockOnly, preBookingOnly])
+  }, [page, brandFilter, scaleFilter, debouncedSearch, inStockOnly, preBookingOnly, isMobile])
+
+  // Handle infinite scroll on mobile
+  useEffect(() => {
+    if (!isMobile) return;
+    
+    const handleScroll = () => {
+      const threshold = 300;
+      const scrollHeight = document.documentElement.scrollHeight;
+      const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+      const clientHeight = document.documentElement.clientHeight;
+      
+      if (scrollHeight - scrollTop - clientHeight < threshold) {
+        if (!isLoading && cars.length < totalItems) {
+          setPage(prev => prev + 1);
+        }
+      }
+    };
+    
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [isMobile, isLoading, cars.length, totalItems]);
 
   useEffect(() => {
     // Autofocus the search bar if requested via navigation
@@ -196,7 +247,7 @@ export default function Marketplace() {
               <p className="text-sm">{error}</p>
             </div>
           </div>
-        ) : isLoading ? (
+        ) : (isLoading && cars.length === 0) ? (
           <div className="flex justify-center py-20 md:py-32">
             <div className="flex flex-col items-center gap-4">
               <div className="w-12 h-12 rounded-full border-4 border-gk-orange/30 border-t-gk-orange animate-spin" />
@@ -218,7 +269,7 @@ export default function Marketplace() {
                     key={car.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
+                    transition={{ delay: (index % 12) * 0.05 }}
                     onClick={() => navigate(`/product/${car.id}`)}
                     className="group relative flex flex-col rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 overflow-hidden hover:bg-white/10 transition-colors duration-500 cursor-pointer"
                   >
@@ -267,25 +318,43 @@ export default function Marketplace() {
                               Pre-Booking
                             </span>
                           )}
-                          {car.tags && car.tags.map(tag => {
-                            let colorClass = 'bg-white/10 text-white/70 border-white/10';
-                            if (tag === 'Hot') colorClass = 'bg-[#E10600]/15 text-[#E10600] border-[#E10600]/30 shadow-[0_0_10px_rgba(225,6,0,0.15)]';
-                            if (tag === 'Trending') colorClass = 'bg-purple-500/15 text-purple-400 border-purple-500/30 shadow-[0_0_10px_rgba(168,85,247,0.15)]';
-                            if (tag === 'Rare') colorClass = 'bg-amber-500/15 text-amber-400 border-amber-500/30 shadow-[0_0_10px_rgba(245,158,11,0.15)]';
-                            return (
-                              <span key={tag} className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider border ${colorClass}`}>
-                                {tag}
-                              </span>
-                            );
-                          })}
+                          {car.tags && (() => {
+                            const seen = new Set();
+                            if (car.isPrebook) {
+                              seen.add('pre-booking');
+                              seen.add('prebooking');
+                              seen.add('pre booking');
+                              seen.add('pre-order');
+                              seen.add('preorder');
+                              seen.add('pre order');
+                            }
+                            return car.tags
+                              .map(tag => tag.trim())
+                              .filter(tag => {
+                                const lower = tag.toLowerCase();
+                                if (!lower || seen.has(lower)) return false;
+                                seen.add(lower);
+                                return true;
+                              })
+                              .map(tag => {
+                                let colorClass = 'bg-white/10 text-white/70 border-white/10';
+                                const lower = tag.toLowerCase();
+                                if (lower === 'hot') colorClass = 'bg-[#E10600]/15 text-[#E10600] border-[#E10600]/30 shadow-[0_0_10px_rgba(225,6,0,0.15)]';
+                                if (lower === 'trending') colorClass = 'bg-purple-500/15 text-purple-400 border-purple-500/30 shadow-[0_0_10px_rgba(168,85,247,0.15)]';
+                                if (lower === 'rare') colorClass = 'bg-amber-500/15 text-amber-400 border-amber-500/30 shadow-[0_0_10px_rgba(245,158,11,0.15)]';
+                                
+                                const displayTag = tag.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+                                return (
+                                  <span key={tag} className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider border ${colorClass}`}>
+                                    {displayTag}
+                                  </span>
+                                );
+                              });
+                          })()}
                         </div>
                       )}
                       
                       <h3 className="text-xl font-bold leading-tight mb-3 group-hover:text-gk-orange transition-colors">{car.name}</h3>
-
-                      {car.description && (
-                        <p className="text-sm text-white/50 line-clamp-3 mb-4">{car.description}</p>
-                      )}
                       
                       <div className="mt-auto pt-4 border-t border-white/10 flex items-center justify-between w-full">
                         {isSoldOut ? (
@@ -308,8 +377,18 @@ export default function Marketplace() {
               })}
             </div>
 
-            {/* Pagination Controls */}
-            {totalPages > 1 && (
+            {/* Mobile Loading Spinner */}
+            {isMobile && isLoading && (
+              <div className="flex justify-center mt-10">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-8 h-8 rounded-full border-3 border-gk-orange/30 border-t-gk-orange animate-spin" />
+                  <div className="text-[10px] font-black uppercase tracking-widest text-gk-orange animate-pulse">Loading More...</div>
+                </div>
+              </div>
+            )}
+
+            {/* Pagination Controls (Desktop Only) */}
+            {!isMobile && totalPages > 1 && (
               <div className="flex justify-center items-center gap-2 mt-12 bg-white/[0.01] border border-white/5 p-3 rounded-2xl max-w-md mx-auto backdrop-blur-md">
                 <button
                   disabled={page === 1}

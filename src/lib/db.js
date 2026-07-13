@@ -154,6 +154,7 @@ export async function getCars(params = {}) {
     const queryParams = new URLSearchParams();
     if (params.page) queryParams.append('page', params.page);
     if (params.limit) queryParams.append('limit', params.limit);
+    if (params.offset !== undefined) queryParams.append('offset', params.offset);
     if (params.brand) queryParams.append('brand', params.brand);
     if (params.scale) queryParams.append('scale', params.scale);
     if (params.tag) queryParams.append('tag', params.tag);
