@@ -125,7 +125,8 @@ export default function Checkout() {
     totalPrice: 0,
     advanceAmount: 0,
     remainingAmount: 0,
-    items: []
+    items: [],
+    groups: []
   })
   const [calculating, setCalculating] = useState(false)
 
@@ -327,51 +328,88 @@ export default function Checkout() {
               )}
 
               {/* Items List Summary card */}
-              <div className="bg-black/40 border border-white/5 rounded-2xl p-5 space-y-3">
+              <div className="space-y-4">
                 <div className="text-[10px] font-black text-white/40 uppercase tracking-widest">Casting Order Summary</div>
-                <div className="space-y-2 max-h-[140px] overflow-y-auto pr-2" data-lenis-prevent>
-                  {isCart ? (
-                    cartItems.map(item => (
-                      <div key={item.id} className="flex justify-between items-center text-xs">
-                        <span className="text-white/80 truncate max-w-[350px]">{item.brand} {item.name} {item.quantity > 1 ? `x${item.quantity}` : ''}</span>
-                        {settings.showPrices && (
-                          <span className="font-mono text-white/60">₹{Number(item.price) * (item.quantity || 1)}</span>
-                        )}
-                      </div>
-                    ))
-                  ) : (
-                    product && (
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="text-white/80 truncate">
-                          {product.brand} {product.name}
-                          {urlQty > 1 && (
-                            <span className="ml-2 px-1.5 py-0.5 rounded-md bg-gk-orange/20 text-gk-orange font-black text-[9px]">×{urlQty}</span>
-                          )}
-                        </span>
-                        {settings.showPrices && (
-                          <span className="font-mono text-white/60">₹{(Number(product.price) * urlQty).toLocaleString('en-IN')}</span>
-                        )}
-                      </div>
-                    )
-                  )}
-                </div>
                 
-                {settings.showPrices && (
-                  <div className="border-t border-white/5 pt-3 space-y-1.5 text-xs">
-                    <div className="flex justify-between items-center text-white/40">
-                      <span>Subtotal</span>
-                      <span className="font-mono text-white/80">₹{calculation.subtotal.toLocaleString('en-IN')}</span>
-                    </div>
-                    {calculation.shippingFee > 0 && (
-                      <div className="flex justify-between items-center text-white/40">
-                        <span>Flat Shipping</span>
-                        <span className="font-mono text-white/80">₹{calculation.shippingFee}</span>
+                {settings.showPrices && calculation.groups && calculation.groups.length > 0 ? (
+                  calculation.groups.map((group, gIdx) => (
+                    <div key={gIdx} className="bg-black/40 border border-white/5 rounded-2xl p-5 space-y-3">
+                      <div className="flex justify-between items-center pb-2 border-b border-white/5">
+                        <div className="text-[10px] font-black uppercase tracking-wider text-gk-orange">
+                          {group.bookingType === 'pre_order' ? 'Pre-Order Group' : 'In-Stock Order'}
+                        </div>
+                        <div className="text-[9px] font-bold text-white/40 uppercase">
+                          {group.bookingType === 'pre_order' ? 'Ships when stock arrives' : 'Ships instantly'}
+                        </div>
                       </div>
-                    )}
-                    <div className="flex justify-between items-center font-black pt-1.5 border-t border-white/5">
-                      <span className="text-white/40 uppercase tracking-wider">Total price</span>
-                      <span className="font-mono text-gk-orange text-sm">₹{calculation.totalPrice.toLocaleString('en-IN')}</span>
+                      
+                      <div className="space-y-2">
+                        {group.items.map((item, iIdx) => (
+                          <div key={iIdx} className="flex justify-between items-center text-xs">
+                            <span className="text-white/80 truncate max-w-[280px]">
+                              {item.brand} {item.name} {item.qty > 1 ? `x${item.qty}` : ''}
+                            </span>
+                            <span className="font-mono text-white/60">₹{(item.price * item.qty).toLocaleString('en-IN')}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="border-t border-white/5 pt-3 space-y-1.5 text-xs">
+                        <div className="flex justify-between items-center text-white/40">
+                          <span>Subtotal</span>
+                          <span className="font-mono text-white/80">₹{group.subtotal.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-white/40">
+                          <span>Shipping Charge</span>
+                          {group.bookingType === 'pre_order' ? (
+                            <span className="text-amber-400 font-bold">To be charged at arrival</span>
+                          ) : (
+                            <span className="font-mono text-white/80">₹{group.shippingFee}</span>
+                          )}
+                        </div>
+                        <div className="flex justify-between items-center font-black pt-1.5 border-t border-white/5">
+                          <span className="text-white/40 uppercase tracking-wider">Total</span>
+                          <span className="font-mono text-gk-orange text-sm">₹{group.totalPrice.toLocaleString('en-IN')}</span>
+                        </div>
+                      </div>
                     </div>
+                  ))
+                ) : (
+                  <div className="bg-black/40 border border-white/5 rounded-2xl p-5 space-y-3">
+                    <div className="space-y-2">
+                      {isCart ? (
+                        cartItems.map(item => (
+                          <div key={item.id} className="flex justify-between items-center text-xs">
+                            <span className="text-white/80 truncate max-w-[350px]">{item.brand} {item.name} {item.quantity > 1 ? `x${item.quantity}` : ''}</span>
+                            {settings.showPrices && (
+                              <span className="font-mono text-white/60">₹{Number(item.price) * (item.quantity || 1)}</span>
+                            )}
+                          </div>
+                        ))
+                      ) : (
+                        product && (
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-white/80 truncate">
+                              {product.brand} {product.name}
+                              {urlQty > 1 && (
+                                <span className="ml-2 px-1.5 py-0.5 rounded-md bg-gk-orange/20 text-gk-orange font-black text-[9px]">×{urlQty}</span>
+                              )}
+                            </span>
+                            {settings.showPrices && (
+                              <span className="font-mono text-white/60">₹{(Number(product.price) * urlQty).toLocaleString('en-IN')}</span>
+                            )}
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Grand Total Box */}
+                {settings.showPrices && calculation.groups && calculation.groups.length > 0 && (
+                  <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 flex justify-between items-center">
+                    <span className="text-xs font-black uppercase tracking-widest text-white/60">Grand Total to Pay</span>
+                    <span className="font-mono text-gk-orange text-sm font-black">₹{calculation.totalPrice.toLocaleString('en-IN')}</span>
                   </div>
                 )}
               </div>
