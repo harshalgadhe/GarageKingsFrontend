@@ -3,27 +3,28 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Trash2, ShoppingCart, ArrowLeft, ArrowRight, Plus, Minus } from 'lucide-react'
 import Navigation from '../components/Navigation'
 import Footer from '../components/Footer'
+import { readCart, writeCart, notifyCartUpdated } from '../lib/cart'
 
 export default function Cart() {
   const navigate = useNavigate()
-  // Cart is in localStorage — initialize synchronously to avoid any loading flash
-  const [cartItems, setCartItems] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('gk_cart') || '[]') } catch { return [] }
-  })
+  // Cart is user-scoped — readCart() returns [] when unauthenticated
+  const [cartItems, setCartItems] = useState(() => readCart())
 
   // Keep cart in sync with updates from other components
   useEffect(() => {
-    const sync = () => {
-      try { setCartItems(JSON.parse(localStorage.getItem('gk_cart') || '[]')) } catch {}
-    }
+    const sync = () => { setCartItems(readCart()) }
     window.addEventListener('gk_cart_updated', sync)
-    return () => window.removeEventListener('gk_cart_updated', sync)
+    window.addEventListener('gk_user_updated', sync)
+    return () => {
+      window.removeEventListener('gk_cart_updated', sync)
+      window.removeEventListener('gk_user_updated', sync)
+    }
   }, [])
 
   const saveCart = (newCart) => {
     setCartItems(newCart)
-    localStorage.setItem('gk_cart', JSON.stringify(newCart))
-    window.dispatchEvent(new CustomEvent('gk_cart_updated', { detail: { open: false } }))
+    writeCart(newCart)
+    notifyCartUpdated()
   }
 
   const updateQuantity = (id, change) => {

@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom'
 import { Search } from 'lucide-react'
 import ReserveModal from '../components/checkout/ReserveModal'
 import Footer from '../components/Footer'
-import { MarketplaceGridSkeleton } from '../components/Skeletons'
+import { MarketplaceGridSkeleton, Shimmer } from '../components/Skeletons'
 
 export default function Marketplace() {
   const [cars, setCars] = useState([])
@@ -211,26 +211,35 @@ export default function Marketplace() {
         
         {/* Horizontal Brand Selector (Pills) */}
         {!error && (
-          <div className="flex flex-wrap gap-2 justify-center items-center mb-8 bg-white/[0.02] border border-white/5 p-2 rounded-2xl max-w-4xl mx-auto backdrop-blur-md">
-            {[
-              { label: 'All Brands', value: 'All' },
-              ...backendBrands.map(b => ({ label: b.name, value: b.name }))
-            ].map(brand => {
-              const isActive = brandFilter === brand.value;
-              return (
-                <button
-                  key={brand.value}
-                  onClick={() => { setBrandFilter(brand.value); setPage(1); }}
-                  className={`px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all relative cursor-pointer active:scale-95 ${
-                    isActive 
-                      ? 'bg-gk-orange text-white shadow-[0_0_20px_rgba(225,6,0,0.35)] border border-gk-orange' 
-                      : 'text-white/60 hover:text-white hover:bg-white/5 border border-transparent'
-                  }`}
-                >
-                  {brand.label}
-                </button>
-              );
-            })}
+          <div className="flex flex-wrap gap-2 justify-center items-center mb-8 bg-white/[0.02] border border-white/5 p-2 rounded-2xl max-w-4xl mx-auto backdrop-blur-md min-h-[56px]">
+            {backendBrands.length === 0 ? (
+              // Reserve exact space while brands load — prevents filter bar from jumping content
+              <>
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Shimmer key={i} className={`h-9 rounded-xl ${i === 0 ? 'w-24' : i === 1 ? 'w-16' : i === 2 ? 'w-20' : i === 3 ? 'w-14' : i === 4 ? 'w-18' : 'w-12'}`} />
+                ))}
+              </>
+            ) : (
+              [
+                { label: 'All Brands', value: 'All' },
+                ...backendBrands.map(b => ({ label: b.name, value: b.name }))
+              ].map(brand => {
+                const isActive = brandFilter === brand.value;
+                return (
+                  <button
+                    key={brand.value}
+                    onClick={() => { setBrandFilter(brand.value); setPage(1); }}
+                    className={`px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all relative cursor-pointer active:scale-95 ${
+                      isActive 
+                        ? 'bg-gk-orange text-white shadow-[0_0_20px_rgba(225,6,0,0.35)] border border-gk-orange' 
+                        : 'text-white/60 hover:text-white hover:bg-white/5 border border-transparent'
+                    }`}
+                  >
+                    {brand.label}
+                  </button>
+                );
+              })
+            )}
           </div>
         )}
 
@@ -304,20 +313,23 @@ export default function Marketplace() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: (index % 12) * 0.05 }}
                     onClick={() => navigate(`/product/${car.id}`)}
-                    className="group relative flex flex-col rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 overflow-hidden hover:bg-white/10 transition-colors duration-500 cursor-pointer"
+                    className="group relative flex flex-col rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 overflow-hidden hover:bg-white/10 transition-colors duration-500 cursor-pointer h-[440px]"
                   >
-                    {/* Image */}
-                    <div className="aspect-[4/3] bg-black/10 overflow-hidden relative" onContextMenu={(e) => e.preventDefault()}>
+                    {/* Image — fixed aspect-ratio container prevents any resize on load */}
+                    <div className="aspect-[4/3] bg-black/10 overflow-hidden relative flex-shrink-0" onContextMenu={(e) => e.preventDefault()}>
                       <div className="absolute inset-0 z-30" />
                       <img
                         src={car.image || '/brand-logo.png'}
                         alt={car.name}
+                        loading="lazy"
+                        onLoad={(e) => { e.target.style.opacity = '1' }}
                         onError={(e) => {
                           e.target.src = '/brand-logo.png';
-                          e.target.className = "w-full h-full object-contain p-6 bg-zinc-950/80 transition-transform duration-700 ease-[0.22,1,0.36,1] pointer-events-none select-none";
+                          e.target.style.opacity = '1';
+                          e.target.className = "w-full h-full object-contain p-6 bg-zinc-950/80 transition-[opacity,transform] duration-700 ease-[0.22,1,0.36,1] pointer-events-none select-none";
                         }}
-                        className="w-full h-full object-contain p-3 group-hover:scale-103 transition-transform duration-700 ease-[0.22,1,0.36,1] pointer-events-none select-none"
-                        style={{ WebkitUserDrag: 'none' }}
+                        className="w-full h-full object-contain p-3 group-hover:scale-103 transition-[opacity,transform] duration-700 ease-[0.22,1,0.36,1] pointer-events-none select-none"
+                        style={{ WebkitUserDrag: 'none', opacity: 0 }}
                       />
                       {isSoldOut && (
                         <div className="absolute inset-0 bg-black/60 backdrop-blur-[1.5px] z-25 flex items-center justify-center pointer-events-none">
@@ -331,64 +343,64 @@ export default function Marketplace() {
                       </div>
                     </div>
 
-                    {/* Content */}
-                    <div className="p-6 flex flex-col grow">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="text-xs font-semibold uppercase tracking-wider text-white/40">{car.grade}</div>
-                        {car.scale && <div className="text-[10px] font-bold uppercase tracking-wider text-white/30 bg-white/5 px-2 py-0.5 rounded">{car.scale}</div>}
+                    {/* Content — uses flex-1 to fill remaining card height */}
+                    <div className="p-6 flex flex-col flex-1 min-h-0">
+                      {/* Grade + Scale row — always renders, fixed height */}
+                      <div className="flex items-center justify-between mb-2 h-5">
+                        <div className="text-xs font-semibold uppercase tracking-wider text-white/40 truncate">{car.grade}</div>
+                        {car.scale && <div className="text-[10px] font-bold uppercase tracking-wider text-white/30 bg-white/5 px-2 py-0.5 rounded flex-shrink-0">{car.scale}</div>}
                       </div>
-                      
-                      {(car.brand || car.carBrand) && (
-                        <div className="text-[10px] font-black uppercase tracking-widest text-gk-orange mb-1">
-                          {car.carBrand ? `${car.brand} • ${car.carBrand}` : car.brand}
-                        </div>
-                      )}
-                      
-                      {(car.isPrebook || (car.tags && car.tags.length > 0)) && (
-                        <div className="flex flex-wrap gap-1.5 mb-2.5">
-                          {car.isPrebook && (
-                            <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider border bg-gk-orange/15 text-gk-orange border-gk-orange/30 shadow-[0_0_10px_rgba(225,6,0,0.15)] animate-pulse">
-                              Pre-Booking
-                            </span>
-                          )}
-                          {car.tags && (() => {
-                            const seen = new Set();
-                            if (car.isPrebook) {
-                              seen.add('pre-booking');
-                              seen.add('prebooking');
-                              seen.add('pre booking');
-                              seen.add('pre-order');
-                              seen.add('preorder');
-                              seen.add('pre order');
-                            }
-                            return car.tags
-                              .map(tag => tag.trim())
-                              .filter(tag => {
-                                const lower = tag.toLowerCase();
-                                if (!lower || seen.has(lower)) return false;
-                                seen.add(lower);
-                                return true;
-                              })
-                              .map(tag => {
-                                let colorClass = 'bg-white/10 text-white/70 border-white/10';
-                                const lower = tag.toLowerCase();
-                                if (lower === 'hot') colorClass = 'bg-[#E10600]/15 text-[#E10600] border-[#E10600]/30 shadow-[0_0_10px_rgba(225,6,0,0.15)]';
-                                if (lower === 'trending') colorClass = 'bg-purple-500/15 text-purple-400 border-purple-500/30 shadow-[0_0_10px_rgba(168,85,247,0.15)]';
-                                if (lower === 'rare') colorClass = 'bg-amber-500/15 text-amber-400 border-amber-500/30 shadow-[0_0_10px_rgba(245,158,11,0.15)]';
-                                
-                                const displayTag = tag.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
-                                return (
-                                  <span key={tag} className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider border ${colorClass}`}>
-                                    {displayTag}
-                                  </span>
-                                );
-                              });
-                          })()}
-                        </div>
-                      )}
-                      
-                      <h3 className="text-xl font-bold leading-tight mb-3 group-hover:text-gk-orange transition-colors">{car.name}</h3>
-                      
+
+                      {/* Brand line — always reserves 20px to prevent shift when brand is null */}
+                      <div className="min-h-[20px] mb-1">
+                        {(car.brand || car.carBrand) && (
+                          <div className="text-[10px] font-black uppercase tracking-widest text-gk-orange truncate">
+                            {car.carBrand ? `${car.brand} • ${car.carBrand}` : car.brand}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Tag row — always reserves 28px to prevent CLS when tags are absent */}
+                      <div className="min-h-[28px] mb-2 flex flex-wrap gap-1.5 items-start">
+                        {car.isPrebook && (
+                          <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider border bg-gk-orange/15 text-gk-orange border-gk-orange/30 shadow-[0_0_10px_rgba(225,6,0,0.15)] animate-pulse">
+                            Pre-Booking
+                          </span>
+                        )}
+                        {car.tags && (() => {
+                          const seen = new Set();
+                          if (car.isPrebook) {
+                            seen.add('pre-booking'); seen.add('prebooking'); seen.add('pre booking');
+                            seen.add('pre-order'); seen.add('preorder'); seen.add('pre order');
+                          }
+                          return car.tags
+                            .map(tag => tag.trim())
+                            .filter(tag => {
+                              const lower = tag.toLowerCase();
+                              if (!lower || seen.has(lower)) return false;
+                              seen.add(lower);
+                              return true;
+                            })
+                            .map(tag => {
+                              let colorClass = 'bg-white/10 text-white/70 border-white/10';
+                              const lower = tag.toLowerCase();
+                              if (lower === 'hot') colorClass = 'bg-[#E10600]/15 text-[#E10600] border-[#E10600]/30 shadow-[0_0_10px_rgba(225,6,0,0.15)]';
+                              if (lower === 'trending') colorClass = 'bg-purple-500/15 text-purple-400 border-purple-500/30 shadow-[0_0_10px_rgba(168,85,247,0.15)]';
+                              if (lower === 'rare') colorClass = 'bg-amber-500/15 text-amber-400 border-amber-500/30 shadow-[0_0_10px_rgba(245,158,11,0.15)]';
+                              const displayTag = tag.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+                              return (
+                                <span key={tag} className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider border ${colorClass}`}>
+                                  {displayTag}
+                                </span>
+                              );
+                            });
+                        })()}
+                      </div>
+
+                      {/* Name — line-clamp-2 caps at exactly 2 lines to prevent card height variation */}
+                      <h3 className="text-lg font-bold leading-tight mb-3 group-hover:text-gk-orange transition-colors line-clamp-2">{car.name}</h3>
+
+                      {/* Price footer — pinned to bottom */}
                       <div className="mt-auto pt-4 border-t border-white/10 flex items-center justify-between w-full">
                         {isSoldOut ? (
                           <div className="text-red-500 font-bold text-xs uppercase tracking-wider">
@@ -424,55 +436,57 @@ export default function Marketplace() {
               </div>
             )}
 
-            {/* Pagination Controls (Desktop Only) */}
-            {!isMobile && totalPages > 1 && (
-              <div className="flex justify-center items-center gap-2 mt-12 bg-white/[0.01] border border-white/5 p-3 rounded-2xl max-w-md mx-auto backdrop-blur-md">
-                <button
-                  disabled={page === 1}
-                  onClick={() => setPage(prev => Math.max(1, prev - 1))}
-                  className="px-3.5 py-2.5 rounded-xl border border-white/10 hover:border-gk-orange/30 bg-white/5 hover:bg-gk-orange/5 text-white font-black text-[10px] uppercase tracking-wider transition-all disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
-                >
-                  ← Prev
-                </button>
-                
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => {
-                    const isActive = page === p;
-                    if (p === 1 || p === totalPages || Math.abs(p - page) <= 1) {
-                      return (
-                        <button
-                          key={p}
-                          onClick={() => setPage(p)}
-                          className={`w-9 h-9 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                            isActive 
-                              ? 'bg-gk-orange text-white font-black shadow-[0_0_15px_rgba(225,6,0,0.3)] border border-gk-orange' 
-                              : 'text-white/50 hover:text-white hover:bg-white/5 border border-white/5'
-                          }`}
-                        >
-                          {p}
-                        </button>
-                      );
-                    }
-                    if (p === 2 || p === totalPages - 1) {
-                      return (
-                        <span key={p} className="text-white/30 text-xs px-1 font-mono">
-                          ...
-                        </span>
-                      );
-                    }
-                    return null;
-                  })}
-                </div>
+            {/* Pagination — container always present to prevent layout jump when it appears */}
+            <div className="min-h-[80px] flex items-center justify-center mt-12">
+              {!isMobile && totalPages > 1 && (
+                <div className="flex justify-center items-center gap-2 bg-white/[0.01] border border-white/5 p-3 rounded-2xl max-w-md mx-auto backdrop-blur-md w-full">
+                  <button
+                    disabled={page === 1}
+                    onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                    className="px-3.5 py-2.5 rounded-xl border border-white/10 hover:border-gk-orange/30 bg-white/5 hover:bg-gk-orange/5 text-white font-black text-[10px] uppercase tracking-wider transition-all disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+                  >
+                    ← Prev
+                  </button>
+                  
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => {
+                      const isActive = page === p;
+                      if (p === 1 || p === totalPages || Math.abs(p - page) <= 1) {
+                        return (
+                          <button
+                            key={p}
+                            onClick={() => setPage(p)}
+                            className={`w-9 h-9 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                              isActive 
+                                ? 'bg-gk-orange text-white font-black shadow-[0_0_15px_rgba(225,6,0,0.3)] border border-gk-orange' 
+                                : 'text-white/50 hover:text-white hover:bg-white/5 border border-white/5'
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        );
+                      }
+                      if (p === 2 || p === totalPages - 1) {
+                        return (
+                          <span key={p} className="text-white/30 text-xs px-1 font-mono">
+                            ...
+                          </span>
+                        );
+                      }
+                      return null;
+                    })}
+                  </div>
 
-                <button
-                  disabled={page === totalPages}
-                  onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
-                  className="px-3.5 py-2.5 rounded-xl border border-white/10 hover:border-gk-orange/30 bg-white/5 hover:bg-gk-orange/5 text-white font-black text-[10px] uppercase tracking-wider transition-all disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
-                >
-                  Next →
-                </button>
-              </div>
-            )}
+                  <button
+                    disabled={page === totalPages}
+                    onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
+                    className="px-3.5 py-2.5 rounded-xl border border-white/10 hover:border-gk-orange/30 bg-white/5 hover:bg-gk-orange/5 text-white font-black text-[10px] uppercase tracking-wider transition-all disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+                  >
+                    Next →
+                  </button>
+                </div>
+              )}
+            </div>
           </>
         )}
       </div>

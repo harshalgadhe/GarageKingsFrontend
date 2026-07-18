@@ -10,20 +10,34 @@ export function Shimmer({ className = '' }) {
 
 export function ProductCardSkeleton() {
   return (
-    <div className="flex flex-col rounded-2xl bg-white/5 border border-white/10 overflow-hidden h-[400px]">
+    <div className="flex flex-col rounded-2xl bg-white/5 border border-white/10 overflow-hidden h-[440px]">
       {/* Image Area Skeleton */}
-      <Shimmer className="aspect-[4/3] w-full" />
+      <Shimmer className="aspect-[4/3] w-full flex-shrink-0" />
       {/* Content Area Skeleton */}
-      <div className="p-6 flex flex-col grow space-y-4">
-        <div className="flex justify-between items-center">
-          <Shimmer className="h-4 w-16 rounded" />
+      <div className="p-6 flex flex-col flex-1 min-h-0">
+        {/* Grade + Scale row — fixed height 5 */}
+        <div className="flex justify-between items-center mb-2 h-5">
+          <Shimmer className="h-3 w-16 rounded" />
           <Shimmer className="h-4 w-10 rounded" />
         </div>
-        <Shimmer className="h-4 w-24 rounded" />
-        <Shimmer className="h-6 w-3/4 rounded" />
+        
+        {/* Brand line — min-h-5 (20px) */}
+        <div className="min-h-[20px] mb-1 flex items-center">
+          <Shimmer className="h-3.5 w-24 rounded" />
+        </div>
+
+        {/* Tag row — min-h-[28px] */}
+        <div className="min-h-[28px] mb-2 flex items-start">
+          <Shimmer className="h-5 w-16 rounded-full" />
+        </div>
+
+        {/* Name — h-5, taking up name space */}
+        <Shimmer className="h-5 w-5/6 rounded mb-3" />
+        
+        {/* Price footer — pinned to bottom */}
         <div className="mt-auto pt-4 border-t border-white/10 flex items-center justify-between w-full">
           <div>
-            <Shimmer className="h-3 w-8 mb-1 rounded" />
+            <Shimmer className="h-2.5 w-8 mb-1 rounded" />
             <Shimmer className="h-5 w-16 rounded" />
           </div>
           <Shimmer className="h-4 w-20 rounded" />

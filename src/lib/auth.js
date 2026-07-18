@@ -3,6 +3,8 @@
 // Optimized for secure local session authentication and owner setups
 // ============================================================================
 
+import { clearAllUserCarts } from './cart.js';
+
 const API_BASE_URL = import.meta.env.PROD 
   ? '/api/v1' 
   : (import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1');
@@ -46,6 +48,8 @@ export async function signInCognito(email, password) {
       role: user.role,
       roles: [user.role.toLowerCase()]
     }));
+    // Notify all components that a new user is now active
+    window.dispatchEvent(new Event('gk_user_updated'));
 
     return user;
   } catch (error) {
@@ -66,7 +70,11 @@ export async function signOutCognito() {
   } catch (e) {
     console.warn("Logout request failed, cleaning up local storage anyway:", e);
   }
+  // Purge all user cart data — prevents cart leaking to the next user on this device
+  clearAllUserCarts();
   localStorage.removeItem('gk_user');
+  // Notify all components that the user has logged out
+  window.dispatchEvent(new Event('gk_user_updated'));
 }
 
 /**
@@ -165,6 +173,7 @@ export async function signInWithGoogleProfile(googleIdToken) {
       role: user.role,
       roles: [user.role.toLowerCase()]
     }));
+    window.dispatchEvent(new Event('gk_user_updated'));
 
     return user;
   } catch (error) {
@@ -213,6 +222,7 @@ export async function signUpCognito(email, password, name) {
       role: user.role,
       roles: [user.role.toLowerCase()]
     }));
+    window.dispatchEvent(new Event('gk_user_updated'));
 
     return user;
   } catch (error) {

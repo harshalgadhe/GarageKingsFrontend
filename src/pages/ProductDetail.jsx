@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { getProduct, getCars } from '../lib/db'
+import { getCurrentUser } from '../lib/auth'
+import { readCart, writeCart, notifyCartUpdated } from '../lib/cart'
 import { logError } from '../lib/telemetry'
 import Navigation from '../components/Navigation'
 import Footer from '../components/Footer'
-import { ShoppingBag, ArrowLeft, Plus, Minus, Check } from 'lucide-react'
+import { ShoppingBag, ArrowLeft, Plus, Minus, Check, LogIn } from 'lucide-react'
 import { ProductDetailSkeleton } from '../components/Skeletons'
 
 export default function ProductDetail() {
@@ -52,9 +54,17 @@ export default function ProductDetail() {
     loadProductData()
   }, [id])
 
+  const [authRequired, setAuthRequired] = useState(false)
+
   const handleAddToCart = () => {
     if (!product) return
-    const cart = JSON.parse(localStorage.getItem('gk_cart') || '[]')
+    // Require authentication — no guest cart
+    const currentUser = getCurrentUser()
+    if (!currentUser) {
+      setAuthRequired(true)
+      return
+    }
+    const cart = readCart()
     const existingIndex = cart.findIndex(item => item.id === product.id)
     let newCart
     if (existingIndex > -1) {
@@ -66,14 +76,19 @@ export default function ProductDetail() {
     } else {
       newCart = [...cart, { ...product, quantity: qty }]
     }
-    localStorage.setItem('gk_cart', JSON.stringify(newCart))
-    window.dispatchEvent(new CustomEvent('gk_cart_updated', { detail: { open: false } }))
+    writeCart(newCart)
+    notifyCartUpdated()
     setAddedToCart(true)
     setTimeout(() => navigate('/cart'), 800)
   }
 
   const handleBuyNow = () => {
     if (!product) return
+    const currentUser = getCurrentUser()
+    if (!currentUser) {
+      setAuthRequired(true)
+      return
+    }
     navigate(`/checkout?product=${product.id}&qty=${qty}`)
   }
 
@@ -256,6 +271,18 @@ export default function ProductDetail() {
                 </div>
               )
             })()}
+
+            {/* Login required banner — shown when user tries to add/buy without auth */}
+            {authRequired && (
+              <div className="mb-4 flex items-start gap-3 bg-gk-orange/10 border border-gk-orange/30 rounded-2xl p-4">
+                <LogIn size={16} className="text-gk-orange mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <div className="text-xs font-black uppercase tracking-wider text-white mb-0.5">Sign In Required</div>
+                  <div className="text-[11px] text-white/50">You must be signed in to add items to your cart or place an order.</div>
+                </div>
+                <button onClick={() => setAuthRequired(false)} className="text-white/30 hover:text-white text-lg leading-none">×</button>
+              </div>
+            )}
 
             {/* Actions */}
             <div className="flex flex-col sm:flex-row gap-4">

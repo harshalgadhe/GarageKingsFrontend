@@ -20,6 +20,7 @@ import {
   getAllInventoryLedger, getCustomers, getSupplierReceipts
 } from '../lib/db';
 import Navigation from '../components/Navigation';
+import { StatisticsSkeleton } from '../components/Skeletons';
 import ReceiptModal from '../components/ReceiptModal';
 import BookPurchaseForm from '../components/BookPurchaseForm';
 import ReceiveShipmentForm from '../components/ReceiveShipmentForm';
@@ -1624,29 +1625,13 @@ export default function Admin() {
             <div className="space-y-8">
               {/* Aggregates Calculation */}
               {!dashboardAggregates ? (
-                <div className="bg-[#141414] border border-white/5 rounded-2xl p-8 text-center space-y-4">
-                  <div className="max-w-md mx-auto space-y-2">
-                    <h3 className="text-sm font-black uppercase tracking-wider text-white">
-                      Dashboard Aggregations
+                <div className="space-y-6">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-xs font-black uppercase tracking-wider text-white/40">
+                      Operational KPIs
                     </h3>
-                    <p className="text-xs text-[#888888] leading-relaxed">
-                      Perform database aggregations to retrieve total inventory valuation, available count, incoming counts, and diagnostics.
-                    </p>
                   </div>
-                  <button
-                    onClick={fetchDashboardAggregates}
-                    disabled={dashboardAggregatesLoading}
-                    className="inline-flex items-center gap-2 px-6 py-3 bg-[#ff5500] hover:bg-[#ff6611] active:bg-[#e64d00] disabled:bg-[#ff5500]/50 text-black font-extrabold text-xs rounded-xl uppercase tracking-wider transition-all shadow-[0_4px_20px_-4px_rgba(255,85,0,0.3)] cursor-pointer"
-                  >
-                    {dashboardAggregatesLoading ? (
-                      <>
-                        <div className="w-3.5 h-3.5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                        Calculating Dashboard...
-                      </>
-                    ) : (
-                      'Load Dashboard Data'
-                    )}
-                  </button>
+                  <StatisticsSkeleton />
                 </div>
               ) : (
                 <div className="space-y-6">
@@ -1666,17 +1651,17 @@ export default function Admin() {
                   {/* Dashboard Cards Grid */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     {[
-                      { label: 'Available Stock (Units)', val: dashboardAggregates.availableInventory, suffix: ' Units', color: 'text-emerald-400' },
-                      { label: 'Incoming Stock (Units)', val: dashboardAggregates.incomingInventory, suffix: ' Units', color: 'text-blue-400' },
-                      { label: 'Open Purchase Orders', val: dashboardAggregates.totalPurchaseOrders, suffix: ' POs', color: 'text-amber-400' },
-                      { label: 'Total Valuation (Cost)', val: `₹${dashboardAggregates.totalInventoryValue.toLocaleString('en-IN')}`, suffix: '', color: 'text-[#ff5500]' }
+                      { label: 'Available Stock (Units)', val: dashboardAggregates.availableInventory != null ? dashboardAggregates.availableInventory : null, suffix: ' Units', color: 'text-emerald-400' },
+                      { label: 'Incoming Stock (Units)', val: dashboardAggregates.incomingInventory != null ? dashboardAggregates.incomingInventory : null, suffix: ' Units', color: 'text-blue-400' },
+                      { label: 'Open Purchase Orders', val: dashboardAggregates.totalPurchaseOrders != null ? dashboardAggregates.totalPurchaseOrders : null, suffix: ' POs', color: 'text-amber-400' },
+                      { label: 'Total Valuation (Cost)', val: dashboardAggregates.totalInventoryValue != null ? `₹${dashboardAggregates.totalInventoryValue.toLocaleString('en-IN')}` : null, suffix: '', color: 'text-[#ff5500]' }
                     ].map((card, i) => (
                       <div key={i} className="bg-[#141414] border border-white/5 rounded-2xl p-5 shadow-sm">
                         <p className="text-[9px] font-bold text-[#888888] uppercase tracking-widest">
                           {card.label}
                         </p>
-                        <h3 className={`text-xl font-black mt-2 font-mono ${card.color}`}>
-                          {card.val}{card.suffix}
+                        <h3 className={`text-xl font-black mt-2 font-mono ${card.color} min-h-[32px] flex items-center`}>
+                          {card.val != null ? `${card.val}${card.suffix}` : '—'}
                         </h3>
                       </div>
                     ))}

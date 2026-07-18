@@ -4,6 +4,7 @@ import PaymentInstructions from '../components/checkout/PaymentInstructions'
 import ScreenshotUploader from '../components/checkout/ScreenshotUploader'
 import { getCurrentUser } from '../lib/auth'
 import { getProduct, getPublicSettings } from '../lib/db'
+import { readCart, clearCart as clearUserCart } from '../lib/cart'
 import { logError } from '../lib/telemetry'
 import Navigation from '../components/Navigation'
 import Footer from '../components/Footer'
@@ -83,8 +84,8 @@ export default function Checkout() {
             setError('Could not locate the specified casting vault entry.')
           }
         } else {
-          const saved = localStorage.getItem('gk_cart')
-          const items = saved ? JSON.parse(saved) : []
+          // Use scoped cart utility — returns [] if unauthenticated
+          const items = readCart()
           if (items.length === 0) {
             setError('Your queue is empty. Add castings to your cart before checking out.')
           } else {
@@ -252,10 +253,9 @@ export default function Checkout() {
       })
       setStep(2)
 
-      // If cart reservation succeeded, clear cart
+      // If cart reservation succeeded, clear the user's scoped cart
       if (isCart) {
-        localStorage.removeItem('gk_cart')
-        window.dispatchEvent(new CustomEvent('gk_cart_updated', { detail: { open: false } }))
+        clearUserCart()
       }
     } catch (err) {
       const isNetworkOrJsError = err instanceof TypeError || err.message?.includes('Failed to fetch') || !err.message

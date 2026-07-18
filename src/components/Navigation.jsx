@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { BRAND } from '../data/content'
 import { scrollToSection, useLenis } from '../providers/SmoothScroll'
 import { getCurrentUser, signOutCognito } from '../lib/auth'
+import { readCart, writeCart, clearCart as clearUserCart, notifyCartUpdated } from '../lib/cart'
 import AuthModal from './AuthModal'
 import { LogOut, User, X, Settings, Trash2, ShoppingBag, ShoppingCart, Home } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -31,65 +32,62 @@ export default function Navigation({ activeSection }) {
   const navigate = useNavigate()
   const [isOpen, setIsOpen] = useState(false)
   const [activeTab, setActiveTab] = useState('hero')
-  // Initialize synchronously from localStorage to prevent 1-frame "logged out" flash
+  // Initialize synchronously from the user-scoped cart key to prevent flash
   const [user, setUser] = useState(() => getCurrentUser())
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false)
-  // Initialize synchronously from localStorage to prevent 1-frame "empty cart" flash
-  const [cart, setCart] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('gk_cart') || '[]') } catch { return [] }
-  })
+  // readCart() uses the current user's scoped key — empty if unauthenticated
+  const [cart, setCart] = useState(() => readCart())
 
   useEffect(() => {
     const handleUserUpdate = () => {
-      setUser(getCurrentUser())
+      const nextUser = getCurrentUser()
+      setUser(nextUser)
+      // Re-read cart from the new user's scoped key immediately
+      setCart(readCart())
     }
     handleUserUpdate()
     window.addEventListener('gk_user_updated', handleUserUpdate)
     return () => window.removeEventListener('gk_user_updated', handleUserUpdate)
   }, [])
 
-  // Sync cart state with localStorage across components
+  // Sync cart state with localStorage across components and browser tabs
   useEffect(() => {
     const loadCart = (e) => {
-      const saved = localStorage.getItem('gk_cart');
-      setCart(saved ? JSON.parse(saved) : []);
+      setCart(readCart())
       if (e?.detail?.open) {
-        navigate('/cart');
+        navigate('/cart')
       }
-    };
-    loadCart();
-    window.addEventListener('gk_cart_updated', loadCart);
-    return () => window.removeEventListener('gk_cart_updated', loadCart);
-  }, []);
+    }
+    loadCart()
+    window.addEventListener('gk_cart_updated', loadCart)
+    return () => window.removeEventListener('gk_cart_updated', loadCart)
+  }, [])
 
   const removeFromCart = (id) => {
-    const saved = localStorage.getItem('gk_cart');
-    const currentCart = saved ? JSON.parse(saved) : [];
-    const newCart = currentCart.filter(item => item.id !== id);
-    localStorage.setItem('gk_cart', JSON.stringify(newCart));
-    window.dispatchEvent(new Event('gk_cart_updated'));
-  };
+    const currentCart = readCart()
+    const newCart = currentCart.filter(item => item.id !== id)
+    writeCart(newCart)
+    notifyCartUpdated()
+  }
 
   const updateCartItemQty = (id, newQty) => {
-    const saved = localStorage.getItem('gk_cart');
-    const currentCart = saved ? JSON.parse(saved) : [];
-    let newCart;
+    const currentCart = readCart()
+    let newCart
     if (newQty <= 0) {
-      newCart = currentCart.filter(item => item.id !== id);
+      newCart = currentCart.filter(item => item.id !== id)
     } else {
-      newCart = currentCart.map(item => 
+      newCart = currentCart.map(item =>
         item.id === id ? { ...item, quantity: newQty } : item
-      );
+      )
     }
-    localStorage.setItem('gk_cart', JSON.stringify(newCart));
-    window.dispatchEvent(new Event('gk_cart_updated'));
-  };
+    writeCart(newCart)
+    notifyCartUpdated()
+  }
 
   const clearCart = () => {
-    localStorage.removeItem('gk_cart');
-    window.dispatchEvent(new Event('gk_cart_updated'));
-  };
+    clearUserCart()
+  }
 
   const handleSearchClick = () => {
     navigate('/marketplace?focus=true');
