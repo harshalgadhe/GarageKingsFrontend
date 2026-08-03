@@ -4,22 +4,21 @@ import Navigation from '../components/Navigation'
 import AmbientScene from '../components/AmbientScene'
 import Footer from '../components/Footer'
 import FloatingSupport from '../components/FloatingSupport'
+import LiveSignalRail from '../components/common/LiveSignalRail'
+import CollectorStandardTrust from '../components/common/CollectorStandardTrust'
 
 import LookbookCover from '../components/lookbook/LookbookCover'
 import LookbookGallery from '../components/lookbook/LookbookGallery'
 import TechnicalArchive from '../components/lookbook/TechnicalArchive'
-import ReleaseBoard from '../components/lookbook/ReleaseBoard'
 import { scrollToSection, useLenis } from '../providers/SmoothScroll'
 
 export default function Home() {
   const lenisRef = useLenis()
   
-  // Section refs for active scroll journey tracking in order
   const coverRef = useRef(null)
   const archiveRef = useRef(null)
   const galleryRef = useRef(null)
 
-  // Listen to incoming hashes from other subpages and scroll smoothly
   useEffect(() => {
     if (window.location.hash) {
       const targetId = window.location.hash.substring(1)
@@ -29,7 +28,6 @@ export default function Home() {
     }
   }, [lenisRef])
 
-  // Storyteller refs array in chronological layout order
   const lookbookRefs = useMemo(
     () => [coverRef, archiveRef, galleryRef],
     [],
@@ -37,25 +35,31 @@ export default function Home() {
 
   const activeSectionIndex = useActiveSection(lookbookRefs)
   
-  // Resolve navigation item highlights based on layout order
   const activeSection = useMemo(() => {
     const map = ['hero', 'archive', 'gallery']
     return map[activeSectionIndex] || 'hero'
   }, [activeSectionIndex])
 
   return (
-    <div className="relative bg-gk-black text-white">
-      {/* Background ambient lighting */}
+    <div className="relative bg-[#050505] text-[#F4F1EC] pt-16">
       <AmbientScene />
-      
       <Navigation activeSection={activeSection} />
 
-      {/* Magazine Spreads in correct order */}
       <main className="relative z-10 w-full">
+        {/* Vault Entrance Hero */}
         <LookbookCover ref={coverRef} />
+
+        {/* Live Operational Ticker Bar */}
+        <LiveSignalRail totalEntries={215} latestBrand="Mini GT Kaido House" />
+
+        {/* Technical Archive & Brand Wall */}
         <TechnicalArchive ref={archiveRef} />
+
+        {/* Curated Gallery / Latest Arrivals */}
         <LookbookGallery ref={galleryRef} />
-        {/* ReleaseBoard stashed/hidden per user directive */}
+
+        {/* Collector Guarantee & Trust Section */}
+        <CollectorStandardTrust />
       </main>
 
       <Footer />

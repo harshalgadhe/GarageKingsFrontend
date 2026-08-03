@@ -1,14 +1,13 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { getCars, isFirebaseConfigured, getBrands } from '../lib/db'
+import { useState, useEffect, useRef } from 'react'
+import { motion } from 'framer-motion'
+import { getCars, getBrands } from '../lib/db'
 import { logError } from '../lib/telemetry'
 import Navigation from '../components/Navigation'
 import { useNavigate } from 'react-router-dom'
-import { Search } from 'lucide-react'
-import ReserveModal from '../components/checkout/ReserveModal'
 import Footer from '../components/Footer'
-import { MarketplaceGridSkeleton, Shimmer } from '../components/Skeletons'
-import ProductCard from '../components/common/ProductCard'
+import { MarketplaceGridSkeleton } from '../components/Skeletons'
+import VaultModuleCard from '../components/common/VaultModuleCard'
+import CommandBar from '../components/common/CommandBar'
 
 export default function Marketplace() {
   const [cars, setCars] = useState([])
@@ -55,10 +54,10 @@ export default function Marketplace() {
       .catch(err => console.error("Error loading brands from backend:", err));
   }, []);
 
-  // Debounce search — only activate if query is empty (clear) or >= 3 chars
+  // Debounce search
   useEffect(() => {
     const trimmed = searchQuery.trim()
-    if (trimmed.length > 0 && trimmed.length < 3) return // Suppress short queries
+    if (trimmed.length > 0 && trimmed.length < 3) return
     const timer = setTimeout(() => {
       setDebouncedSearch(trimmed)
       setPage(1)
@@ -68,7 +67,6 @@ export default function Marketplace() {
 
   useEffect(() => {
     async function load() {
-      // Cancel any in-flight request before starting a new one
       if (abortControllerRef.current) {
         abortControllerRef.current.abort()
       }
@@ -100,26 +98,23 @@ export default function Marketplace() {
         }
         const carData = await getCars(params)
 
-        // Bail out silently if request was aborted mid-flight
         if (controller.signal.aborted) return
 
         const rawProducts = (carData.products || []).map(p => ({
           ...p,
-          // Normalize price: the paginated endpoint returns sellingPrice, not price
           price: p.sellingPrice ?? p.price,
-          // Normalize lane: the paginated endpoint returns grade, not lane
           lane: p.lane ?? p.grade ?? p.manufacturer,
         }))
 
         // Helper to push sold out items to the end of the list
         const sortSoldOutLast = (list) => {
           return list.slice().sort((a, b) => {
-            const aSoldOut = a.availableStock !== undefined 
-              ? Number(a.availableStock) <= 0 
-              : (Number(a.totalStock || 0) - Number(a.soldStock || 0) <= 0);
-            const bSoldOut = b.availableStock !== undefined 
-              ? Number(b.availableStock) <= 0 
-              : (Number(b.totalStock || 0) - Number(b.soldStock || 0) <= 0);
+            const aSoldOut = a.isSoldOut !== undefined
+              ? a.isSoldOut
+              : (a.availableStock !== undefined ? Number(a.availableStock) <= 0 : (Number(a.totalStock || 0) - Number(a.soldStock || 0) <= 0));
+            const bSoldOut = b.isSoldOut !== undefined
+              ? b.isSoldOut
+              : (b.availableStock !== undefined ? Number(b.availableStock) <= 0 : (Number(b.totalStock || 0) - Number(b.soldStock || 0) <= 0));
 
             if (aSoldOut && !bSoldOut) return 1;
             if (!aSoldOut && bSoldOut) return -1;
@@ -143,8 +138,8 @@ export default function Marketplace() {
         setTotalPages(carData.totalPages || 1)
         setTotalItems(carData.total || 0)
       } catch (err) {
-        if (err?.name === 'AbortError') return // Expected — not an error
-        setError("Unable to retrieve catalog listings. Please verify your connection or try again shortly.")
+        if (err?.name === 'AbortError') return
+        setError("Unable to retrieve vault listings. Please verify connection.")
         logError(err.message || 'Catalog Load Failed', err.stack);
       } finally {
         if (!controller.signal.aborted) {
@@ -165,7 +160,6 @@ export default function Marketplace() {
   // Handle infinite scroll on mobile
   useEffect(() => {
     if (!isMobile) return;
-    
     const handleScroll = () => {
       const threshold = 300;
       const scrollHeight = document.documentElement.scrollHeight;
@@ -173,230 +167,135 @@ export default function Marketplace() {
       const clientHeight = document.documentElement.clientHeight;
       
       if (scrollHeight - scrollTop - clientHeight < threshold) {
-        // Guard: never trigger if already fetching or all items loaded
         if (!isFetchingRef.current && cars.length < totalItems) {
           setPage(prev => prev + 1);
         }
       }
     };
-    
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, [isMobile, cars.length, totalItems]);
 
-  useEffect(() => {
-    // Autofocus the search bar if requested via navigation
-    if (window.location.search.includes('focus=true')) {
-      setTimeout(() => {
-        const input = document.getElementById('marketplace-search-input');
-        if (input) {
-          input.focus();
-        }
-      }, 350);
-    }
-  }, [])
+  const handleResetFilters = () => {
+    setBrandFilter('All');
+    setScaleFilter('All');
+    setInStockOnly(false);
+    setPreBookingOnly(false);
+    setSearchQuery('');
+    setDebouncedSearch('');
+    setPage(1);
+  };
 
   return (
-    <div className="min-h-[100svh] bg-gk-black text-white selection:bg-gk-yellow selection:text-black pt-16">
+    <div className="min-h-[100svh] bg-[#050505] text-[#F4F1EC] pt-16">
       <Navigation activeSection="vault" />
 
-      {/* Hero */}
-      <div className="relative py-16 md:py-24 overflow-hidden border-b border-white/5">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(255,51,0,0.1)_0%,transparent_70%)]" />
-        <div className="max-w-7xl mx-auto px-6 relative z-10 text-center">
-          <h1 className="text-4xl md:text-7xl font-black tracking-tighter mb-4">
-            The <span className="text-gk-orange">Marketplace.</span>
-          </h1>
-          <p className="text-base md:text-lg text-white/50 max-w-xl mx-auto mb-8 md:mb-10">
-            Exclusive die-cast inventory, curated and strictly graded. Secure your piece of the vault.
-          </p>
-          <div className="max-w-md mx-auto relative group">
-            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-white/40 group-focus-within:text-gk-yellow transition-colors">
-              <Search size={20} />
+      {/* ── Compact Editorial Vault Header ── */}
+      <header className="py-8 md:py-12 bg-[#090909] border-b border-white/[0.06]">
+        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <div className="text-[10px] font-mono uppercase tracking-widest text-[#E86A2F] mb-1 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#E86A2F]" />
+              GARAGEKINGS VAULT ARCHIVE
             </div>
-            <input 
-              id="marketplace-search-input"
-              type="text" 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by name, brand, or category..."
-              className="w-full bg-black/50 border border-white/20 rounded-full py-3.5 md:py-4 pl-12 pr-6 text-sm md:text-base text-white placeholder-white/30 focus:outline-none focus:border-gk-yellow focus:ring-1 focus:ring-gk-yellow transition-all"
-            />
+            <h1 className="text-3xl md:text-5xl font-extrabold text-[#F4F1EC] tracking-tight">
+              The Vault.
+            </h1>
+            <p className="text-xs md:text-sm text-[#A9A49C] max-w-xl mt-1 leading-relaxed">
+              Curated automotive diecast inventory, strictly cataloged and condition-verified.
+            </p>
+          </div>
+
+          <div className="text-xs font-mono text-[#74716B] bg-[#050505] border border-white/[0.06] px-4 py-2 rounded-lg shrink-0">
+            Vault Index Status: <strong className="text-[#F4F1EC]">{totalItems} entries cataloged</strong>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Grid */}
-      <div className="max-w-7xl mx-auto px-6 py-12 md:py-20">
-        
-        {/* Horizontal Brand Selector (Pills) */}
-        {!error && (
-          <div className="flex flex-wrap gap-2 justify-center items-center mb-8 bg-white/[0.02] border border-white/5 p-2 rounded-2xl max-w-4xl mx-auto backdrop-blur-md min-h-[56px]">
-            {backendBrands.length === 0 ? (
-              // Reserve exact space while brands load — prevents filter bar from jumping content
-              <>
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <Shimmer key={i} className={`h-9 rounded-xl ${i === 0 ? 'w-24' : i === 1 ? 'w-16' : i === 2 ? 'w-20' : i === 3 ? 'w-14' : i === 4 ? 'w-18' : 'w-12'}`} />
-                ))}
-              </>
-            ) : (
-              [
-                { label: 'All Brands', value: 'All' },
-                ...backendBrands.map(b => ({ label: b.name, value: b.name }))
-              ].map(brand => {
-                const isActive = brandFilter === brand.value;
-                return (
-                  <button
-                    key={brand.value}
-                    onClick={() => { setBrandFilter(brand.value); setPage(1); }}
-                    className={`px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all relative cursor-pointer active:scale-95 ${
-                      isActive 
-                        ? 'bg-gk-orange text-white shadow-[0_0_20px_rgba(225,6,0,0.35)] border border-gk-orange' 
-                        : 'text-white/60 hover:text-white hover:bg-white/5 border border-transparent'
-                    }`}
-                  >
-                    {brand.label}
-                  </button>
-                );
-              })
-            )}
-          </div>
-        )}
+      {/* ── Sticky CommandBar ── */}
+      <CommandBar
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        brandFilter={brandFilter}
+        setBrandFilter={setBrandFilter}
+        scaleFilter={scaleFilter}
+        setScaleFilter={setScaleFilter}
+        inStockOnly={inStockOnly}
+        setInStockOnly={setInStockOnly}
+        preBookingOnly={preBookingOnly}
+        setPreBookingOnly={setPreBookingOnly}
+        backendBrands={backendBrands}
+        totalItems={totalItems}
+        onResetFilters={handleResetFilters}
+      />
 
-        {/* Sub-Filters: Scale, Availability & Pre-Booking */}
-        {!error && (
-          <div className="flex flex-wrap gap-6 items-center justify-center mb-10 bg-white/[0.01] border border-white/5 p-4 rounded-2xl max-w-2xl mx-auto backdrop-blur-md">
-            <div className="flex items-center gap-2">
-              <label className="text-[10px] uppercase tracking-widest text-white/40 font-black">Scale:</label>
-              <select 
-                value={scaleFilter}
-                onChange={(e) => { setScaleFilter(e.target.value); setPage(1); }}
-                className="bg-[#090909] border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-gk-orange transition-all min-w-[100px] cursor-pointer"
-              >
-                <option value="All">All Scales</option>
-                <option value="1:64">1:64</option>
-                <option value="1:32">1:32</option>
-              </select>
-            </div>
-
-            <div 
-              className="flex items-center gap-2 select-none cursor-pointer" 
-              onClick={() => { setInStockOnly(!inStockOnly); setPage(1); }}
-            >
-              <input 
-                type="checkbox" 
-                checked={inStockOnly} 
-                onChange={() => {}} 
-                className="accent-gk-orange cursor-pointer w-4 h-4"
-              />
-              <span className="text-xs font-bold text-white/70">In Stock Only</span>
-            </div>
-
-            <div 
-              className="flex items-center gap-2 select-none cursor-pointer" 
-              onClick={() => { setPreBookingOnly(!preBookingOnly); setPage(1); }}
-            >
-              <input 
-                type="checkbox" 
-                checked={preBookingOnly} 
-                onChange={() => {}} 
-                className="accent-gk-orange cursor-pointer w-4 h-4"
-              />
-              <span className="text-xs font-bold text-white/70">Pre-Booking Only</span>
-            </div>
-          </div>
-        )}
-
+      {/* ── Grid Container ── */}
+      <main className="max-w-7xl mx-auto px-6 py-8 md:py-12">
         {error ? (
-          <div className="text-center py-20 md:py-32">
-            <div className="inline-block bg-red-500/20 border border-red-500/50 text-red-200 p-6 rounded-2xl max-w-lg">
-              <h3 className="font-bold mb-2">Vault Connection Failed</h3>
-              <p className="text-sm">{error}</p>
+          <div className="text-center py-20">
+            <div className="inline-block bg-[#B85C5C]/10 border border-[#B85C5C]/30 text-[#F4F1EC] p-6 rounded-xl max-w-lg font-mono">
+              <h3 className="font-bold mb-1 text-[#B85C5C]">The Vault Could Not Be Opened</h3>
+              <p className="text-xs text-[#A9A49C]">{error}</p>
+              <button onClick={() => window.location.reload()} className="mt-4 px-4 py-2 rounded bg-[#B85C5C] text-black font-bold text-xs">
+                Retry Connection
+              </button>
             </div>
           </div>
         ) : (isFirstLoad && isLoading) ? (
           <MarketplaceGridSkeleton count={isMobile ? 6 : 12} />
         ) : cars.length === 0 ? (
-          <div className="text-center py-20 md:py-32 text-white/50">No items found matching your filters.</div>
+          <div className="text-center py-20 border border-dashed border-white/[0.08] rounded-xl bg-[#0D0D0D] p-8 max-w-xl mx-auto space-y-4">
+            <div className="text-xs font-mono uppercase tracking-widest text-[#E86A2F]">No Vault Entries Found</div>
+            <p className="text-sm text-[#A9A49C]">
+              No collectibles in the vault match your active inspection parameters.
+            </p>
+            <button
+              onClick={handleResetFilters}
+              className="px-4 py-2 rounded-lg bg-[#E86A2F] text-black font-bold text-xs uppercase tracking-wider cursor-pointer"
+            >
+              Clear All Filters
+            </button>
+          </div>
         ) : (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {cars.map((car, index) => (
                 <motion.div
                   key={car.id}
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: (index % 12) * 0.04 }}
+                  transition={{ delay: (index % 12) * 0.03, duration: 0.26 }}
                 >
-                  <ProductCard car={car} onClick={() => navigate(`/product/${car.id}`)} />
+                  <VaultModuleCard car={car} onClick={() => navigate(`/product/${car.id}`)} />
                 </motion.div>
               ))}
             </div>
 
-            {/* Mobile Loading Spinner */}
-            {isMobile && isLoading && (
-              <div className="flex justify-center mt-10">
-                <div className="flex flex-col items-center gap-3">
-                  <div className="w-8 h-8 rounded-full border-3 border-gk-orange/30 border-t-gk-orange animate-spin" />
-                  <div className="text-[10px] font-black uppercase tracking-widest text-gk-orange animate-pulse">Loading More...</div>
-                </div>
+            {/* Pagination Controls */}
+            {!isMobile && totalPages > 1 && (
+              <div className="flex justify-center items-center gap-2 mt-12 pt-8 border-t border-white/[0.06] font-mono">
+                <button
+                  disabled={page === 1}
+                  onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                  className="px-4 py-2 rounded-lg border border-white/[0.08] hover:border-[#E86A2F] text-xs font-bold uppercase disabled:opacity-30 cursor-pointer"
+                >
+                  ← Prev Page
+                </button>
+                <span className="text-xs text-[#74716B] px-4">
+                  Page <strong className="text-[#F4F1EC]">{page}</strong> of <strong className="text-[#F4F1EC]">{totalPages}</strong>
+                </span>
+                <button
+                  disabled={page === totalPages}
+                  onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
+                  className="px-4 py-2 rounded-lg border border-white/[0.08] hover:border-[#E86A2F] text-xs font-bold uppercase disabled:opacity-30 cursor-pointer"
+                >
+                  Next Page →
+                </button>
               </div>
             )}
-
-            {/* Pagination — container always present to prevent layout jump when it appears */}
-            <div className="min-h-[80px] flex items-center justify-center mt-12">
-              {!isMobile && totalPages > 1 && (
-                <div className="flex justify-center items-center gap-2 bg-white/[0.01] border border-white/5 p-3 rounded-2xl max-w-md mx-auto backdrop-blur-md w-full">
-                  <button
-                    disabled={page === 1}
-                    onClick={() => setPage(prev => Math.max(1, prev - 1))}
-                    className="px-3.5 py-2.5 rounded-xl border border-white/10 hover:border-gk-orange/30 bg-white/5 hover:bg-gk-orange/5 text-white font-black text-[10px] uppercase tracking-wider transition-all disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
-                  >
-                    ← Prev
-                  </button>
-                  
-                  <div className="flex items-center gap-1">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => {
-                      const isActive = page === p;
-                      if (p === 1 || p === totalPages || Math.abs(p - page) <= 1) {
-                        return (
-                          <button
-                            key={p}
-                            onClick={() => setPage(p)}
-                            className={`w-9 h-9 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                              isActive 
-                                ? 'bg-gk-orange text-white font-black shadow-[0_0_15px_rgba(225,6,0,0.3)] border border-gk-orange' 
-                                : 'text-white/50 hover:text-white hover:bg-white/5 border border-white/5'
-                            }`}
-                          >
-                            {p}
-                          </button>
-                        );
-                      }
-                      if (p === 2 || p === totalPages - 1) {
-                        return (
-                          <span key={p} className="text-white/30 text-xs px-1 font-mono">
-                            ...
-                          </span>
-                        );
-                      }
-                      return null;
-                    })}
-                  </div>
-
-                  <button
-                    disabled={page === totalPages}
-                    onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
-                    className="px-3.5 py-2.5 rounded-xl border border-white/10 hover:border-gk-orange/30 bg-white/5 hover:bg-gk-orange/5 text-white font-black text-[10px] uppercase tracking-wider transition-all disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
-                  >
-                    Next →
-                  </button>
-                </div>
-              )}
-            </div>
           </>
         )}
-      </div>
+      </main>
       <Footer />
     </div>
   )

@@ -1,22 +1,55 @@
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..900;1,400..900&family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..900;1,400..900&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Bebas+Neue&display=swap');
 
 @import 'tailwindcss';
 
 @theme {
-  --color-gk-black: #090909; /* Premium luxury dark backdrop */
-  --color-gk-surface: #111111; /* Secondary surface */
-  --color-gk-surface-2: #151515; /* Elevated surface */
-  --color-gk-card: #151515; /* Card container backdrop */
-  --color-gk-border: rgba(255, 255, 255, 0.04); /* Sleek hairline borders */
-  --color-gk-accent: #E15B2C; /* Metallic Warm Orange */
-  --color-gk-accent-hover: #F7F7F7; /* High-contrast white */
-  --color-gk-yellow: #D8C6A3; /* Champagne Gold Highlight */
-  --color-gk-orange: #E15B2C; /* Warm Metallic Orange Highlight */
-  --color-gk-gold: #D8C6A3; /* Champagne Gold Highlight */
-  --color-gk-silver: #A1A1A1; /* Muted Secondary Text */
-  --font-grotesk: 'Neue Haas Grotesk Display', 'Instrument Sans', sans-serif; /* Neue Haas Grotesk Display for all headers */
+  /* Surface System — Depth through near-black tones */
+  --color-vault-canvas: #050505;
+  --color-vault-900: #090909;
+  --color-vault-surface: #0D0D0D;
+  --color-vault-elevated: #121212;
+  --color-vault-hover: #171717;
+  --color-vault-active: #1D1D1D;
+
+  /* Backward Compatibility Theme Mapping */
+  --color-gk-black: #050505;
+  --color-gk-surface: #0D0D0D;
+  --color-gk-surface-2: #121212;
+  --color-gk-card: #0D0D0D;
+  --color-gk-border: rgba(255, 255, 255, 0.06);
+  --color-gk-accent: #E86A2F;
+  --color-gk-accent-hover: #F2793F;
+  --color-gk-yellow: #C8AE7D;
+  --color-gk-orange: #E86A2F;
+  --color-gk-gold: #C8AE7D;
+  --color-gk-silver: #A9A49C;
+
+  /* Hairline Borders */
+  --color-line-soft: rgba(255, 255, 255, 0.06);
+  --color-line-strong: rgba(255, 255, 255, 0.12);
+  --color-line-focus: rgba(232, 106, 47, 0.42);
+
+  /* Typography Roles */
+  --color-text-primary: #F4F1EC;
+  --color-text-secondary: #A9A49C;
+  --color-text-muted: #74716B;
+  --color-text-disabled: #56524D;
+
+  /* Accents */
+  --color-signal-orange: #E86A2F;
+  --color-signal-orange-hover: #F2793F;
+  --color-archive-brass: #C8AE7D;
+
+  /* Status Colors */
+  --color-inspection-green: #5E9F78;
+  --color-incoming-amber: #C99652;
+  --color-alert-red: #B85C5C;
+  --color-info-steel: #7E93A8;
+
+  /* Fonts */
+  --font-grotesk: 'Neue Haas Grotesk Display', 'Instrument Sans', sans-serif;
+  --font-bebas: 'Bebas Neue', sans-serif;
   --font-inter: 'Inter', sans-serif;
-  --font-bebas: 'Neue Haas Grotesk Display', 'Instrument Sans', sans-serif;
 }
 
 * {
@@ -85,24 +118,45 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--color-gk-black);
 }
 
-.gk-grid-floor {
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
-  background-size: 48px 48px;
-  mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 20%, transparent 75%);
+/* ─── GARAGEKINGS MUSEUM LIGHTING & ARTIFACT UTILITIES ─── */
+.artifact-stage-light {
+  background-image: radial-gradient(circle at 50% 38%, rgba(255, 255, 255, 0.075) 0%, rgba(255, 255, 255, 0.025) 28%, transparent 64%);
 }
 
-.gk-checkered-flag {
-  background-color: transparent;
-  background-image: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.015) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.015) 75%, rgba(255, 255, 255, 0.015)), repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.015) 25%, var(--color-gk-black) 25%, var(--color-gk-black) 75%, rgba(255, 255, 255, 0.015) 75%, rgba(255, 255, 255, 0.015));
-  background-position: 0 0, 20px 20px;
-  background-size: 40px 40px;
+.artifact-pedestal-shadow {
+  box-shadow: 0 16px 36px -12px rgba(0, 0, 0, 0.85);
 }
 
-.gk-hotwheels-track {
-  background: linear-gradient(90deg, #cc2900 0%, var(--color-gk-orange) 20%, var(--color-gk-orange) 80%, #cc2900 100%);
-  box-shadow: 0 0 20px rgba(255, 51, 0, 0.5);
+.gk-focus-ring:focus-visible {
+  outline: 2px solid #E86A2F;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 4px rgba(200, 174, 125, 0.25);
+}
+
+.gk-shimmer-veil {
+  position: relative;
+  overflow: hidden;
+}
+
+.gk-shimmer-veil::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.045), transparent);
+  animation: gk-shimmer 2.0s linear infinite;
+}
+
+@keyframes gk-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gk-shimmer-veil::after {
+    animation: none;
+  }
 }
 
 .gk-race-scene {

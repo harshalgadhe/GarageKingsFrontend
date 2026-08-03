@@ -170,16 +170,16 @@ export default function Navigation({ activeSection }) {
 
           {/* Desktop Navigation Links */}
           <nav className="hidden lg:block">
-            <ul className="flex gap-7 items-center">
+            <ul className="flex gap-8 items-center">
               {links.map((link) => (
                 <li key={link.id}>
                   <button
                     type="button"
                     onClick={() => handleNavClick(link.id)}
-                    className={`whitespace-nowrap text-xs font-black uppercase tracking-[0.15em] transition-colors duration-300 py-1.5 px-0.5 border-b-2 ${
+                    className={`whitespace-nowrap text-xs font-mono font-bold uppercase tracking-widest transition-colors duration-200 py-1.5 px-0.5 border-b-2 ${
                       activeTab === link.id || activeSection === link.id
-                        ? 'text-[var(--color-gk-orange)] border-[var(--color-gk-orange)]'
-                        : 'text-white/70 border-transparent hover:text-white'
+                        ? 'text-[#E86A2F] border-[#E86A2F]'
+                        : 'text-[#A9A49C] border-transparent hover:text-[#F4F1EC]'
                     }`}
                   >
                     {link.label}
@@ -189,9 +189,13 @@ export default function Navigation({ activeSection }) {
               <li>
                 <Link
                   to="/marketplace"
-                  className="whitespace-nowrap text-xs font-black uppercase tracking-[0.15em] transition-colors duration-300 text-white/70 hover:text-white py-1.5 px-0.5 border-b-2 border-transparent"
+                  className={`whitespace-nowrap text-xs font-mono font-bold uppercase tracking-widest transition-colors duration-200 py-1.5 px-0.5 border-b-2 ${
+                    window.location.pathname === '/marketplace'
+                      ? 'text-[#E86A2F] border-[#E86A2F]'
+                      : 'text-[#A9A49C] border-transparent hover:text-[#F4F1EC]'
+                  }`}
                 >
-                  Marketplace
+                  The Vault
                 </Link>
               </li>
             </ul>
