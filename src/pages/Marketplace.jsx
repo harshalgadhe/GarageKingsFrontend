@@ -8,6 +8,7 @@ import { Search } from 'lucide-react'
 import ReserveModal from '../components/checkout/ReserveModal'
 import Footer from '../components/Footer'
 import { MarketplaceGridSkeleton, Shimmer } from '../components/Skeletons'
+import ProductCard from '../components/common/ProductCard'
 
 export default function Marketplace() {
   const [cars, setCars] = useState([])
@@ -102,19 +103,38 @@ export default function Marketplace() {
         // Bail out silently if request was aborted mid-flight
         if (controller.signal.aborted) return
 
-        const newProducts = (carData.products || []).map(p => ({
+        const rawProducts = (carData.products || []).map(p => ({
           ...p,
           // Normalize price: the paginated endpoint returns sellingPrice, not price
           price: p.sellingPrice ?? p.price,
           // Normalize lane: the paginated endpoint returns grade, not lane
           lane: p.lane ?? p.grade ?? p.manufacturer,
         }))
+
+        // Helper to push sold out items to the end of the list
+        const sortSoldOutLast = (list) => {
+          return list.slice().sort((a, b) => {
+            const aSoldOut = a.availableStock !== undefined 
+              ? Number(a.availableStock) <= 0 
+              : (Number(a.totalStock || 0) - Number(a.soldStock || 0) <= 0);
+            const bSoldOut = b.availableStock !== undefined 
+              ? Number(b.availableStock) <= 0 
+              : (Number(b.totalStock || 0) - Number(b.soldStock || 0) <= 0);
+
+            if (aSoldOut && !bSoldOut) return 1;
+            if (!aSoldOut && bSoldOut) return -1;
+            return 0;
+          });
+        };
+
+        const newProducts = sortSoldOutLast(rawProducts);
         
         if (isMobile) {
           setCars(prev => {
             const existingIds = new Set(prev.map(p => p.id));
             const filteredNew = newProducts.filter(p => !existingIds.has(p.id));
-            return isFirstPage ? newProducts : [...prev, ...filteredNew];
+            const combined = isFirstPage ? newProducts : [...prev, ...filteredNew];
+            return sortSoldOutLast(combined);
           });
         } else {
           setCars(newProducts)
@@ -301,129 +321,16 @@ export default function Marketplace() {
         ) : (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {cars.map((car, index) => {
-                const isSoldOut = car.availableStock !== undefined 
-                  ? car.availableStock <= 0 
-                  : (Number(car.totalStock || 0) - Number(car.soldStock || 0) <= 0);
-
-                return (
-                  <motion.div
-                    key={car.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: (index % 12) * 0.05 }}
-                    onClick={() => navigate(`/product/${car.id}`)}
-                    className="group relative flex flex-col rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 overflow-hidden hover:bg-white/10 transition-colors duration-500 cursor-pointer h-[440px]"
-                  >
-                    {/* Image — fixed aspect-ratio container prevents any resize on load */}
-                    <div className="aspect-[4/3] bg-black/10 overflow-hidden relative flex-shrink-0" onContextMenu={(e) => e.preventDefault()}>
-                      <div className="absolute inset-0 z-30" />
-                      <img
-                        src={car.image || '/brand-logo.png'}
-                        alt={car.name}
-                        loading="lazy"
-                        onLoad={(e) => { e.target.style.opacity = '1' }}
-                        onError={(e) => {
-                          e.target.src = '/brand-logo.png';
-                          e.target.style.opacity = '1';
-                          e.target.className = "w-full h-full object-contain p-6 bg-zinc-950/80 transition-[opacity,transform] duration-700 ease-[0.22,1,0.36,1] pointer-events-none select-none";
-                        }}
-                        className="w-full h-full object-contain p-3 group-hover:scale-103 transition-[opacity,transform] duration-700 ease-[0.22,1,0.36,1] pointer-events-none select-none"
-                        style={{ WebkitUserDrag: 'none', opacity: 0 }}
-                      />
-                      {isSoldOut && (
-                        <div className="absolute inset-0 bg-black/60 backdrop-blur-[1.5px] z-25 flex items-center justify-center pointer-events-none">
-                          <span className="px-4 py-2 border border-red-500/40 bg-red-950/20 rounded-xl text-red-500 font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-red-500/5 select-none">
-                            Sold Out
-                          </span>
-                        </div>
-                      )}
-                      <div className="absolute top-4 right-4 z-20 px-3 py-1 rounded-full bg-black/80 backdrop-blur-md border border-white/10 text-[10px] font-black uppercase tracking-widest text-gk-yellow pointer-events-none shadow-xl">
-                        {car.lane}
-                      </div>
-                    </div>
-
-                    {/* Content — uses flex-1 to fill remaining card height */}
-                    <div className="p-6 flex flex-col flex-1 min-h-0">
-                      {/* Grade + Scale row — always renders, fixed height */}
-                      <div className="flex items-center justify-between mb-2 h-5">
-                        <div className="text-xs font-semibold uppercase tracking-wider text-white/40 truncate">{car.grade}</div>
-                        {car.scale && <div className="text-[10px] font-bold uppercase tracking-wider text-white/30 bg-white/5 px-2 py-0.5 rounded flex-shrink-0">{car.scale}</div>}
-                      </div>
-
-                      {/* Brand line — always reserves 20px to prevent shift when brand is null */}
-                      <div className="min-h-[20px] mb-1">
-                        {(car.brand || car.carBrand) && (
-                          <div className="text-[10px] font-black uppercase tracking-widest text-gk-orange truncate">
-                            {car.carBrand ? `${car.brand} • ${car.carBrand}` : car.brand}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Tag row — always reserves 28px to prevent CLS when tags are absent */}
-                      <div className="min-h-[28px] mb-2 flex flex-wrap gap-1.5 items-start">
-                        {car.isPrebook && (
-                          <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider border bg-gk-orange/15 text-gk-orange border-gk-orange/30 shadow-[0_0_10px_rgba(225,6,0,0.15)] animate-pulse">
-                            Pre-Booking
-                          </span>
-                        )}
-                        {car.tags && (() => {
-                          const seen = new Set();
-                          if (car.isPrebook) {
-                            seen.add('pre-booking'); seen.add('prebooking'); seen.add('pre booking');
-                            seen.add('pre-order'); seen.add('preorder'); seen.add('pre order');
-                          }
-                          return car.tags
-                            .map(tag => tag.trim())
-                            .filter(tag => {
-                              const lower = tag.toLowerCase();
-                              if (!lower || seen.has(lower)) return false;
-                              seen.add(lower);
-                              return true;
-                            })
-                            .map(tag => {
-                              let colorClass = 'bg-white/10 text-white/70 border-white/10';
-                              const lower = tag.toLowerCase();
-                              if (lower === 'hot') colorClass = 'bg-[#E10600]/15 text-[#E10600] border-[#E10600]/30 shadow-[0_0_10px_rgba(225,6,0,0.15)]';
-                              if (lower === 'trending') colorClass = 'bg-purple-500/15 text-purple-400 border-purple-500/30 shadow-[0_0_10px_rgba(168,85,247,0.15)]';
-                              if (lower === 'rare') colorClass = 'bg-amber-500/15 text-amber-400 border-amber-500/30 shadow-[0_0_10px_rgba(245,158,11,0.15)]';
-                              const displayTag = tag.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
-                              return (
-                                <span key={tag} className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider border ${colorClass}`}>
-                                  {displayTag}
-                                </span>
-                              );
-                            });
-                        })()}
-                      </div>
-
-                      {/* Name — line-clamp-2 caps at exactly 2 lines to prevent card height variation */}
-                      <h3 className="text-lg font-bold leading-tight mb-3 group-hover:text-gk-orange transition-colors line-clamp-2">{car.name}</h3>
-
-                      {/* Price footer — pinned to bottom */}
-                      <div className="mt-auto pt-4 border-t border-white/10 flex items-center justify-between w-full">
-                        {isSoldOut ? (
-                          <div className="text-red-500 font-bold text-xs uppercase tracking-wider">
-                            Sold Out
-                          </div>
-                        ) : (
-                          <div>
-                            <div className="text-[9px] uppercase tracking-wider text-white/40 mb-0.5">Price</div>
-                            {(car.price != null && Number(car.price) > 0) ? (
-                              <div className="font-mono text-base text-white font-bold">{car.currency || '₹'}{Number(car.price).toLocaleString('en-IN')}</div>
-                            ) : (
-                              <div className="text-[10px] font-semibold text-white/30 uppercase tracking-wider">Contact Us</div>
-                            )}
-                          </div>
-                        )}
-                        <div className="text-[10px] font-bold text-white/40 uppercase tracking-wider group-hover:text-gk-orange transition-colors">
-                          View Details →
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
+              {cars.map((car, index) => (
+                <motion.div
+                  key={car.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: (index % 12) * 0.04 }}
+                >
+                  <ProductCard car={car} onClick={() => navigate(`/product/${car.id}`)} />
+                </motion.div>
+              ))}
             </div>
 
             {/* Mobile Loading Spinner */}

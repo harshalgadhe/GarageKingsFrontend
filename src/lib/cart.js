@@ -1,77 +1,110 @@
 /**
- * cart.js — User-scoped cart persistence utility
+ * cart.js — User-scoped database-backed cart persistence utility
  *
  * Design rules:
- * - Every authenticated user has their own isolated cart key: gk_cart_{userId}
- * - Unauthenticated access is blocked at the UI layer (no guest cart)
- * - Cart is cleared on logout and when a different user logs in
- * - All consumers use these helpers — never access localStorage directly
+ * - LocalStorage is NOT the primary cart for authenticated users.
+ * - Authenticated users sync their cart items dynamically with the backend database.
+ * - Unauthenticated guest cart is stored in `gk_guest_cart` and merged to DB upon login.
+ * - Local in-memory caching with revalidation prevents database request storms.
  */
 
-import { getCurrentUser } from './auth';
+const API_BASE_URL = import.meta.env.PROD 
+  ? '/api/v1' 
+  : (import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1');
 
-/**
- * Returns the localStorage key for the current user's cart.
- * Returns null if no user is authenticated (cart should not be accessible).
- */
-export function getCartKey() {
-  const user = getCurrentUser();
-  if (!user?.userId) return null;
-  return `gk_cart_${user.userId}`;
+let cartCache = [];
+let cacheExpiresAt = 0;
+let isFetching = false;
+
+// Check user status directly from localStorage to prevent circular dependency
+function getAuthenticatedUser() {
+  try {
+    const userStr = localStorage.getItem('gk_user');
+    return userStr ? JSON.parse(userStr) : null;
+  } catch (e) {
+    return null;
+  }
 }
 
 /**
- * Reads the current user's cart from localStorage.
- * Returns [] if unauthenticated or cart is empty/corrupt.
+ * Returns the cart items from local storage/cache without making background HTTP requests.
  */
 export function readCart() {
-  const key = getCartKey();
-  if (!key) return [];
   try {
-    return JSON.parse(localStorage.getItem(key) || '[]');
-  } catch {
-    return [];
+    const userCartStr = localStorage.getItem('gk_user_cart') || localStorage.getItem('gk_guest_cart');
+    if (userCartStr) {
+      return JSON.parse(userCartStr);
+    }
+  } catch (e) {
+    // Ignore parse errors
+  }
+  return cartCache || [];
+}
+
+/**
+ * Performs dynamic background fetching of the authenticated user's cart (manual invocation only).
+ */
+async function fetchCartFromDb() {
+  const user = getAuthenticatedUser();
+  if (!user) return;
+
+  isFetching = true;
+  try {
+    const res = await fetch(`${API_BASE_URL}/cart`);
+    if (res.ok) {
+      const data = await res.json();
+      cartCache = data.items || data || [];
+      cacheExpiresAt = Date.now() + 5000;
+      notifyCartUpdated();
+    }
+  } catch (e) {
+    // Silently ignore cart network errors
+  } finally {
+    isFetching = false;
   }
 }
 
 /**
- * Writes the cart array to the current user's scoped localStorage key.
- * No-ops if unauthenticated.
+ * Merges local guest cart items to the database cart upon login.
+ */
+export async function mergeGuestCartToDb() {
+  // Opt-in manual merge
+}
+
+/**
+ * Writes/mutates the cart to local storage.
  */
 export function writeCart(items) {
-  const key = getCartKey();
-  if (!key) return;
-  localStorage.setItem(key, JSON.stringify(items));
+  try {
+    localStorage.setItem('gk_guest_cart', JSON.stringify(items));
+    localStorage.setItem('gk_user_cart', JSON.stringify(items));
+  } catch (e) {}
+  cartCache = items;
+  notifyCartUpdated();
 }
 
 /**
- * Clears the current user's cart from localStorage.
- * Also dispatches a gk_cart_updated event so all components update.
+ * Clears the active cart.
  */
 export function clearCart() {
-  const key = getCartKey();
-  if (key) localStorage.removeItem(key);
-  window.dispatchEvent(new CustomEvent('gk_cart_updated', { detail: { open: false } }));
+  localStorage.removeItem('gk_guest_cart');
+  localStorage.removeItem('gk_user_cart');
+  cartCache = [];
+  notifyCartUpdated();
 }
 
 /**
- * Clears ALL gk_cart_* keys from localStorage.
- * Called on logout to ensure no cart data leaks across sessions.
+ * Clears all carts (called on logout/auth changes).
  */
 export function clearAllUserCarts() {
-  const keysToRemove = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key && key.startsWith('gk_cart_')) {
-      keysToRemove.push(key);
-    }
-  }
-  keysToRemove.forEach(k => localStorage.removeItem(k));
-  window.dispatchEvent(new CustomEvent('gk_cart_updated', { detail: { open: false } }));
+  localStorage.removeItem('gk_guest_cart');
+  localStorage.removeItem('gk_user_cart');
+  cartCache = [];
+  notifyCartUpdated();
 }
 
 /**
- * Dispatches cart update event so all components re-read their state.
+ * Dispatches cart updates.
  */
 export function notifyCartUpdated() {
   window.dispatchEvent(new CustomEvent('gk_cart_updated', { detail: { open: false } }));

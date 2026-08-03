@@ -16,14 +16,12 @@ const links = [
   { id: 'hero', label: 'Home' },
   { id: 'archive', label: 'Brands' },
   { id: 'gallery', label: 'Collections' },
-  { id: 'releases', label: 'Next Drop' },
 ]
 
 const mobileLinks = [
   { id: 'hero', label: 'Home', type: 'anchor' },
   { id: 'archive', label: 'Brands', type: 'anchor' },
   { id: 'gallery', label: 'Collections', type: 'anchor' },
-  { id: 'releases', label: 'Next Drop', type: 'anchor' },
   { id: 'marketplace', label: 'Marketplace', type: 'route', path: '/marketplace' },
 ]
 
@@ -251,9 +249,9 @@ export default function Navigation({ activeSection }) {
                           setIsProfileDropdownOpen(false);
                           handleLogout();
                         }}
-                        className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all text-left cursor-pointer bg-transparent border-none"
+                        className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-medium text-zinc-400 hover:text-white hover:bg-white/5 transition-all text-left cursor-pointer bg-transparent border-none"
                       >
-                        <LogOut size={14} />
+                        <LogOut size={14} className="text-zinc-500" />
                         <span>Sign Out</span>
                       </button>
                     </motion.div>
@@ -261,22 +259,6 @@ export default function Navigation({ activeSection }) {
                 )}
               </AnimatePresence>
             </div>
-            
-            <button 
-              type="button"
-              onClick={() => navigate('/cart')}
-              className="p-2.5 rounded-xl bg-white/5 border border-white/5 hover:border-[var(--color-gk-orange)]/30 hover:bg-[var(--color-gk-orange)]/5 text-white/80 hover:text-white transition-all cursor-pointer group relative"
-              title="Your Vault Queue"
-            >
-              <svg className="w-4.5 h-4.5 group-hover:scale-105 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-              </svg>
-              {cart.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#ff5500] text-black text-[9px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center border border-black animate-pulse">
-                  {cart.reduce((sum, item) => sum + (item.quantity || 1), 0)}
-                </span>
-              )}
-            </button>
           </div>
 
           {/* Mobile Menu Button */}
@@ -375,31 +357,16 @@ export default function Navigation({ activeSection }) {
                         </div>
                       </div>
                       
-                      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/5">
+                      <div className="pt-2 border-t border-white/5">
                         <button
                           onClick={() => {
                             setIsOpen(false);
                             navigate('/account');
                           }}
-                          className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-[10px] font-black uppercase tracking-wider text-white transition-all cursor-pointer border border-white/5 active:scale-[0.98]"
+                          className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-[10px] font-black uppercase tracking-wider text-white transition-all cursor-pointer border border-white/5 active:scale-[0.98]"
                         >
                           <User size={12} className="text-gk-yellow" />
                           Account
-                        </button>
-                        <button
-                          onClick={() => {
-                            setIsOpen(false);
-                            navigate('/cart');
-                          }}
-                          className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-[#ff5500]/10 border border-[#ff5500]/20 hover:bg-[#ff5500]/20 text-[10px] font-black uppercase tracking-wider text-[#ff5500] transition-all cursor-pointer relative active:scale-[0.98]"
-                        >
-                          <ShoppingCart size={12} />
-                          Queue
-                          {cart.length > 0 && (
-                            <span className="absolute -top-1 -right-1 bg-[#ff5500] text-black text-[8px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center border border-black animate-pulse">
-                              {cart.reduce((sum, item) => sum + (item.quantity || 1), 0)}
-                            </span>
-                          )}
                         </button>
                       </div>
                       
@@ -421,7 +388,7 @@ export default function Navigation({ activeSection }) {
                           setIsOpen(false);
                           handleLogout();
                         }}
-                        className="w-full py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-[10px] font-black uppercase tracking-wider text-red-400 hover:bg-red-500/20 transition-all cursor-pointer text-center active:scale-[0.98]"
+                        className="w-full py-2.5 rounded-xl bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-wider text-zinc-400 hover:text-white hover:bg-white/10 transition-all cursor-pointer text-center active:scale-[0.98]"
                       >
                         Sign Out
                       </button>
@@ -482,7 +449,7 @@ export default function Navigation({ activeSection }) {
 
        {/* 📱 Persistent Glassmorphic Mobile Bottom Navigation */}
       {createPortal(
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#111111]/90 backdrop-blur-xl border-t border-[#222222] px-2 py-2.5 flex justify-between items-center text-white/50 shadow-[0_-10px_35px_rgba(0,0,0,0.9)] pb-[calc(10px+env(safe-area-inset-bottom))]">
+        <div className="md:hidden no-print print:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#111111]/90 backdrop-blur-xl border-t border-[#222222] px-2 py-2.5 flex justify-between items-center text-white/50 shadow-[0_-10px_35px_rgba(0,0,0,0.9)] pb-[calc(10px+env(safe-area-inset-bottom))]">
           <button 
             onClick={() => handleNavClick('hero')} 
             className={`flex flex-col items-center gap-1 flex-1 py-1 transition-all cursor-pointer active:scale-90 ${
@@ -501,23 +468,6 @@ export default function Navigation({ activeSection }) {
           >
             <ShoppingBag className="w-5 h-5" strokeWidth={2.2} />
             <span className="text-[9px] font-black uppercase tracking-wider">Shop</span>
-          </button>
-
-          <button 
-            onClick={() => navigate('/cart')} 
-            className={`flex flex-col items-center gap-1 flex-1 py-1 transition-all cursor-pointer active:scale-90 relative ${
-              window.location.pathname === '/cart' ? 'text-[var(--color-gk-orange)]' : 'hover:text-white'
-            }`}
-          >
-            <div className="relative">
-              <ShoppingCart className="w-5 h-5" strokeWidth={2.2} />
-              {cart.length > 0 && (
-                <span className="absolute -top-1.5 -right-2 bg-[#ff5500] text-black text-[8px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center border border-black animate-pulse">
-                  {cart.reduce((sum, item) => sum + (item.quantity || 1), 0)}
-                </span>
-              )}
-            </div>
-            <span className="text-[9px] font-black uppercase tracking-wider">Cart</span>
           </button>
 
           <button 

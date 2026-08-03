@@ -196,22 +196,50 @@ export async function getCars(params = {}) {
 
 
 export async function addCar(car) {
+  // Try admin endpoint first — it creates full product & variant records with stock
+  const adminRes = await fetch(`${API_BASE_URL.replace('/api/v1', '')}/api/v1/admin/products`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(car)
+  });
+
+  if (adminRes.ok) return await adminRes.json();
+
+  // Fallback to public endpoint if admin route is unavailable
   const res = await fetch(`${API_BASE_URL}/products`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(car)
   });
-  if (!res.ok) throw new Error("Failed to save casting");
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(`Failed to save casting (${res.status}): ${errorText || res.statusText}`);
+  }
   return await res.json();
 }
 
 export async function updateCar(id, updatedFields) {
+  // Try admin endpoint first — it has full write access to all fields
+  // (stock, arrivalDate, customerEta etc). The public PATCH /products/:id
+  // has restricted field access and silently ignores stock/date fields.
+  const adminRes = await fetch(`${API_BASE_URL.replace('/api/v1', '')}/api/v1/admin/products/${id}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(updatedFields)
+  });
+
+  if (adminRes.ok) return await adminRes.json();
+
+  // Fallback to public endpoint (e.g. if admin route doesn't exist yet)
   const res = await fetch(`${API_BASE_URL}/products/${id}`, {
     method: 'PATCH',
     headers: getAuthHeaders(),
     body: JSON.stringify(updatedFields)
   });
-  if (!res.ok) throw new Error("Failed to update casting");
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(`Failed to update casting (${res.status}): ${errorText || res.statusText}`);
+  }
   return await res.json();
 }
 
@@ -358,9 +386,9 @@ export function listenToAuctionRecentBids(auctionId, callback, count = 10) {
 }
 
 // Billing Receipts endpoints
-export async function getReceipts() {
+export async function getReceipts(page = 1, limit = 10, search = '') {
   try {
-    const res = await fetch(`${API_BASE_URL}/receipts`, {
+    const res = await fetch(`${API_BASE_URL}/receipts?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}`, {
       headers: getAuthHeaders()
     });
     if (!res.ok) throw new Error("Failed to fetch receipts");
@@ -372,6 +400,19 @@ export async function getReceipts() {
   }
 }
 
+export async function getReceiptDetails(id) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/receipts/${id}`, {
+      headers: getAuthHeaders()
+    });
+    if (!res.ok) throw new Error("Failed to fetch receipt details");
+    return await res.json();
+  } catch (err) {
+    console.error(`Error fetching receipt ${id}:`, err);
+    return null;
+  }
+}
+
 export async function addReceipt(receipt) {
   const res = await fetch(`${API_BASE_URL}/receipts`, {
     method: 'POST',
@@ -379,6 +420,24 @@ export async function addReceipt(receipt) {
     body: JSON.stringify(receipt)
   });
   if (!res.ok) throw new Error("Failed to generate billing receipt");
+  return await res.json();
+}
+
+export async function updateReceipt(id, receipt) {
+  const res = await fetch(`${API_BASE_URL}/receipts/${id}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(receipt)
+  });
+  if (!res.ok) {
+    const fallbackRes = await fetch(`${API_BASE_URL}/receipts`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ ...receipt, id })
+    });
+    if (!fallbackRes.ok) throw new Error("Failed to update receipt");
+    return await fallbackRes.json();
+  }
   return await res.json();
 }
 
@@ -423,17 +482,15 @@ export async function addCustomer(customer) {
 export async function uploadImageToStorage(file) {
   if (!file) return null;
 
-  // 1. Convert client-side image to WebP format for fast loads
+  // 1. Convert client-side image to WebP format for high compression S3 upload
   let webpFile = file;
-  if (file.type !== 'image/webp') {
-    try {
-      webpFile = await convertToWebP(file);
-    } catch (e) {
-      console.warn("WebP client-side conversion failed, falling back to raw upload:", e);
-    }
+  try {
+    webpFile = await convertToWebP(file, 1200, 0.85);
+  } catch (e) {
+    console.warn("WebP client-side conversion warning:", e);
   }
 
-  // 2. Upload to our backend's S3 endpoint
+  // 2. Upload to AWS S3 via NestJS API (/images/upload)
   const formData = new FormData();
   formData.append('file', webpFile);
   formData.append('folder', 'products');
@@ -451,20 +508,58 @@ export async function uploadImageToStorage(file) {
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Archival S3 upload failed: ${errorText || response.statusText}`);
+    const errorText = await response.text().catch(() => '');
+    throw new Error(`S3 Upload failed (${response.status}): ${errorText || response.statusText}`);
   }
 
   const data = await response.json();
-  if (data.success && data.url) {
-    return data.url;
-  } else {
-    throw new Error(data.message || "Archival S3 upload failed");
+  const rawUrl = data.url || data.path || data.fileUrl || data.location || data.key;
+  if (!rawUrl) {
+    throw new Error(data.message || "S3 Upload failed: Server did not return an image URL.");
   }
+
+  // Ensure full absolute S3 or backend server URL (stripping /api/v1 for static uploads)
+  const serverOrigin = API_BASE_URL.replace(/\/api\/v\d+$/, '');
+  const fullUrl = rawUrl.startsWith('http://') || rawUrl.startsWith('https://') || rawUrl.startsWith('data:')
+    ? rawUrl 
+    : `${serverOrigin}${rawUrl.startsWith('/') ? '' : '/'}${rawUrl}`;
+
+  return fullUrl;
 }
 
-// Helper to convert any image file to WebP client-side
-function convertToWebP(file, quality = 0.8) {
+// Compress any DataURL string to max 400px WebP (~10KB)
+export function compressDataUrl(dataUrl, maxDim = 400, quality = 0.45) {
+  if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image')) {
+    return Promise.resolve(dataUrl);
+  }
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = dataUrl;
+    img.onload = () => {
+      let width = img.width;
+      let height = img.height;
+      if (width > maxDim || height > maxDim) {
+        if (width > height) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        } else {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/webp', quality));
+    };
+    img.onerror = () => resolve(dataUrl);
+  });
+}
+
+// Helper to convert & scale any image file to WebP client-side (maxDimension: 400px)
+function convertToWebP(file, maxDimension = 400, quality = 0.45) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -472,11 +567,24 @@ function convertToWebP(file, quality = 0.8) {
       const img = new Image();
       img.src = event.target.result;
       img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+
         const canvas = document.createElement('canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
+        canvas.width = width;
+        canvas.height = height;
         const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0);
+        ctx.drawImage(img, 0, 0, width, height);
         canvas.toBlob((blob) => {
           if (blob) {
             const webpFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".webp", {

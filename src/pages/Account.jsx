@@ -11,7 +11,7 @@ export default function Account() {
   const [user, setUser] = useState(null);
   const [dbOrders, setDbOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('orders'); // 'orders', 'settings'
+  const [activeTab, setActiveTab] = useState('profile'); // 'profile'
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
@@ -233,9 +233,9 @@ export default function Account() {
                 <User size={32} />
               </div>
             </div>
-            <h1 className="text-2xl font-black uppercase tracking-wide mb-3 text-white">Collector Space</h1>
+            <h1 className="text-2xl font-black uppercase tracking-wide mb-3 text-white">Profile</h1>
             <p className="text-xs text-zinc-500 leading-relaxed mb-8 max-w-sm mx-auto">
-              Access your personal dashboard to track active orders, check purchase history, and manage your collector details.
+              Sign in to manage your profile, contact information, and delivery details.
             </p>
             <button 
               onClick={() => {
@@ -273,34 +273,15 @@ export default function Account() {
           
           {/* Left Sidebar */}
           <aside className="lg:w-64 flex-shrink-0 flex flex-row lg:flex-col overflow-x-auto lg:overflow-x-visible gap-2 bg-[#111111] border border-white/5 rounded-2xl p-3 h-fit lg:sticky lg:top-24 scrollbar-none">
-            {[
-              { id: 'orders', label: 'My Orders', icon: Package, count: orders.length },
-              { id: 'settings', label: 'Account Settings', icon: Settings }
-            ].map(tab => {
-              const Icon = tab.icon;
-              const active = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-3 px-4 py-3.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap lg:w-full cursor-pointer border ${
-                    active 
-                      ? 'bg-gk-orange/10 border-gk-orange/30 text-gk-orange shadow-[0_0_15px_-5px_rgba(255,85,0,0.15)]' 
-                      : 'border-transparent text-zinc-500 hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  <Icon size={16} />
-                  <span className="flex-1 text-left">{tab.label}</span>
-                  {tab.count > 0 && (
-                    <span className="bg-gk-orange text-black font-extrabold text-[9px] w-4 h-4 rounded-full flex items-center justify-center">
-                      {tab.count}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+            <button
+              onClick={() => setActiveTab('profile')}
+              className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap lg:w-full cursor-pointer border bg-gk-orange/10 border-gk-orange/30 text-gk-orange shadow-[0_0_15px_-5px_rgba(255,85,0,0.15)]"
+            >
+              <User size={16} />
+              <span className="flex-1 text-left">Profile</span>
+            </button>
             
-            {(user.role?.toLowerCase() === 'owner' || user.role?.toLowerCase() === 'admin' || user.roles?.includes('owner') || user.roles?.includes('admin')) && (
+            {(user?.role?.toLowerCase() === 'owner' || user?.role?.toLowerCase() === 'admin' || user?.roles?.includes('owner') || user?.roles?.includes('admin')) && (
               <button
                 onClick={() => navigate('/admin')}
                 className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-xs font-black uppercase tracking-wider text-purple-400 hover:bg-purple-500/10 hover:border-purple-500/20 border border-transparent transition-all lg:w-full cursor-pointer whitespace-nowrap"
@@ -314,9 +295,9 @@ export default function Account() {
             
             <button
               onClick={handleLogout}
-              className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-xs font-black uppercase tracking-wider text-red-400 hover:bg-red-500/10 hover:border-red-500/20 border border-transparent transition-all lg:w-full cursor-pointer whitespace-nowrap"
+              className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-xs font-medium uppercase tracking-wider text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent transition-all lg:w-full cursor-pointer whitespace-nowrap"
             >
-              <LogOut size={16} />
+              <LogOut size={16} className="text-zinc-500" />
               <span>Sign Out</span>
             </button>
           </aside>
@@ -328,14 +309,12 @@ export default function Account() {
             <div className="flex items-center justify-between mb-8 pb-6 border-b border-white/5">
               <div>
                 <p className="text-[10px] font-bold text-gk-orange uppercase tracking-widest">
-                  Account Dashboard • {activeTab}
+                  Account Dashboard • Profile
                 </p>
                 <h1 className="text-2xl font-black uppercase tracking-wide text-white mt-1">
-                  Collector Vault
+                  Profile
                 </h1>
               </div>
-              
-              <div />
             </div>
 
             {error && (
@@ -343,148 +322,17 @@ export default function Account() {
                 <AlertCircle size={16} />
                 <span>{error}</span>
               </div>
-            )}            {/* Orders Tab */}
-            {activeTab === 'orders' && (
-              <div className="space-y-6 text-left">
-                {orders.length === 0 ? (
-                  <div className="text-center py-16 text-zinc-500 text-xs uppercase tracking-wider">
-                    You have no active orders.
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    {orders.map(order => (
-                      <div key={order.id} className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 md:p-6 space-y-4">
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-4 border-b border-white/5">
-                          <div>
-                            <span className="text-[9px] font-mono text-zinc-500 block">ORDER ID</span>
-                            <span className="text-xs font-bold text-white font-mono uppercase">{order.id}</span>
-                          </div>
-                          
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full border ${
-                              order.status === 'Confirmed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                              order.status === 'Shipped' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                              order.status === 'Delivered' ? 'bg-zinc-800 text-zinc-300 border-white/10' :
-                              order.status === 'Verification Pending' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                              'bg-zinc-800 text-zinc-400 border-white/5'
-                            }`}>
-                              {order.status}
-                            </span>
-                            
-                            {order.trackingNumber && (
-                              <span className="text-[10px] font-mono bg-white/5 text-zinc-300 border border-white/10 px-2.5 py-1 rounded-lg">
-                                Track: {order.trackingNumber}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="space-y-3">
-                          {order.items.map((item, idx) => (
-                            <div key={idx} className="flex justify-between items-center gap-4 text-xs">
-                              <div>
-                                <span className="font-bold text-white">{item.brand} {item.name}</span>
-                                <span className="text-[10px] text-zinc-500 block">QTY: {item.qty}</span>
-                              </div>
-                              <span className="font-mono text-zinc-400">₹{parseFloat(item.priceAtPurchase).toLocaleString('en-IN')}</span>
-                            </div>
-                          ))}
-                        </div>
-
-                        <div className="flex justify-between items-start pt-4 border-t border-white/5 text-xs">
-                          <span className="text-zinc-500 font-mono flex items-center gap-1.5 mt-1">
-                            <Calendar size={14} />
-                            {new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                          </span>
-                          
-                          <div className="text-right space-y-1">
-                            {order.bookingType === 'pre_order' ? (
-                              <>
-                                <div className="text-zinc-500">
-                                  Total Amount: <span className="font-mono text-white ml-1">₹{parseFloat(order.totalPrice).toLocaleString('en-IN')}</span>
-                                </div>
-                                <div className="text-zinc-500">
-                                  Advance Paid: <span className="font-mono text-emerald-400 font-bold ml-1">₹{parseFloat(order.advanceAmount || 0).toLocaleString('en-IN')}</span>
-                                </div>
-                                {Number(order.remainingAmount) > 0 && (
-                                  <div className="text-zinc-500">
-                                    Remaining Balance: <span className="font-mono text-amber-400 font-bold ml-1">₹{parseFloat(order.remainingAmount).toLocaleString('en-IN')}</span>
-                                  </div>
-                                )}
-                              </>
-                            ) : (
-                              <div>
-                                <span className="text-zinc-500 mr-2">Total Paid</span>
-                                <span className="font-bold text-gk-orange font-mono text-sm">₹{parseFloat(order.totalPrice).toLocaleString('en-IN')}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Customer Remaining Payment Action */}
-                        {order.bookingType === 'pre_order' && order.status === 'Awaiting Stock' && (
-                          <div className="mt-4 pt-4 border-t border-white/5 space-y-4 bg-amber-500/[0.02] border border-amber-500/10 rounded-xl p-4">
-                            <div>
-                              <div className="text-xs font-bold text-amber-400">⚠️ Remaining Balance Requested</div>
-                              <p className="text-[10px] text-zinc-500 mt-0.5 leading-relaxed">
-                                Stock has arrived! Please complete your remaining payment of <span className="text-white font-mono font-bold">₹{parseFloat(order.remainingAmount).toLocaleString('en-IN')}</span> using UPI and upload the receipt screenshot below.
-                              </p>
-                            </div>
-
-                            {uploadSuccess && uploadingOrderId === order.id && (
-                              <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-[10px] text-emerald-400 font-bold uppercase tracking-wider animate-pulse">
-                                {uploadSuccess}
-                              </div>
-                            )}
-
-                            {uploadError && uploadingOrderId === order.id && (
-                              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-[10px] text-red-400 font-bold uppercase tracking-wider">
-                                {uploadError}
-                              </div>
-                            )}
-
-                            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-                              <input 
-                                type="file" 
-                                accept="image/*"
-                                onChange={(e) => {
-                                  if (e.target.files && e.target.files[0]) {
-                                    setUploadFile(e.target.files[0]);
-                                    setUploadingOrderId(order.id);
-                                    setUploadError('');
-                                    setUploadSuccess('');
-                                  }
-                                }}
-                                className="text-xs text-zinc-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-[10px] file:font-black file:uppercase file:tracking-wider file:bg-white/5 file:text-white hover:file:bg-white/10 file:cursor-pointer"
-                              />
-
-                              <button
-                                onClick={() => handleUploadRemainingPayment(order.id)}
-                                disabled={uploadLoading && uploadingOrderId === order.id}
-                                className="bg-[#ff5500] hover:bg-orange-600 disabled:opacity-50 text-black font-extrabold text-[10px] uppercase tracking-widest px-4 py-2.5 rounded-lg transition-colors cursor-pointer w-full sm:w-auto flex-shrink-0"
-                              >
-                                {uploadLoading && uploadingOrderId === order.id ? 'Submitting...' : 'Upload Receipt'}
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
             )}
 
-            {/* Account Settings Tab */}
-            {activeTab === 'settings' && user && (
+            {/* Profile Form */}
+            {user && (
               <div className="space-y-6 text-left">
-                {/* Shipping Profile Form */}
                 <form onSubmit={handleProfileSave} className="space-y-6">
                   <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-6 space-y-6">
                     <div>
-                      <h3 className="text-sm font-bold uppercase tracking-wider text-white">Shipping Profile</h3>
+                      <h3 className="text-sm font-bold uppercase tracking-wider text-white">Profile Details</h3>
                       <p className="text-[10px] text-zinc-500 mt-1 uppercase tracking-wider">
-                        These details are used automatically to populate fields when securing drops.
+                        Manage your contact details and delivery address.
                       </p>
                     </div>
 
@@ -554,7 +402,7 @@ export default function Account() {
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block">Shipping Address</label>
+                      <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block">Address</label>
                       <textarea 
                         value={profile.address} 
                         onChange={(e) => setProfile(prev => ({ ...prev, address: e.target.value }))}
@@ -570,29 +418,10 @@ export default function Account() {
                       disabled={profileLoading}
                       className="bg-gk-orange hover:bg-orange-500 disabled:bg-gk-orange/50 text-white font-black text-xs py-3.5 px-6 rounded-xl uppercase tracking-wider transition-colors cursor-pointer shadow-[0_0_15px_rgba(255,85,0,0.1)]"
                     >
-                      {profileLoading ? 'Saving Profile...' : 'Save Shipping Profile'}
+                      {profileLoading ? 'Saving Profile...' : 'Save Profile'}
                     </button>
                   </div>
                 </form>
-
-                {/* Guidelines */}
-                <div className="bg-[#141417]/30 border border-white/5 rounded-2xl p-6 space-y-4">
-                  <h4 className="text-xs font-black uppercase tracking-wider text-white">Collector Guidelines</h4>
-                  <ul className="space-y-2.5 text-xs text-zinc-400">
-                    <li className="flex items-start gap-2">
-                      <span className="text-gk-orange font-bold">•</span>
-                      <span>Orders are processed on a first-come-first-served basis upon receipt verification.</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-gk-orange font-bold">•</span>
-                      <span>Upload your payment screenshot as soon as possible to submit your order for admin approval.</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-gk-orange font-bold">•</span>
-                      <span>Confirmed orders will show updated tracking information under the Orders tab.</span>
-                    </li>
-                  </ul>
-                </div>
               </div>
             )}
 

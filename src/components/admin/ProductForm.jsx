@@ -1,920 +1,872 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, EyeOff, Plus, Trash2, Edit2, AlertTriangle, ArrowRight, Settings, Image as ImageIcon, Check } from 'lucide-react';
-import SearchableSelect from './SearchableSelect';
-import { 
-  getBrands, createBrand,
-  getManufacturers, createManufacturer,
-  getScales, createScale,
-  getSeries, createSeries,
-  uploadImageToStorage
-} from '../../lib/db';
+import { Plus, Trash2, Upload, X, Check, Layers, Eye, MessageCircle, ShoppingBag } from 'lucide-react';
+import { uploadImageToStorage } from '../../lib/db';
+import ProductCard from '../common/ProductCard';
+
+// Resolve relative image paths returned by NestJS (/uploads/...) to full URLs
+const SERVER_ORIGIN = import.meta.env.PROD
+  ? ''
+  : (import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1').replace(/\/api\/v\d+$/, '');
+
+function resolveImageUrl(url) {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('blob:')) return url;
+  return `${SERVER_ORIGIN}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
+const BRANDS_LIST = [
+  'Mini GT',
+  'Kaido House',
+  'Inno64',
+  'Hot Wheels',
+  'Pop Race',
+  'Tarmac Works',
+  'Matchbox',
+  'BBR',
+  'Looksmart',
+  'Spark',
+  'Majorette',
+  'Schuco',
+  'Other'
+];
+
+const SCALES_LIST = ['1:64', '1:43', '1:18', '1:24', '1:12', 'Other'];
+const CASE_TYPES = ['Blister', 'Box', 'Acrylic', 'Other'];
+const GENERIC_TAGS = ['None', 'Limited', 'Hot', 'Rare', 'New Drop', 'Exclusive'];
 
 export default function ProductForm({
-  productId = null, // null when creating
+  productId = null,
   initialData = null,
   onSave,
   onCancel,
   creatorEmail
 }) {
-  // Master lists
-  const [brands, setBrands] = useState([]);
-  const [manufacturers, setManufacturers] = useState([]);
-  const [scales, setScales] = useState([]);
-  const [seriesList, setSeriesList] = useState([]);
-  const [casingTypes, setCasingTypes] = useState([
-    { id: 'BOX', name: 'BOX', display_name: 'Box' },
-    { id: 'BLISTER', name: 'BLISTER', display_name: 'Blister' },
-    { id: 'ACRYLIC', name: 'ACRYLIC', display_name: 'Acrylic' }
-  ]);
-
-  // Form State
-  const [brand, setBrand] = useState('');
+  // Shared Product Information
+  const [brand, setBrand] = useState('Mini GT');
+  const [customBrand, setCustomBrand] = useState('');
+  const [sku, setSku] = useState('');
   const [name, setName] = useState('');
-  const [manufacturer, setManufacturer] = useState('');
   const [scale, setScale] = useState('1:64');
-  const [series, setSeries] = useState('Standard Edition');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('JDM');
-  const [tags, setTags] = useState([]);
-  const [showOnHomepage, setShowOnHomepage] = useState(true);
-  const [maxQtyPerCustomer, setMaxQtyPerCustomer] = useState('');
-  
-  // Multi-variants list
-  const [variants, setVariants] = useState([
+  const [tag, setTag] = useState('None');
+  const [subtags, setSubtags] = useState([]);
+  const [subtagInput, setSubtagInput] = useState('');
+
+  // Pre-Booking / PO Order
+  const [isPrebook, setIsPrebook] = useState(false);
+  const [arrivalDate, setArrivalDate] = useState(''); // String: e.g. "Q3 2026"
+
+  const handleAddSubtag = () => {
+    const val = subtagInput.trim();
+    if (!val) return;
+    if (subtags.length >= 5) return;
+    if (!subtags.includes(val)) {
+      setSubtags(prev => [...prev, val]);
+    }
+    setSubtagInput('');
+  };
+
+  // Case Variants (Each case type has its own price, stock, PO deposit, and images)
+  const [caseVariants, setCaseVariants] = useState([
     {
-      id: `temp-${Date.now()}`,
-      casing: 'BOX',
-      sku: '',
-      barcode: '',
+      id: 'v-1',
+      casingType: 'Blister',
       price: '',
-      purchasePrice: '',
-      weight: '',
-      dimensions: '',
-      attributesJson: '{}',
-      isVisible: true,
-      status: 'Active',
-      salesStatus: 'Available',
-      isPrebook: false,
-      customerEta: '',
-      prebookDepositAmount: '',
-      maxPreorders: '',
-      preorderNotes: '',
-      displayMessage: '',
-      isCollapsed: false
+      poAmount: '',
+      availableStock: 10,
+      images: [],
+      imageUrlInput: '',
+      isUploading: false
     }
   ]);
 
-  // Image Uploads
-  const [productImage, setProductImage] = useState('');
-  const [isUploading, setIsUploading] = useState(false);
   const [validationError, setValidationError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Live Preview Variant selection
-  const [previewVariantIndex, setPreviewVariantIndex] = useState(0);
-
-  // Load lookup lists on mount
-  const loadLookups = async () => {
-    try {
-      const [b, m, sc, sr] = await Promise.all([
-        getBrands(false),
-        getManufacturers(false),
-        getScales(false),
-        getSeries(false)
-      ]);
-      setBrands(b);
-      setManufacturers(m);
-      setScales(sc);
-      setSeriesList(sr);
-    } catch (err) {
-      console.error('Error loading lookup lists:', err);
-    }
-  };
-
-  useEffect(() => {
-    loadLookups();
-  }, []);
-
-  // Hydrate form if editing
+  // Populate form or reset cleanly when initialData changes
   useEffect(() => {
     if (initialData) {
-      setBrand(initialData.brand || '');
-      setName(initialData.name || '');
-      setManufacturer(initialData.manufacturer || '');
-      setScale(initialData.scale || '1:64');
-      setSeries(initialData.series || 'Standard Edition');
-      setDescription(initialData.description || '');
-      setCategory(initialData.category || 'JDM');
-      setTags(initialData.tags || []);
-      setShowOnHomepage(initialData.showOnHomepage ?? true);
-      setMaxQtyPerCustomer(initialData.maxQtyPerCustomer || '');
-      
-      if (initialData.image) {
-        setProductImage(initialData.image);
-      } else if (initialData.images && initialData.images.length > 0) {
-        setProductImage(initialData.images[0].fullUrl || initialData.images[0].thumbnailUrl || initialData.images[0].url || '');
+      const b = initialData.brand || initialData.carBrand || 'Mini GT';
+      if (BRANDS_LIST.includes(b)) {
+        setBrand(b);
+        setCustomBrand('');
+      } else {
+        setBrand('Other');
+        setCustomBrand(b);
       }
 
-      if (initialData.variants && initialData.variants.length > 0) {
-        setVariants(initialData.variants.map((v, idx) => ({
-          id: v.id,
-          casing: v.casing || 'BOX',
-          sku: v.sku || '',
-          barcode: v.barcode || '',
-          price: v.sellingPrice || '',
-          purchasePrice: v.purchasePrice || '',
-          weight: v.weight || '',
-          dimensions: v.dimensions ? JSON.stringify(v.dimensions) : '',
-          attributesJson: v.variantAttributes ? JSON.stringify(v.variantAttributes, null, 2) : '{}',
-          isVisible: v.visibility ?? true,
-          status: v.status || 'Active',
-          salesStatus: v.salesStatus || 'Available',
-          isPrebook: v.isPrebook ?? (v.salesStatus === 'Preorder' || initialData.isPrebook || false),
-          customerEta: v.customerEta || initialData.arrivalDate || '',
-          prebookDepositAmount: v.prebookDepositAmount || initialData.prebookDepositAmount || '',
-          maxPreorders: v.maxPreorders || '',
-          preorderNotes: v.preorderNotes || '',
-          displayMessage: v.displayMessage || '',
-          isCollapsed: true
-        })));
+      setSku(initialData.sku || '');
+      setName(initialData.name || '');
+      setScale(initialData.scale || '1:64');
+      setDescription(initialData.description || '');
+      setTag(initialData.tag || initialData.grade || 'None');
+      const initialSubtags = Array.isArray(initialData.subtags) && initialData.subtags.length > 0
+        ? initialData.subtags
+        : (Array.isArray(initialData.tags) ? initialData.tags : []);
+      setSubtags(initialSubtags.filter(t => t && String(t).toLowerCase() !== 'none').slice(0, 5));
+      setSubtagInput('');
+
+      setIsPrebook(initialData.isPrebook || initialData.status === 'Pre-Order' || false);
+      // arrivalDate can live on the product root OR on variants[0].customerEta
+      setArrivalDate(
+        initialData.arrivalDate ||
+        initialData.releaseDate ||
+        initialData.customerEta ||
+        initialData.variants?.[0]?.customerEta ||
+        ''
+      );
+
+      // Extract all images from initialData (both parent image string and images array)
+      const allParentImages = [];
+      if (initialData.image) {
+        const resolved = resolveImageUrl(initialData.image);
+        if (resolved && !allParentImages.includes(resolved)) allParentImages.push(resolved);
       }
+      if (Array.isArray(initialData.images)) {
+        initialData.images.forEach(img => {
+          const raw = typeof img === 'string' ? img : (img?.fullUrl || img?.thumbnailUrl || img?.url || img?.src);
+          const resolved = resolveImageUrl(raw);
+          if (resolved && !allParentImages.includes(resolved)) allParentImages.push(resolved);
+        });
+      }
+
+      // Hydrate case variants
+      let loadedVariants = [];
+      if (Array.isArray(initialData.caseVariants) && initialData.caseVariants.length > 0) {
+        loadedVariants = initialData.caseVariants.map((v, i) => {
+          const vImgs = [];
+          if (v.image) {
+            const res = resolveImageUrl(v.image);
+            if (res) vImgs.push(res);
+          }
+          if (Array.isArray(v.images)) {
+            v.images.forEach(img => {
+              const raw = typeof img === 'string' ? img : (img?.fullUrl || img?.thumbnailUrl || img?.url || img?.src);
+              const res = resolveImageUrl(raw);
+              if (res && !vImgs.includes(res)) vImgs.push(res);
+            });
+          }
+          const finalImgs = vImgs.length > 0 ? vImgs : allParentImages;
+          return {
+            id: v.id || `v-${i}`,
+            casingType: v.casingType ? (v.casingType.charAt(0).toUpperCase() + v.casingType.slice(1).toLowerCase()) : 'Blister',
+            price: v.price ?? v.sellingPrice ?? '',
+            poAmount: v.poAmount ?? v.prebookDepositAmount ?? initialData.prebookDepositAmount ?? '',
+            availableStock: v.availableStock ?? v.totalStock ?? v.stock ?? initialData.availableStock ?? 10,
+            images: finalImgs,
+            imageUrlInput: '',
+            isUploading: false
+          };
+        });
+      } else if (Array.isArray(initialData.variants) && initialData.variants.length > 0) {
+        loadedVariants = initialData.variants.map((v, i) => {
+          const rawCasing = v.casing || initialData.casingType || initialData.casing || 'Blister';
+          const casingCap = rawCasing.charAt(0).toUpperCase() + rawCasing.slice(1).toLowerCase();
+          return {
+            id: v.id || `v-${i}`,
+            casingType: CASE_TYPES.includes(casingCap) ? casingCap : 'Blister',
+            price: v.sellingPrice ?? v.price ?? initialData.sellingPrice ?? initialData.price ?? '',
+            poAmount: initialData.prebookDepositAmount ?? initialData.poAmount ?? v.prebookDepositAmount ?? '',
+            availableStock: v.availableStock ?? v.totalStock ?? v.stock ?? initialData.availableStock ?? 10,
+            images: allParentImages,
+            imageUrlInput: '',
+            isUploading: false
+          };
+        });
+      } else {
+        const v0 = Array.isArray(initialData.variants) && initialData.variants[0];
+        const rawCasing = (v0?.casing || initialData.casingType || initialData.casing || 'Blister');
+        const casingCap = rawCasing.charAt(0).toUpperCase() + rawCasing.slice(1).toLowerCase();
+
+        loadedVariants = [{
+          id: 'v-1',
+          casingType: CASE_TYPES.includes(casingCap) ? casingCap : 'Blister',
+          price: v0?.sellingPrice ?? initialData.price ?? initialData.sellingPrice ?? '',
+          poAmount: initialData.prebookDepositAmount ?? initialData.poAmount ?? v0?.prebookDepositAmount ?? '',
+          availableStock: v0?.availableStock ?? v0?.totalStock ?? initialData.availableStock ?? 10,
+          images: allParentImages,
+          imageUrlInput: '',
+          isUploading: false
+        }];
+      }
+      setCaseVariants(loadedVariants);
+    } else {
+      // RESET TO CLEAN DEFAULTS FOR NEW PRODUCT
+      setBrand('Mini GT');
+      setCustomBrand('');
+      setSku('');
+      setName('');
+      setScale('1:64');
+      setDescription('');
+      setTag('None');
+      setSubtags([]);
+      setSubtagInput('');
+
+      setIsPrebook(false);
+      setArrivalDate('');
+
+      setCaseVariants([
+        {
+          id: 'v-1',
+          casingType: 'Blister',
+          price: '',
+          poAmount: '',
+          availableStock: 10,
+          images: [],
+          imageUrlInput: '',
+          isUploading: false
+        }
+      ]);
     }
   }, [initialData]);
 
-  // Inline creation handlers
-  const handleCreateBrand = async (newBrandName) => {
-    try {
-      const created = await createBrand({ name: newBrandName });
-      setBrands(prev => [...prev, created]);
-      setBrand(created.name);
-    } catch (err) {
-      console.error(err);
-      alert('Failed to create brand.');
-    }
-  };
+  // Variant Helpers
+  const handleAddCaseVariant = () => {
+    const currentTypes = caseVariants.map(v => v.casingType);
+    let nextType = 'Box';
+    if (!currentTypes.includes('Box')) nextType = 'Box';
+    else if (!currentTypes.includes('Acrylic')) nextType = 'Acrylic';
+    else if (!currentTypes.includes('Blister')) nextType = 'Blister';
+    else nextType = 'Other';
 
-  const handleCreateManufacturer = async (newName) => {
-    try {
-      const created = await createManufacturer({ name: newName });
-      setManufacturers(prev => [...prev, created]);
-      setManufacturer(created.name);
-    } catch (err) {
-      console.error(err);
-      alert('Failed to create manufacturer.');
-    }
-  };
-
-  const handleCreateScale = async (newName) => {
-    try {
-      const created = await createScale({ name: newName });
-      setScales(prev => [...prev, created]);
-      setScale(created.name);
-    } catch (err) {
-      console.error(err);
-      alert('Failed to create scale.');
-    }
-  };
-
-  const handleCreateSeries = async (newName) => {
-    try {
-      const created = await createSeries({ name: newName });
-      setSeriesList(prev => [...prev, created]);
-      setSeries(created.name);
-    } catch (err) {
-      console.error(err);
-      alert('Failed to create series.');
-    }
-  };
-
-  // Image Upload handler
-  const handleImageUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    setIsUploading(true);
-    try {
-      const url = await uploadImageToStorage(file);
-      setProductImage(url);
-    } catch (err) {
-      console.error('Image upload failed:', err);
-      alert('Failed to upload image. Please try again.');
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  // Variant operations
-  const addVariant = () => {
-    const defaultSku = variants[0]?.sku ? `${variants[0].sku.split('-')[0]}-${Date.now().toString().slice(-4)}` : '';
-    setVariants(prev => [
+    setCaseVariants(prev => [
       ...prev,
       {
-        id: `temp-${Date.now()}`,
-        casing: 'BOX',
-        sku: defaultSku,
-        barcode: '',
-        price: variants[0]?.price || '',
-        purchasePrice: variants[0]?.purchasePrice || '',
-        weight: '',
-        dimensions: '',
-        attributesJson: '{}',
-        isVisible: true,
-        status: 'Active',
-        salesStatus: 'Available',
-        isPrebook: false,
-        customerEta: '',
-        prebookDepositAmount: '',
-        maxPreorders: '',
-        preorderNotes: '',
-        displayMessage: '',
-        isCollapsed: false
+        id: `v-${Date.now()}`,
+        casingType: nextType,
+        price: prev[0]?.price || '',
+        poAmount: prev[0]?.poAmount || '',
+        availableStock: 10,
+        images: [],
+        imageUrlInput: '',
+        isUploading: false
       }
     ]);
   };
 
-  const deleteVariant = (id) => {
-    if (variants.length <= 1) return;
-    setVariants(prev => prev.filter(v => v.id !== id));
-    setPreviewVariantIndex(0);
+  const handleRemoveCaseVariant = (index) => {
+    if (caseVariants.length <= 1) return;
+    setCaseVariants(prev => prev.filter((_, i) => i !== index));
   };
 
-  const updateVariantField = (id, field, val) => {
-    setVariants(prev => prev.map(v => {
-      if (v.id !== id) return v;
-      const updated = { ...v, [field]: val };
-      
-      // Auto-toggle preorder sales status if preorder toggle changed
-      if (field === 'isPrebook') {
-        updated.salesStatus = val ? 'Preorder' : 'Available';
-      }
-      return updated;
-    }));
+  const handleVariantChange = (index, field, value) => {
+    setCaseVariants(prev => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], [field]: value };
+      return copy;
+    });
   };
 
-  const toggleCollapse = (id) => {
-    setVariants(prev => prev.map(v => v.id === id ? { ...v, isCollapsed: !v.isCollapsed } : v));
-  };
+  // Image Upload Handlers per Variant
+  const handleVariantFileUpload = async (variantIndex, e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
 
-  // Validations
-  const validateForm = () => {
+    setCaseVariants(prev => {
+      const copy = [...prev];
+      copy[variantIndex].isUploading = true;
+      return copy;
+    });
+
     setValidationError('');
-    if (!brand) return 'Product Brand is required.';
-    if (!name.trim()) return 'Casting Model Name is required.';
-    if (variants.length === 0) return 'At least one variant must be created.';
-    
-    // Check duplicates and values
-    const skus = new Set();
-    const barcodes = new Set();
 
-    for (const [idx, v] of variants.entries()) {
-      const label = `Variant ${idx + 1} (${v.casing})`;
-      if (!v.sku.trim()) return `${label} SKU is required.`;
-      if (skus.has(v.sku.trim())) return `Duplicate SKU found: ${v.sku.trim()}`;
-      skus.add(v.sku.trim());
-
-      if (v.barcode.trim()) {
-        if (barcodes.has(v.barcode.trim())) return `Duplicate Barcode found: ${v.barcode.trim()}`;
-        barcodes.add(v.barcode.trim());
+    try {
+      const uploaded = await Promise.all(files.map(f => uploadImageToStorage(f)));
+      const valid = uploaded.filter(Boolean);
+      if (valid.length > 0) {
+        setCaseVariants(prev => {
+          const copy = [...prev];
+          const currentImages = [...(copy[variantIndex].images || [])];
+          valid.forEach(url => { if (!currentImages.includes(url)) currentImages.push(url); });
+          copy[variantIndex].images = currentImages;
+          copy[variantIndex].isUploading = false;
+          return copy;
+        });
       }
-
-      if (!v.price || Number(v.price) <= 0) return `${label} Selling Price must be positive.`;
-
-      // Preorder validation
-      if (v.isPrebook) {
-        if (!v.customerEta.trim()) return `${label} Customer ETA Message is required (e.g. Expected August 2026).`;
-        if (v.prebookDepositAmount && Number(v.prebookDepositAmount) > Number(v.price)) {
-          return `${label} Deposit Amount cannot exceed selling price.`;
-        }
-      }
+    } catch (err) {
+      console.error("Variant image upload error:", err);
+      setValidationError("Failed to upload image. Please check connection and try again.");
+    } finally {
+      setCaseVariants(prev => {
+        const copy = [...prev];
+        if (copy[variantIndex]) copy[variantIndex].isUploading = false;
+        return copy;
+      });
     }
-    return '';
   };
 
-  // Submit Handler
-  const handleFormSubmit = async (e) => {
+  const handleAddVariantImageUrl = (variantIndex) => {
+    const url = (caseVariants[variantIndex].imageUrlInput || '').trim();
+    if (!url) return;
+
+    setCaseVariants(prev => {
+      const copy = [...prev];
+      const currentImages = [...(copy[variantIndex].images || [])];
+      if (!currentImages.includes(url)) currentImages.push(url);
+      copy[variantIndex].images = currentImages;
+      copy[variantIndex].imageUrlInput = '';
+      return copy;
+    });
+  };
+
+  const handleRemoveVariantImage = (variantIndex, imgIndex) => {
+    setCaseVariants(prev => {
+      return prev.map((v, i) => {
+        if (i !== variantIndex) return v;
+        return {
+          ...v,
+          images: (v.images || []).filter((_, idx) => idx !== imgIndex)
+        };
+      });
+    });
+  };
+
+  const handleSetCoverImage = (variantIndex, imgIndex) => {
+    setCaseVariants(prev => {
+      return prev.map((v, i) => {
+        if (i !== variantIndex) return v;
+        const currentImages = [...(v.images || [])];
+        if (imgIndex <= 0 || imgIndex >= currentImages.length) return v;
+        const [selected] = currentImages.splice(imgIndex, 1);
+        currentImages.unshift(selected);
+        return {
+          ...v,
+          images: currentImages
+        };
+      });
+    });
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const errorMsg = validateForm();
-    if (errorMsg) {
-      setValidationError(errorMsg);
+    const finalBrand = brand === 'Other' ? (customBrand.trim() || 'Other') : brand;
+    const userSku = sku.trim();
+    if (!userSku) {
+      setValidationError('SKU ID is required and must be unique.');
       return;
     }
 
+    // Validate case variants
+    for (let i = 0; i < caseVariants.length; i++) {
+      const v = caseVariants[i];
+      if (!v.price || Number(v.price) <= 0) {
+        setValidationError(`Please enter a valid price for Case Type "${v.casingType}".`);
+        return;
+      }
+    }
+
+    setValidationError('');
     setIsSubmitting(true);
+
     try {
-      const mappedVariants = variants.map(v => {
-        let parsedAttrs = {};
-        try {
-          parsedAttrs = JSON.parse(v.attributesJson || '{}');
-        } catch(e) {}
+      const primaryVariant = caseVariants[0];
+      const primaryImage = primaryVariant.images[0] || '';
 
-        return {
-          id: v.id.startsWith('temp-') ? undefined : v.id,
-          casing: v.casing,
-          sku: v.sku.trim(),
-          barcode: v.barcode.trim() || null,
-          price: Number(v.price),
-          purchasePrice: v.purchasePrice ? Number(v.purchasePrice) : null,
-          weight: v.weight ? Number(v.weight) : null,
-          dimensions: v.dimensions || null,
-          variantAttributes: parsedAttrs,
-          isVisible: v.isVisible,
-          status: v.status,
-          salesStatus: v.salesStatus,
-          isPrebook: v.isPrebook,
-          customerEta: v.isPrebook ? v.customerEta : null,
-          prebookDepositAmount: v.isPrebook && v.prebookDepositAmount ? Number(v.prebookDepositAmount) : null,
-          maxPreorders: v.isPrebook && v.maxPreorders ? parseInt(v.maxPreorders) : null,
-          preorderNotes: v.isPrebook ? v.preorderNotes : null,
-          displayMessage: v.isPrebook ? v.displayMessage : null
-        };
-      });
+      // Format arrivalDate safely for PostgreSQL timestamp column
+      let validIsoDate = null;
+      const rawArrivalDateStr = arrivalDate.trim();
+      if (rawArrivalDateStr) {
+        const parsedMs = Date.parse(rawArrivalDateStr);
+        if (!isNaN(parsedMs)) {
+          validIsoDate = new Date(parsedMs).toISOString();
+        }
+      }
 
-      const productPayload = {
-        brand,
+      // NO AUTOMATIC DESCRIPTION MODIFICATION (Description stays exact as entered by admin)
+      const finalDescription = description.trim();
+
+      const firstVariant = caseVariants[0] || {};
+      const productImages = (firstVariant.images && firstVariant.images.length > 0) 
+        ? firstVariant.images 
+        : (primaryImage ? [primaryImage] : []);
+      const mainPrice = Number(firstVariant.price || 0);
+      const poAmount = isPrebook ? Number(firstVariant.poAmount || 0) : 0;
+      const mainStock = Number(firstVariant.availableStock ?? 10);
+      const selectedCasing = firstVariant.casingType || 'Box';
+
+      const singleProductPayload = {
         name: name.trim(),
-        manufacturer: manufacturer || null,
-        scale,
-        series,
-        description: description.trim(),
-        category,
-        tags,
-        showOnHomepage,
-        maxQtyPerCustomer: maxQtyPerCustomer ? parseInt(maxQtyPerCustomer) : null,
-        image: productImage || null,
-        variants: mappedVariants
+        brand: finalBrand,
+        scale: scale,
+        description: finalDescription,
+        price: mainPrice,
+        sellingPrice: mainPrice,
+        sku: userSku,
+        category: 'JDM',
+        series: finalBrand,
+        casing: selectedCasing,
+        casingType: selectedCasing,
+        tag: (tag && tag !== 'None') ? tag : null,
+        subtags: subtags,
+        tags: subtags,
+        availableStock: mainStock,
+        stock: mainStock,
+        totalStock: mainStock,
+        image: productImages[0] || '',
+        images: productImages,
+        isPrebook: isPrebook,
+        status: isPrebook ? 'Pre-Order' : 'Published',
+        poAmount: poAmount,
+        prebookDepositAmount: poAmount,
+        customerEta: rawArrivalDateStr || null,
+        arrivalDate: rawArrivalDateStr || null,
+        releaseDate: rawArrivalDateStr || null
       };
 
-      await onSave(productPayload);
+      await onSave(singleProductPayload);
     } catch (err) {
-      console.error(err);
-      setValidationError(err.message || 'Failed to save product database record.');
+      console.error('Save product error:', err);
+      setValidationError(err.message || 'Failed to save product.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Current preview variant
-  const previewVar = variants[previewVariantIndex] || variants[0] || {};
+  // Active preview data
+  const previewVariant = caseVariants[0] || {};
+  const previewImage = previewVariant.images?.[0] || '';
+  const previewPrice = previewVariant.price ? Number(previewVariant.price) : 0;
+  const previewPoAmount = isPrebook ? Number(previewVariant.poAmount || 0) : 0;
 
   return (
-    <div className="space-y-6 text-xs selection:bg-[#ff5500] selection:text-black">
-      
-      {/* Validation Header */}
-      {validationError && (
-        <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl font-semibold flex items-center gap-2">
-          <AlertTriangle size={14} className="flex-shrink-0" />
-          <span>{validationError}</span>
-        </div>
-      )}
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      {/* ── LEFT: PRODUCT FORM (7 cols) ── */}
+      <form onSubmit={handleSubmit} className="lg:col-span-7 space-y-6 text-xs text-white">
+        {validationError && (
+          <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-3 rounded-xl text-xs font-semibold">
+            {validationError}
+          </div>
+        )}
 
-      {/* Grid: Left Form fields, Right Live Preview Card */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* Left Columns: Form Fields */}
-        <form onSubmit={handleFormSubmit} className="lg:col-span-2 space-y-6">
-          
-          {/* Section 1: Master Product Information */}
-          <div className="bg-[#111111] border border-white/5 rounded-2xl p-6 space-y-4">
-            <h4 className="text-[10px] font-black uppercase tracking-widest text-[#ff5500] border-b border-white/5 pb-2">
-              1. Master Product Profile
-            </h4>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <SearchableSelect 
-                label="Product Brand"
+        {/* SHARED PRODUCT DETAILS */}
+        <div className="bg-white/[0.02] border border-white/5 p-4 rounded-xl space-y-4">
+          <h4 className="text-xs font-black uppercase text-[#ff5500] tracking-wider flex items-center gap-1.5">
+            General Product Info
+          </h4>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Brand */}
+            <div>
+              <label className="block text-[10px] font-bold text-white/50 uppercase tracking-widest mb-1">
+                Brand *
+              </label>
+              <select
                 value={brand}
-                onChange={setBrand}
-                options={brands}
-                onCreateNew={handleCreateBrand}
-                placeholder="Search or Create Brand..."
-                required
-              />
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">Model Casting Name</label>
-                <input 
-                  type="text" 
-                  value={name} 
-                  onChange={e => setName(e.target.value)} 
-                  placeholder="Nissan Silvia S15"
-                  className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ff5500]/40 text-xs" 
-                  required 
+                onChange={e => setBrand(e.target.value)}
+                className="w-full bg-[#111116] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#ff5500] cursor-pointer"
+              >
+                {BRANDS_LIST.map(b => (
+                  <option key={b} value={b} className="bg-[#141414] text-white">{b}</option>
+                ))}
+              </select>
+              {brand === 'Other' && (
+                <input
+                  type="text"
+                  placeholder="Enter brand name..."
+                  value={customBrand}
+                  onChange={e => setCustomBrand(e.target.value)}
+                  className="mt-2 w-full bg-[#111116] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none"
                 />
-              </div>
+              )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <SearchableSelect 
-                label="Scale"
+            {/* Scale */}
+            <div>
+              <label className="block text-[10px] font-bold text-white/50 uppercase tracking-widest mb-1">
+                Scale *
+              </label>
+              <select
                 value={scale}
-                onChange={setScale}
-                options={scales}
-                onCreateNew={handleCreateScale}
-                placeholder="e.g. 1:64"
+                onChange={e => setScale(e.target.value)}
+                className="w-full bg-[#111116] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#ff5500] cursor-pointer"
+              >
+                {SCALES_LIST.map(s => (
+                  <option key={s} value={s} className="bg-[#141414] text-white">{s}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* SKU ID */}
+            <div>
+              <label className="block text-[10px] font-bold text-white/50 uppercase tracking-widest mb-1">
+                SKU ID / Code
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. MGT00652-L"
+                value={sku}
+                onChange={e => setSku(e.target.value)}
+                className="w-full bg-[#111116] border border-white/10 rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-[#ff5500]"
+              />
+            </div>
+
+            {/* Product Name */}
+            <div className="md:col-span-2">
+              <label className="block text-[10px] font-bold text-white/50 uppercase tracking-widest mb-1">
+                Product Name / Casting Title *
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Nissan Skyline GT-R (R34) Nismo Z-Tune"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                className="w-full bg-[#111116] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#ff5500]"
                 required
               />
-              <SearchableSelect 
-                label="Product Series"
-                value={series}
-                onChange={setSeries}
-                options={seriesList}
-                onCreateNew={handleCreateSeries}
-                placeholder="Select Series..."
-                required
-              />
             </div>
 
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">Description</label>
-              <textarea 
-                value={description} 
-                onChange={e => setDescription(e.target.value)} 
-                placeholder="Product copy write-up..." 
-                rows={3}
-                className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ff5500]/40 text-xs"
-              />
+            {/* Main Badge / Tag */}
+            <div>
+              <label className="block text-[10px] font-bold text-white/50 uppercase tracking-widest mb-1">
+                Main Badge / Tag
+              </label>
+              <select
+                value={tag}
+                onChange={e => setTag(e.target.value)}
+                className="w-full bg-[#111116] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#ff5500] cursor-pointer"
+              >
+                {GENERIC_TAGS.map(t => (
+                  <option key={t} value={t} className="bg-[#141414] text-white">{t}</option>
+                ))}
+              </select>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">Category</label>
-                <input 
-                  type="text" 
-                  value={category} 
-                  onChange={e => setCategory(e.target.value)} 
-                  className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ff5500]/40 text-xs" 
+            {/* Subtags (Up to 5) */}
+            <div className="md:col-span-2">
+              <label className="block text-[10px] font-bold text-white/50 uppercase tracking-widest mb-1">
+                Subtags (Up to 5)
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder={subtags.length >= 5 ? "Max 5 subtags reached" : "Type subtag (e.g. JDM, Chase, Sealed)..."}
+                  value={subtagInput}
+                  disabled={subtags.length >= 5}
+                  onChange={e => setSubtagInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddSubtag();
+                    }
+                  }}
+                  className="flex-1 bg-[#111116] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#ff5500] disabled:opacity-40"
                 />
+                <button
+                  type="button"
+                  onClick={handleAddSubtag}
+                  disabled={subtags.length >= 5 || !subtagInput.trim()}
+                  className="px-3 py-2 bg-[#ff5500]/10 hover:bg-[#ff5500]/20 text-[#ff5500] border border-[#ff5500]/30 font-bold text-xs rounded-lg transition-colors disabled:opacity-30 cursor-pointer"
+                >
+                  + Add
+                </button>
               </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">Customer Max Qty</label>
-                <input 
-                  type="number" 
-                  value={maxQtyPerCustomer} 
-                  onChange={e => setMaxQtyPerCustomer(e.target.value)} 
-                  placeholder="Unrestricted"
-                  className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ff5500]/40 font-mono text-xs" 
-                />
-              </div>
-              <div className="flex items-center justify-between p-3.5 bg-[#141414] border border-white/5 rounded-xl">
-                <span className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">Featured Homepage</span>
-                <input 
-                  type="checkbox" 
-                  checked={showOnHomepage} 
-                  onChange={e => setShowOnHomepage(e.target.checked)} 
-                  className="w-4 h-4 accent-[#ff5500]"
-                />
-              </div>
-            </div>
-
-            {/* Media Upload */}
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">Product Primary Image</label>
-              <div className="flex items-center gap-4">
-                <input 
-                  type="text" 
-                  value={productImage} 
-                  onChange={e => setProductImage(e.target.value)} 
-                  placeholder="URL to image asset..." 
-                  className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ff5500]/40 text-xs"
-                />
-                <div className="relative">
-                  <input 
-                    type="file" 
-                    id="product-image-upload" 
-                    onChange={handleImageUpload} 
-                    className="hidden" 
-                    accept="image/*"
-                  />
-                  <label 
-                    htmlFor="product-image-upload"
-                    className="px-4 py-3 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 text-white cursor-pointer transition-colors font-bold uppercase tracking-wider text-[10px] flex items-center gap-1.5 whitespace-nowrap"
-                  >
-                    <ImageIcon size={12} />
-                    {isUploading ? 'Uploading...' : 'Upload'}
-                  </label>
+              {subtags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {subtags.map((st, idx) => (
+                    <span key={idx} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[9.5px] font-black uppercase tracking-wider bg-white/5 text-amber-400 border border-white/10">
+                      {st}
+                      <button
+                        type="button"
+                        onClick={() => setSubtags(prev => prev.filter((_, i) => i !== idx))}
+                        className="text-white/40 hover:text-red-400 cursor-pointer text-xs leading-none"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  ))}
                 </div>
-              </div>
+              )}
             </div>
 
+            {/* Description */}
+            <div className="md:col-span-3">
+              <label className="block text-[10px] font-bold text-white/50 uppercase tracking-widest mb-1">
+                Description / Notes
+              </label>
+              <textarea
+                rows={2}
+                placeholder="Casting details, specifications, packaging condition..."
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                className="w-full bg-[#111116] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#ff5500]"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* PRE-BOOKING / PO RELEASE SECTION */}
+        <div className="bg-white/[0.02] border border-white/5 p-4 rounded-xl space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <label className="text-xs font-bold text-white block">Pre-Booking / PO Release</label>
+              <span className="text-[10px] text-white/40 block">Enable advance pre-orders for upcoming stock</span>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isPrebook}
+                onChange={e => setIsPrebook(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#ff5500]"></div>
+            </label>
           </div>
 
-          {/* Section 2: Collapsible Variants */}
-          <div className="space-y-4">
-            <div className="flex justify-between items-center border-b border-white/5 pb-2">
-              <h4 className="text-[10px] font-black uppercase tracking-widest text-[#ff5500]">
-                2. Product Casing Variants ({variants.length})
-              </h4>
-              <button
-                type="button"
-                onClick={addVariant}
-                className="bg-white/5 hover:bg-white/10 text-white font-extrabold text-[9px] px-3.5 py-2 rounded-lg border border-white/5 uppercase tracking-wider flex items-center gap-1 cursor-pointer"
-              >
-                <Plus size={12} /> Add Variant
-              </button>
+          {isPrebook && (
+            <div className="pt-3 border-t border-white/5">
+              <label className="block text-[10px] font-bold text-white/50 uppercase tracking-widest mb-1">
+                Expected Release / Delivery Date (Text String)
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. August 2026 / Q3 2026"
+                value={arrivalDate}
+                onChange={e => setArrivalDate(e.target.value)}
+                className="w-full bg-[#111116] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#ff5500]"
+              />
             </div>
+          )}
+        </div>
 
-            {variants.map((v, idx) => (
-              <div 
-                key={v.id} 
-                className="bg-[#111111] border border-white/5 rounded-2xl overflow-hidden shadow-md"
-              >
-                {/* Header bar of variant card */}
-                <div 
-                  className="p-4 bg-white/[0.02] border-b border-white/5 flex items-center justify-between cursor-pointer hover:bg-white/[0.04]"
-                  onClick={() => toggleCollapse(v.id)}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="font-extrabold text-white font-mono text-xs">#{idx + 1}</span>
-                    <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 bg-[#ff5500]/10 border border-[#ff5500]/20 text-[#ff5500] rounded">
-                      {v.casing}
+        {/* CASE TYPES & PRICING & IMAGES VARIANTS */}
+        <div className="bg-white/[0.02] border border-white/5 p-4 rounded-xl space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="text-xs font-black uppercase text-[#ff5500] tracking-wider flex items-center gap-1.5">
+                <Layers size={14} /> Case Types, Pricing &amp; Images
+              </h4>
+              <span className="text-[10px] text-white/40 block">Configure prices and specific images for each Case Type (Blister, Box, Acrylic)</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleAddCaseVariant}
+              className="bg-[#ff5500]/10 hover:bg-[#ff5500]/20 text-[#ff5500] border border-[#ff5500]/30 font-bold text-[10px] px-3 py-1.5 rounded-lg uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-colors"
+            >
+              <Plus size={14} /> Add Case Type
+            </button>
+          </div>
+
+          <div className="space-y-4 pt-2">
+            {caseVariants.map((v, vIdx) => (
+              <div key={v.id} className="bg-black/30 border border-white/10 rounded-xl p-4 space-y-4 relative">
+                <div className="flex items-center justify-between pb-2 border-b border-white/5">
+                  <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-[#ff5500]/20 text-[#ff5500] text-[10px] flex items-center justify-center font-mono">
+                      {vIdx + 1}
                     </span>
-                    <span className="text-zinc-500 font-mono font-bold text-[10px]">{v.sku || '(No SKU)'}</span>
-                    {v.isPrebook && (
-                      <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded">
-                        Preorder
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                    <button 
+                    Case Type Option #{vIdx + 1}
+                  </span>
+                  {caseVariants.length > 1 && (
+                    <button
                       type="button"
-                      onClick={() => toggleCollapse(v.id)}
-                      className="text-xs font-bold text-zinc-400 hover:text-white px-2 py-1"
+                      onClick={() => handleRemoveCaseVariant(vIdx)}
+                      className="text-white/40 hover:text-red-400 p-1 rounded hover:bg-white/5 transition-colors cursor-pointer"
                     >
-                      {v.isCollapsed ? 'Expand' : 'Collapse'}
+                      <Trash2 size={14} />
                     </button>
-                    {variants.length > 1 && (
-                      <button 
-                        type="button" 
-                        onClick={() => deleteVariant(v.id)}
-                        className="p-1 rounded text-red-400 hover:bg-red-500/10"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    )}
-                  </div>
+                  )}
                 </div>
 
-                {/* Collapsible Content */}
-                {!v.isCollapsed && (
-                  <div className="p-6 space-y-4">
-                    
-                    {/* Basic properties */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">Casing Type</label>
-                        <select
-                          value={v.casing}
-                          onChange={e => updateVariantField(v.id, 'casing', e.target.value)}
-                          className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ff5500]/40 text-xs"
-                        >
-                          <option value="BOX">Box</option>
-                          <option value="BLISTER">Blister</option>
-                          <option value="ACRYLIC">Acrylic</option>
-                          <option value="RAW">Raw</option>
-                          <option value="SIGNED">Signed</option>
-                          <option value="LIMITED">Limited</option>
-                        </select>
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">Variant SKU</label>
-                        <input
-                          type="text"
-                          value={v.sku}
-                          onChange={e => updateVariantField(v.id, 'sku', e.target.value)}
-                          placeholder="e.g. MGT007-BOX"
-                          className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ff5500]/40 font-mono text-xs"
-                          required
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">Barcode (Optional)</label>
-                        <input
-                          type="text"
-                          value={v.barcode}
-                          onChange={e => updateVariantField(v.id, 'barcode', e.target.value)}
-                          placeholder="UPC/EAN code"
-                          className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ff5500]/40 font-mono text-xs"
-                        />
-                      </div>
-                    </div>
+                {/* Variant Details Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {/* Case Type */}
+                  <div>
+                    <label className="block text-[10px] font-bold text-white/50 uppercase tracking-widest mb-1">
+                      Case Type *
+                    </label>
+                    <select
+                      value={v.casingType}
+                      onChange={e => handleVariantChange(vIdx, 'casingType', e.target.value)}
+                      className="w-full bg-[#111116] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#ff5500] cursor-pointer"
+                    >
+                      {CASE_TYPES.map(c => (
+                        <option key={c} value={c} className="bg-[#141414] text-white">{c}</option>
+                      ))}
+                    </select>
+                  </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">Selling Price (INR)</label>
-                        <input
-                          type="number"
-                          value={v.price}
-                          onChange={e => updateVariantField(v.id, 'price', e.target.value)}
-                          placeholder="1200"
-                          className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ff5500]/40 font-mono text-xs"
-                          required
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">Estimated Cost</label>
-                        <input
-                          type="number"
-                          value={v.purchasePrice}
-                          onChange={e => updateVariantField(v.id, 'purchasePrice', e.target.value)}
-                          placeholder="450"
-                          className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ff5500]/40 font-mono text-xs"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">Weight (g)</label>
-                        <input
-                          type="number"
-                          value={v.weight}
-                          onChange={e => updateVariantField(v.id, 'weight', e.target.value)}
-                          placeholder="80"
-                          className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ff5500]/40 font-mono text-xs"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">Dimensions</label>
-                        <input
-                          type="text"
-                          value={v.dimensions}
-                          onChange={e => updateVariantField(v.id, 'dimensions', e.target.value)}
-                          placeholder="L x W x H"
-                          className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ff5500]/40 font-mono text-xs"
-                        />
-                      </div>
-                    </div>
+                  {/* Price */}
+                  <div>
+                    <label className="block text-[10px] font-bold text-white/50 uppercase tracking-widest mb-1">
+                      Price (₹) *
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="e.g. 1499"
+                      value={v.price}
+                      onChange={e => handleVariantChange(vIdx, 'price', e.target.value)}
+                      className="w-full bg-[#111116] border border-white/10 rounded-lg px-3 py-2 text-xs text-white font-mono font-bold focus:outline-none focus:border-[#ff5500]"
+                      required
+                    />
+                  </div>
 
-                    {/* Preorder support */}
-                    <div className="p-4 bg-white/[0.01] border border-white/5 rounded-xl space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="text-[10px] font-bold uppercase tracking-wider text-white">Enable Preorder</div>
-                          <div className="text-[9px] text-[#888]">Allows customers to book this casing variant in advance</div>
-                        </div>
-                        <input
-                          type="checkbox"
-                          checked={v.isPrebook}
-                          onChange={e => updateVariantField(v.id, 'isPrebook', e.target.checked)}
-                          className="w-4 h-4 accent-[#ff5500] cursor-pointer"
-                        />
-                      </div>
+                  {/* Available Stock */}
+                  <div>
+                    <label className="block text-[10px] font-bold text-white/50 uppercase tracking-widest mb-1">
+                      Stock Quantity *
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={v.availableStock}
+                      onChange={e => handleVariantChange(vIdx, 'availableStock', Math.max(0, parseInt(e.target.value) || 0))}
+                      className="w-full bg-[#111116] border border-white/10 rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-[#ff5500]"
+                    />
+                  </div>
 
-                      {v.isPrebook && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-2 border-t border-white/5">
-                          <div className="space-y-1">
-                            <label className="text-[9px] font-bold text-[#888888] uppercase tracking-widest">Customer ETA</label>
-                            <input
-                              type="text"
-                              value={v.customerEta}
-                              onChange={e => updateVariantField(v.id, 'customerEta', e.target.value)}
-                              placeholder="e.g. Expected August 2026"
-                              className="w-full bg-[#141414] border border-white/5 rounded-xl px-3.5 py-2.5 text-white focus:outline-none text-xs"
-                              required
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-[9px] font-bold text-[#888888] uppercase tracking-widest">Deposit Amount</label>
-                            <input
-                              type="number"
-                              value={v.prebookDepositAmount}
-                              onChange={e => updateVariantField(v.id, 'prebookDepositAmount', e.target.value)}
-                              placeholder="Optional partial payment"
-                              className="w-full bg-[#141414] border border-white/5 rounded-xl px-3.5 py-2.5 text-white focus:outline-none font-mono text-xs"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-[9px] font-bold text-[#888888] uppercase tracking-widest">Max Preorders</label>
-                            <input
-                              type="number"
-                              value={v.maxPreorders}
-                              onChange={e => updateVariantField(v.id, 'maxPreorders', e.target.value)}
-                              placeholder="Unlimited"
-                              className="w-full bg-[#141414] border border-white/5 rounded-xl px-3.5 py-2.5 text-white focus:outline-none font-mono text-xs"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-[9px] font-bold text-[#888888] uppercase tracking-widest">Display Message</label>
-                            <input
-                              type="text"
-                              value={v.displayMessage}
-                              onChange={e => updateVariantField(v.id, 'displayMessage', e.target.value)}
-                              placeholder="e.g. Pre-orders close soon"
-                              className="w-full bg-[#141414] border border-white/5 rounded-xl px-3.5 py-2.5 text-white focus:outline-none text-xs"
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Sales status and visibility */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">Sales Status</label>
-                        <select
-                          value={v.salesStatus}
-                          onChange={e => updateVariantField(v.id, 'salesStatus', e.target.value)}
-                          className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ff5500]/40 text-xs"
-                        >
-                          <option value="Available">Available</option>
-                          <option value="Preorder">Preorder</option>
-                          <option value="Coming Soon">Coming Soon</option>
-                          <option value="Out of Stock">Out of Stock</option>
-                          <option value="Discontinued">Discontinued</option>
-                        </select>
-                      </div>
-
-                      <div className="flex items-center justify-between p-3.5 bg-[#141414] border border-white/5 rounded-xl">
-                        <span className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">Active Status</span>
-                        <select
-                          value={v.status}
-                          onChange={e => updateVariantField(v.id, 'status', e.target.value)}
-                          className="bg-transparent border-none text-white focus:outline-none text-xs font-bold"
-                        >
-                          <option value="Active">Active</option>
-                          <option value="Archived">Archived</option>
-                        </select>
-                      </div>
-
-                      <div className="flex items-center justify-between p-3.5 bg-[#141414] border border-white/5 rounded-xl">
-                        <span className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">Visibility</span>
-                        <button
-                          type="button"
-                          onClick={() => updateVariantField(v.id, 'isVisible', !v.isVisible)}
-                          className={`flex items-center gap-1 px-3 py-1.5 rounded-lg border text-[9px] font-bold uppercase tracking-wider cursor-pointer ${
-                            v.isVisible 
-                              ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-400'
-                              : 'border-white/5 bg-white/5 text-zinc-500'
-                          }`}
-                        >
-                          {v.isVisible ? <Eye size={10} /> : <EyeOff size={10} />}
-                          {v.isVisible ? 'Visible' : 'Hidden'}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* JSON variant attributes */}
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">Variant Attributes JSON</label>
-                      <textarea
-                        value={v.attributesJson}
-                        onChange={e => updateVariantField(v.id, 'attributesJson', e.target.value)}
-                        placeholder='{ "color": "Silver", "limitedNum": 1200 }'
-                        rows={2}
-                        className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ff5500]/40 font-mono text-xs"
+                  {/* PO Deposit Amount if Prebook */}
+                  {isPrebook && (
+                    <div className="md:col-span-3">
+                      <label className="block text-[10px] font-bold text-[#ff5500] uppercase tracking-widest mb-1">
+                        PO Advance Deposit (₹)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        placeholder="e.g. 500"
+                        value={v.poAmount}
+                        onChange={e => handleVariantChange(vIdx, 'poAmount', e.target.value)}
+                        className="w-full bg-[#111116] border border-white/10 rounded-lg px-3 py-2 text-xs text-white font-mono font-bold focus:outline-none focus:border-[#ff5500]"
                       />
                     </div>
+                  )}
+                </div>
 
+                {/* Variant Images Upload & Input */}
+                <div className="space-y-3 pt-2 border-t border-white/5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-bold text-white/50 uppercase tracking-widest block">
+                      Images for {v.casingType} Case
+                    </label>
+                    <span className="text-[9px] text-white/40">Upload files or paste URL</span>
                   </div>
-                )}
+
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <label className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-colors shrink-0">
+                      <Upload size={12} className="text-[#ff5500]" />
+                      {v.isUploading ? 'Uploading...' : 'Upload Image'}
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        onChange={e => handleVariantFileUpload(vIdx, e)}
+                        disabled={v.isUploading}
+                        className="hidden"
+                      />
+                    </label>
+
+                    <div className="flex-1 flex gap-2">
+                      <input
+                        type="url"
+                        placeholder={`Paste image URL for ${v.casingType}...`}
+                        value={v.imageUrlInput || ''}
+                        onChange={e => handleVariantChange(vIdx, 'imageUrlInput', e.target.value)}
+                        className="flex-1 bg-[#111116] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#ff5500]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleAddVariantImageUrl(vIdx)}
+                        className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-xs cursor-pointer"
+                      >
+                        Add URL
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Variant Image Thumbnails */}
+                  {v.images && v.images.length > 0 ? (
+                    <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 pt-1">
+                      {v.images.map((imgUrl, imgIdx) => (
+                        <div key={imgIdx} className="relative aspect-square rounded-lg overflow-hidden border border-white/10 bg-black/40 group">
+                          <img src={imgUrl} alt="" className="w-full h-full object-contain p-1" />
+                          {imgIdx === 0 ? (
+                            <span className="absolute top-1 left-1 bg-[#ff5500] text-black text-[7.5px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider shadow">
+                              Cover
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleSetCoverImage(vIdx, imgIdx)}
+                              className="absolute top-1 left-1 bg-black/80 hover:bg-[#ff5500] text-white hover:text-black text-[7px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+                              title="Set as cover image"
+                            >
+                              Make Cover
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveVariantImage(vIdx, imgIdx)}
+                            className="absolute top-1 right-1 p-1 bg-black/80 hover:bg-red-500 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                          >
+                            <X size={10} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-3 border border-dashed border-white/10 rounded-lg text-white/30 text-[10px]">
+                      No images added for this case type yet.
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
-
-          {/* Form Actions */}
-          <div className="flex gap-4 pt-4">
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="bg-[#ff5500] hover:bg-[#ff6611] text-black font-extrabold text-[10px] px-8 py-3.5 rounded-xl uppercase tracking-wider transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-            >
-              <Check size={14} />
-              {isSubmitting ? 'Saving...' : 'Save Product'}
-            </button>
-            <button
-              type="button"
-              onClick={onCancel}
-              className="px-6 py-3.5 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 text-white font-extrabold text-[10px] uppercase tracking-wider transition-colors cursor-pointer"
-            >
-              Cancel
-            </button>
-          </div>
-
-        </form>
-
-        {/* Right Column: Live Storefront Card Preview */}
-        <div className="space-y-4">
-          <h4 className="text-[10px] font-black uppercase tracking-widest text-[#ff5500] border-b border-white/5 pb-2">
-            Marketplace Preview Card
-          </h4>
-          
-          <div className="bg-[#111] border border-white/5 rounded-2xl overflow-hidden relative shadow-lg">
-            
-            {/* Image panel */}
-            <div className="aspect-[4/3] bg-zinc-950 flex items-center justify-center relative overflow-hidden">
-              {productImage ? (
-                <img 
-                  src={productImage} 
-                  alt="Preview" 
-                  className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" 
-                />
-              ) : (
-                <div className="text-zinc-700 flex flex-col items-center gap-1">
-                  <ImageIcon size={32} />
-                  <span className="text-[9px] uppercase tracking-widest">No Image Asset</span>
-                </div>
-              )}
-              
-              {/* Scale Badge */}
-              <div className="absolute top-3 left-3 px-2 py-0.5 bg-black/60 backdrop-blur-md rounded-lg text-[9px] font-black font-mono text-[#ff5500] border border-[#ff5500]/20 uppercase tracking-widest">
-                {scale || '1:64'}
-              </div>
-              
-              {/* Sales Status Badge */}
-              <div className="absolute top-3 right-3">
-                <span className={`text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${
-                  previewVar.salesStatus === 'Preorder' 
-                    ? 'bg-blue-500 text-black shadow-[0_0_10px_rgba(59,130,246,0.3)]'
-                    : previewVar.salesStatus === 'Coming Soon'
-                    ? 'bg-purple-500 text-black'
-                    : previewVar.salesStatus === 'Out of Stock'
-                    ? 'bg-zinc-800 text-zinc-500'
-                    : 'bg-[#ff5500] text-black shadow-[0_0_10px_rgba(255,85,0,0.3)]'
-                }`}>
-                  {previewVar.salesStatus || 'Available'}
-                </span>
-              </div>
-            </div>
-
-            {/* Preview Details */}
-            <div className="p-5 space-y-4">
-              <div className="space-y-1">
-                <div className="text-[10px] font-black uppercase tracking-wider text-zinc-500">
-                  {brand || 'MINI GT'}
-                </div>
-                <div className="font-extrabold text-white text-sm line-clamp-1">
-                  {name || 'Casting Name'}
-                </div>
-                <div className="text-[10px] font-bold text-zinc-400 font-mono">
-                  {previewVar.sku || 'SKU-MIG-XXXXX'}
-                </div>
-              </div>
-
-              {/* Price Details */}
-              <div className="flex items-baseline justify-between border-t border-white/5 pt-3">
-                <span className="text-[10px] font-bold text-zinc-500 uppercase">Selling Price</span>
-                <span className="text-sm font-extrabold text-[#ff5500] font-mono">
-                  ₹{Number(previewVar.price || 0).toLocaleString()}
-                </span>
-              </div>
-
-              {/* Preorder information display */}
-              {previewVar.isPrebook && (
-                <div className="p-3 rounded-xl bg-blue-500/5 border border-blue-500/10 space-y-1.5">
-                  <div className="flex justify-between items-center text-[9px] font-bold uppercase">
-                    <span className="text-blue-400">Preorder Deposit</span>
-                    <span className="text-white font-mono">
-                      ₹{previewVar.prebookDepositAmount ? Number(previewVar.prebookDepositAmount).toLocaleString() : 'N/A'}
-                    </span>
-                  </div>
-                  {previewVar.customerEta && (
-                    <div className="text-[9px] text-[#888] font-bold">
-                      Delivery: <span className="text-white">{previewVar.customerEta}</span>
-                    </div>
-                  )}
-                  {previewVar.displayMessage && (
-                    <div className="text-[8px] uppercase tracking-wider text-blue-400 font-semibold italic">
-                      💡 {previewVar.displayMessage}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Casing variant pills selector */}
-              <div className="space-y-1.5">
-                <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest block">Select Casing Variant</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {variants.map((v, idx) => (
-                    <button
-                      key={v.id}
-                      type="button"
-                      onClick={() => setPreviewVariantIndex(idx)}
-                      className={`px-3 py-1.5 rounded-lg border text-[9px] font-bold uppercase tracking-wider cursor-pointer transition-all ${
-                        previewVariantIndex === idx
-                          ? 'bg-[#ff5500]/10 border-[#ff5500]/40 text-[#ff5500]'
-                          : 'border-white/5 bg-transparent text-[#888888] hover:text-white'
-                      }`}
-                    >
-                      {v.casing}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-            </div>
-
-          </div>
-
-          {/* Context Alert */}
-          <div className="p-4 bg-[#ff5500]/5 border border-[#ff5500]/10 rounded-2xl flex gap-2.5 items-start">
-            <AlertTriangle size={16} className="text-[#ff5500] flex-shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <span className="text-[9px] font-black uppercase text-white block">Preview Mode Only</span>
-              <span className="text-[9px] text-[#888] block">
-                Casing type pill selections on the preview card demonstrate how customers will switch between variants on the public marketplace.
-              </span>
-            </div>
-          </div>
-
         </div>
 
+        {/* SUBMIT ACTIONS */}
+        <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-6 py-3 rounded-xl border border-white/10 hover:bg-white/5 text-white/70 text-xs font-bold transition-colors cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="px-8 py-3 rounded-xl bg-[#ff5500] hover:bg-[#ff661a] text-black font-black text-xs uppercase tracking-wider transition-all shadow-[0_2px_12px_rgba(255,85,0,0.2)] cursor-pointer disabled:opacity-50 flex items-center gap-2"
+          >
+            <Check size={16} />
+            {isSubmitting ? 'Saving...' : productId ? 'Update Product' : 'Save Product'}
+          </button>
+        </div>
+      </form>
+
+      {/* ── RIGHT: LIVE MARKETPLACE CARD PREVIEW (5 cols) ── */}
+      <div className="lg:col-span-5 space-y-4">
+        <div className="flex items-center gap-2 text-white/60">
+          <Eye size={16} className="text-[#ff5500]" />
+          <h3 className="text-xs font-black uppercase text-white/70 tracking-wider">Marketplace Card Live Preview</h3>
+        </div>
+
+        <div className="max-w-sm mx-auto">
+          {(() => {
+            const previewCar = {
+              id: 'preview',
+              name: name.trim() || 'Product Title / Casting Name',
+              brand: brand === 'Other' ? (customBrand || 'Other') : brand,
+              scale: scale || '1:64',
+              casingType: previewVariant.casingType || 'Blister',
+              price: previewPrice,
+              poAmount: previewPoAmount,
+              isPrebook: isPrebook,
+              image: previewImage || '/brand-logo.png',
+              tag: (tag && tag !== 'None') ? tag : null,
+              tags: subtags,
+              subtags: subtags,
+              description: description,
+              lane: (tag && tag !== 'None') ? tag : null,
+              arrivalDate: arrivalDate.trim() || null,
+              releaseDate: arrivalDate.trim() || null,
+              customerEta: arrivalDate.trim() || null,
+              availableStock: previewVariant.availableStock ?? 10
+            };
+            return <ProductCard car={previewCar} isPreview={true} />;
+          })()}
+        </div>
       </div>
     </div>
   );

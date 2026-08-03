@@ -18,7 +18,6 @@ export default function Home() {
   const coverRef = useRef(null)
   const archiveRef = useRef(null)
   const galleryRef = useRef(null)
-  const releasesRef = useRef(null)
 
   // Listen to incoming hashes from other subpages and scroll smoothly
   useEffect(() => {
@@ -32,7 +31,7 @@ export default function Home() {
 
   // Storyteller refs array in chronological layout order
   const lookbookRefs = useMemo(
-    () => [coverRef, archiveRef, galleryRef, releasesRef],
+    () => [coverRef, archiveRef, galleryRef],
     [],
   )
 
@@ -40,7 +39,7 @@ export default function Home() {
   
   // Resolve navigation item highlights based on layout order
   const activeSection = useMemo(() => {
-    const map = ['hero', 'archive', 'gallery', 'releases']
+    const map = ['hero', 'archive', 'gallery']
     return map[activeSectionIndex] || 'hero'
   }, [activeSectionIndex])
 
@@ -56,7 +55,7 @@ export default function Home() {
         <LookbookCover ref={coverRef} />
         <TechnicalArchive ref={archiveRef} />
         <LookbookGallery ref={galleryRef} />
-        <ReleaseBoard ref={releasesRef} />
+        {/* ReleaseBoard stashed/hidden per user directive */}
       </main>
 
       <Footer />

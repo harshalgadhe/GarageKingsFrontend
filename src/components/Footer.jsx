@@ -32,13 +32,20 @@ export default function Footer() {
           <span className="text-[10px] font-bold font-mono uppercase tracking-wider text-zinc-500 mb-1">Explore</span>
           <Link to="/" className="text-xs hover:text-white transition-colors py-0.5">Home</Link>
           <Link to="/marketplace" className="text-xs hover:text-white transition-colors py-0.5">Marketplace</Link>
-          <a href="/#archive" className="text-xs hover:text-white transition-colors py-0.5">New Arrivals</a>
+          <Link to="/help" className="text-xs hover:text-white transition-colors py-0.5">Help & FAQ</Link>
         </div>
 
-        {/* Column 2: Support */}
+        {/* Column 2: Support & Contact */}
         <div className="flex flex-col gap-2">
-          <span className="text-[10px] font-bold font-mono uppercase tracking-wider text-zinc-500 mb-1">Support</span>
-          <Link to="/help" className="text-xs hover:text-white transition-colors py-0.5">Help Center</Link>
+          <span className="text-[10px] font-bold font-mono uppercase tracking-wider text-zinc-500 mb-1">Reach Out</span>
+          <a 
+            href="https://chat.whatsapp.com/EX1NbXHU63ZCQ4qhFVCubb" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="text-xs text-gk-orange hover:text-white transition-colors py-0.5 font-bold"
+          >
+            WhatsApp Support
+          </a>
           <a 
             href="https://www.instagram.com/garagekingsindia/" 
             target="_blank" 
@@ -47,24 +54,13 @@ export default function Footer() {
           >
             Instagram
           </a>
-          <a 
-            href="https://chat.whatsapp.com/EX1NbXHU63ZCQ4qhFVCubb" 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="text-xs hover:text-white transition-colors py-0.5"
-          >
-            WhatsApp Community
-          </a>
-          <Link to="/account" className="text-xs hover:text-white transition-colors py-0.5">My Account</Link>
         </div>
 
-        {/* Column 3: Company */}
+        {/* Column 3: Legal & Account */}
         <div className="flex flex-col gap-2">
-          <span className="text-[10px] font-bold font-mono uppercase tracking-wider text-zinc-500 mb-1">Company</span>
-          <a href="/#releases" className="text-xs hover:text-white transition-colors py-0.5">About</a>
-          <a href="/#releases" className="text-xs hover:text-white transition-colors py-0.5">Contact</a>
-          <Link to="/policies" className="text-xs hover:text-white transition-colors py-0.5">Privacy Policy</Link>
-          <Link to="/policies" className="text-xs hover:text-white transition-colors py-0.5">Terms of Service</Link>
+          <span className="text-[10px] font-bold font-mono uppercase tracking-wider text-zinc-500 mb-1">Portal</span>
+          <Link to="/account" className="text-xs hover:text-white transition-colors py-0.5">My Account</Link>
+          <Link to="/policies" className="text-xs hover:text-white transition-colors py-0.5">Privacy & Policies</Link>
         </div>
 
       </div>

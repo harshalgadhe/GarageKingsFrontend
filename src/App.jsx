@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react'
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { SpeedInsights } from '@vercel/speed-insights/react'
 import { Analytics } from '@vercel/analytics/react'
 import { SmoothScrollProvider } from './providers/SmoothScroll'
@@ -68,7 +68,7 @@ export default function App() {
               <Route path="/help"        element={<Help />} />
               <Route path="/policies"    element={<Policies />} />
               <Route path="/product/:id" element={<ProductDetail />} />
-              <Route path="/cart"        element={<Cart />} />
+              <Route path="/cart"        element={<Navigate to="/marketplace" replace />} />
               <Route path="/checkout"    element={<Checkout />} />
               <Route path="*"            element={<NotFound />} />
             </Routes>

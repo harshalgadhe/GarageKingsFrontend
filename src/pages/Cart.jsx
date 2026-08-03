@@ -198,7 +198,14 @@ export default function Cart() {
               </div>
 
               <button
-                onClick={() => navigate('/checkout')}
+                onClick={() => {
+                  const user = localStorage.getItem('gk_user');
+                  if (!user) {
+                    navigate('/account?returnTo=/checkout');
+                  } else {
+                    navigate('/checkout');
+                  }
+                }}
                 className="w-full py-4 rounded-xl bg-gk-orange hover:bg-orange-500 text-black hover:text-white font-black text-sm uppercase tracking-widest transition-all duration-200 hover:shadow-[0_0_30px_rgba(255,85,0,0.35)] cursor-pointer active:scale-[0.98]"
               >
                 Proceed to Checkout
