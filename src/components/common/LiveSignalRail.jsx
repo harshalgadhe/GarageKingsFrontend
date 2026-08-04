@@ -30,7 +30,7 @@ export default function LiveSignalRail() {
             New additions
           </span>
           <span className="truncate text-[11px] tracking-wide text-[#A9A49C] sm:text-xs">
-            Recently added models and incoming releases
+            Recently added models and pre-booking releases
           </span>
         </div>
 

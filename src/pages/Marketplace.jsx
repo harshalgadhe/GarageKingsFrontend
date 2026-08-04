@@ -263,7 +263,7 @@ export default function Marketplace() {
         ) : (
           <>
             <div className="mb-8 flex items-end justify-between border-b border-white/[0.06] pb-5">
-              <div><span className="text-[9px] uppercase tracking-[0.2em] text-[#D8BC78]">Browse models</span><h2 className="mt-1 text-2xl font-semibold tracking-tight">Available and incoming</h2></div>
+              <div><span className="text-[9px] uppercase tracking-[0.2em] text-[#D8BC78]">Browse models</span><h2 className="mt-1 text-2xl font-semibold tracking-tight">Available and pre-booking</h2></div>
               <span className="hidden font-mono text-[10px] uppercase tracking-widest text-[#74716B] md:block">No checkout / direct collector enquiry</span>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">

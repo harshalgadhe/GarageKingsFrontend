@@ -29,7 +29,7 @@ export default function CollectorStandardTrust() {
       title: 'Pre-Order Enquiry Clarity',
       icon: MessageCircle,
       summary: 'Indicative pricing and availability are discussed directly with the Collector Desk.',
-      details: 'GarageKings does not accept checkout on this website. For an incoming model, contact us on WhatsApp or Instagram to confirm current availability, pricing, payment stages and the terms that apply before making any commitment.'
+      details: 'GarageKings does not accept checkout on this website. For a pre-booking model, contact us on WhatsApp or Instagram to confirm current availability, pricing, payment stages and the terms that apply before making any commitment.'
     }
   ];
 

@@ -9,6 +9,55 @@ const API_BASE_URL = import.meta.env.PROD
   ? '/api/v1' 
   : (import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1');
 
+export function resolveMediaUrl(value) {
+  if (!value || typeof value !== 'string') return value;
+  if (value.startsWith('data:') || value.startsWith('blob:')) return value;
+
+  try {
+    const parsed = new URL(value, window.location.origin);
+    const isLegacyLocalUrl = ['localhost', '127.0.0.1', '::1'].includes(parsed.hostname);
+
+    if (import.meta.env.PROD && isLegacyLocalUrl) {
+      return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    }
+  } catch {
+    return value;
+  }
+
+  return value;
+}
+
+function normalizeImageEntry(image) {
+  if (typeof image === 'string') return resolveMediaUrl(image);
+  if (!image || typeof image !== 'object') return image;
+
+  return {
+    ...image,
+    fullUrl: resolveMediaUrl(image.fullUrl),
+    mediumUrl: resolveMediaUrl(image.mediumUrl),
+    thumbnailUrl: resolveMediaUrl(image.thumbnailUrl),
+    url: resolveMediaUrl(image.url),
+    src: resolveMediaUrl(image.src),
+  };
+}
+
+function normalizeProductMedia(product) {
+  if (!product || typeof product !== 'object') return product;
+  const normalizeVariant = (variant) => ({
+    ...variant,
+    image: resolveMediaUrl(variant?.image),
+    images: Array.isArray(variant?.images) ? variant.images.map(normalizeImageEntry) : variant?.images,
+  });
+
+  return {
+    ...product,
+    image: resolveMediaUrl(product.image),
+    images: Array.isArray(product.images) ? product.images.map(normalizeImageEntry) : product.images,
+    variants: Array.isArray(product.variants) ? product.variants.map(normalizeVariant) : product.variants,
+    caseVariants: Array.isArray(product.caseVariants) ? product.caseVariants.map(normalizeVariant) : product.caseVariants,
+  };
+}
+
 // Mocked configuration checker for backwards-compatibility checks in legacy page loads
 export const isFirebaseConfigured = true;
 
@@ -171,10 +220,11 @@ export async function getCars(params = {}) {
     });
     if (!res.ok) throw new Error("Failed to fetch castings");
     const data = await res.json();
+    const normalizedProducts = (data.products || []).map(normalizeProductMedia);
     if (queryOptions.paginated) {
-      return data;
+      return { ...data, products: normalizedProducts };
     }
-    return data.products || data;
+    return data.products ? normalizedProducts : (Array.isArray(data) ? data.map(normalizeProductMedia) : data);
   } catch (err) {
     // Re-throw AbortError so callers can detect request cancellation
     if (err?.name === 'AbortError') throw err;
@@ -187,7 +237,7 @@ export async function getCars(params = {}) {
       headers: getAuthHeaders()
     });
     if (!res.ok) throw new Error("Failed to fetch product details");
-    return await res.json();
+    return normalizeProductMedia(await res.json());
   } catch (err) {
     console.error(`Error fetching product ${id}:`, err);
     return null;
@@ -524,7 +574,7 @@ export async function uploadImageToStorage(file) {
     ? rawUrl 
     : `${serverOrigin}${rawUrl.startsWith('/') ? '' : '/'}${rawUrl}`;
 
-  return fullUrl;
+  return resolveMediaUrl(fullUrl);
 }
 
 // Compress any DataURL string to max 400px WebP (~10KB)

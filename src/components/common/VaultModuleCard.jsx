@@ -8,7 +8,7 @@ import { ImageOff } from 'lucide-react';
  * - Internal Archive Reference (Vault Index)
  * - Controlled Artifact Stage lighting & pedestal grounded shadow
  * - Tabular figures & Collector Plaque metadata
- * - High-contrast state markers (AVAILABLE, FEW REMAINING, INCOMING, ARCHIVED)
+ * - High-contrast state markers for availability and pre-booking
  * - Complete touch & keyboard parity (composite focus ring)
  */
 export default function VaultModuleCard({ car, onClick, isPreview = false }) {
@@ -75,7 +75,7 @@ export default function VaultModuleCard({ car, onClick, isPreview = false }) {
           </span>
         ) : isPrebook ? (
           <span className="px-2 py-0.5 rounded-md text-[9px] font-bold tracking-wider bg-[#C99652]/15 text-[#C99652] border border-[#C99652]/30">
-            INCOMING
+            PRE-BOOKING
           </span>
         ) : isLowStock ? (
           <span className="px-2 py-0.5 rounded-md text-[9px] font-bold tracking-wider bg-[#C99652]/15 text-[#C99652] border border-[#C99652]/30">
@@ -184,7 +184,7 @@ export default function VaultModuleCard({ car, onClick, isPreview = false }) {
         <div className="pt-3 border-t border-white/[0.06] flex items-end justify-between gap-2">
           <div>
             <div className="text-[8px] font-bold uppercase tracking-widest text-[#74716B] mb-0.5">
-              {isPrebook ? (poDeposit ? 'Pre-order reference' : 'Incoming release') : 'Listed at'}
+              {isPrebook ? (poDeposit ? 'Pre-order reference' : 'Pre-booking') : 'Listed at'}
             </div>
 
             {displayPrice ? (

@@ -128,7 +128,7 @@ export default function ProductDetail() {
     ['Packaging', variant.casingType || product.casing || 'Not specified'],
     ['Condition', condition],
     ['SKU', product.sku || reference],
-    ['Availability', soldOut ? 'Unavailable' : preOrder ? 'Incoming' : 'Available'],
+    ['Availability', soldOut ? 'Unavailable' : preOrder ? 'Pre-booking' : 'Available'],
   ]
 
   return (
@@ -145,19 +145,21 @@ export default function ProductDetail() {
       <main>
         <section className="mx-auto grid max-w-[1440px] gap-8 px-4 pb-12 pt-6 sm:px-6 md:pt-8 lg:min-h-[calc(100svh-121px)] lg:grid-cols-12 lg:items-center lg:gap-12 lg:px-12 lg:pb-5 lg:pt-5">
           <motion.div initial={reduceMotion ? false : { opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.65 }} className="relative lg:col-span-7">
-            <div className="relative flex min-h-[500px] items-center justify-center overflow-hidden rounded-[26px] border border-white/[0.09] bg-[#0C0C0C] p-5 sm:min-h-[600px] sm:p-10 lg:h-[calc(100svh-166px)] lg:min-h-[500px] lg:max-h-[680px] lg:pl-24">
+            <div className="relative flex min-h-[500px] flex-col overflow-hidden rounded-[26px] border border-white/[0.09] bg-[#0C0C0C] p-5 sm:min-h-[600px] sm:p-10 lg:h-[calc(100svh-166px)] lg:min-h-[500px] lg:max-h-[680px] lg:pl-24">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(255,255,255,.11),transparent_34%),linear-gradient(145deg,rgba(255,255,255,.025),transparent_45%)]" />
-              <div className="absolute left-5 top-5 z-20 sm:left-7 sm:top-7">
+              <div className="relative z-20 flex w-full shrink-0 pb-4">
                 <span className={`rounded-full px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.14em] ${soldOut ? 'bg-[#FF453A]/12 text-[#FF6961]' : preOrder ? 'bg-[#E1BD65]/12 text-[#E1BD65]' : 'bg-[#30D158]/12 text-[#53D769]'}`}>
-                  {soldOut ? 'Unavailable' : preOrder ? 'Incoming' : 'Available'}
+                  {soldOut ? 'Unavailable' : preOrder ? 'Pre-booking' : 'Available'}
                 </span>
               </div>
 
-              {activeImage ? (
-                <img src={activeImage} alt={`${product.brand || ''} ${product.name}`} className="relative z-10 max-h-[450px] max-w-full object-contain drop-shadow-[0_35px_42px_rgba(0,0,0,.72)] sm:max-h-[530px] lg:max-h-[calc(100svh-220px)]" />
-              ) : (
-                <div className="relative z-10 text-center text-sm text-[#6E6E73]">Photography coming soon</div>
-              )}
+              <div className="relative z-10 flex min-h-0 w-full flex-1 items-center justify-center">
+                {activeImage ? (
+                  <img src={activeImage} alt={`${product.brand || ''} ${product.name}`} className="max-h-full max-w-full object-contain drop-shadow-[0_35px_42px_rgba(0,0,0,.72)]" />
+                ) : (
+                  <div className="text-center text-sm text-[#6E6E73]">Photography coming soon</div>
+                )}
+              </div>
             </div>
 
             {images.length > 1 && (
