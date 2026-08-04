@@ -84,7 +84,7 @@ export default function Checkout() {
             setError('Could not locate the specified casting vault entry.')
           }
         } else {
-          // Use scoped cart utility — returns [] if unauthenticated
+          // Use scoped cart utility. It returns [] if unauthenticated
           const items = readCart()
           if (items.length === 0) {
             setError('Your queue is empty. Add castings to your cart before checking out.')
@@ -514,7 +514,7 @@ export default function Checkout() {
                 className="w-full py-4 rounded-xl bg-gk-orange hover:bg-orange-500 text-black hover:text-white font-black text-xs uppercase tracking-widest transition-all hover:shadow-[0_0_30px_rgba(255,85,0,0.35)] cursor-pointer active:scale-[0.98]"
               >
                 {settings.showPrices 
-                  ? `I've Transferred ₹${isPreOrder ? advanceAmount : totalPrice} — Upload Proof`
+                  ? `I've Transferred ₹${isPreOrder ? advanceAmount : totalPrice}. Upload Proof`
                   : 'I Have Paid, Proceed to Upload Screenshot'
                 }
               </button>

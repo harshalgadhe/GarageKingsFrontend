@@ -249,7 +249,7 @@ export default function AdminDiagnosticsTab({
 
                     {/* Trace footer */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-3 border-t border-white/5 text-[9px] font-mono text-[#555555]">
-                      <span>Seen: {firstSeen ? new Date(firstSeen).toLocaleString('en-IN') : 'N/A'} — {lastSeen ? new Date(lastSeen).toLocaleString('en-IN') : 'N/A'}</span>
+                      <span>Seen: {firstSeen ? new Date(firstSeen).toLocaleString('en-IN') : 'N/A'} to {lastSeen ? new Date(lastSeen).toLocaleString('en-IN') : 'N/A'}</span>
                       {correlationId && (
                         <span className="bg-zinc-900 border border-white/5 px-2 py-0.5 rounded text-[9px] font-mono text-[#888888] select-all cursor-copy" title="Click to copy Correlation ID">
                           CID: {correlationId}
@@ -355,7 +355,7 @@ export default function AdminDiagnosticsTab({
                             {log.correlation_id}
                           </span>
                         ) : (
-                          <span className="text-[10px] text-[#555555]">—</span>
+                          <span className="text-[10px] text-[#555555]">Not available</span>
                         )}
                       </td>
                     </tr>

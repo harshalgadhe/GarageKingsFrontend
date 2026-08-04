@@ -853,7 +853,7 @@ export default function ProductForm({
               price: previewPrice,
               poAmount: previewPoAmount,
               isPrebook: isPrebook,
-              image: previewImage || '/brand-logo.png',
+              image: previewImage || '/brand-mark.webp',
               tag: (tag && tag !== 'None') ? tag : null,
               tags: subtags,
               subtags: subtags,

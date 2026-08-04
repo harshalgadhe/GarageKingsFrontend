@@ -3,31 +3,31 @@
 @import 'tailwindcss';
 
 @theme {
-  /* Surface System — Depth through near-black tones */
-  --color-vault-canvas: #050505;
-  --color-vault-900: #090909;
-  --color-vault-surface: #0D0D0D;
-  --color-vault-elevated: #121212;
-  --color-vault-hover: #171717;
-  --color-vault-active: #1D1D1D;
+  /* Surface system with depth through near-black tones */
+  --color-vault-canvas: #000000;
+  --color-vault-900: #080808;
+  --color-vault-surface: #101010;
+  --color-vault-elevated: #161616;
+  --color-vault-hover: #1C1C1E;
+  --color-vault-active: #242426;
 
   /* Backward Compatibility Theme Mapping */
-  --color-gk-black: #050505;
-  --color-gk-surface: #0D0D0D;
-  --color-gk-surface-2: #121212;
-  --color-gk-card: #0D0D0D;
+  --color-gk-black: #000000;
+  --color-gk-surface: #101010;
+  --color-gk-surface-2: #161616;
+  --color-gk-card: #101010;
   --color-gk-border: rgba(255, 255, 255, 0.06);
-  --color-gk-accent: #E86A2F;
-  --color-gk-accent-hover: #F2793F;
-  --color-gk-yellow: #C8AE7D;
-  --color-gk-orange: #E86A2F;
-  --color-gk-gold: #C8AE7D;
+  --color-gk-accent: #E1BD65;
+  --color-gk-accent-hover: #F0D58B;
+  --color-gk-yellow: #E1BD65;
+  --color-gk-orange: #E1BD65;
+  --color-gk-gold: #E1BD65;
   --color-gk-silver: #A9A49C;
 
   /* Hairline Borders */
   --color-line-soft: rgba(255, 255, 255, 0.06);
   --color-line-strong: rgba(255, 255, 255, 0.12);
-  --color-line-focus: rgba(232, 106, 47, 0.42);
+  --color-line-focus: rgba(225, 189, 101, 0.52);
 
   /* Typography Roles */
   --color-text-primary: #F4F1EC;
@@ -36,9 +36,9 @@
   --color-text-disabled: #56524D;
 
   /* Accents */
-  --color-signal-orange: #E86A2F;
-  --color-signal-orange-hover: #F2793F;
-  --color-archive-brass: #C8AE7D;
+  --color-signal-orange: #E1BD65;
+  --color-signal-orange-hover: #F0D58B;
+  --color-archive-brass: #E1BD65;
 
   /* Status Colors */
   --color-inspection-green: #5E9F78;
@@ -123,12 +123,108 @@ h1, h2, h3, h4, h5, h6 {
   background-image: radial-gradient(circle at 50% 38%, rgba(255, 255, 255, 0.075) 0%, rgba(255, 255, 255, 0.025) 28%, transparent 64%);
 }
 
+.gk-vault-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(320px circle at var(--pointer-x, 50%) var(--pointer-y, 35%), rgba(255, 255, 255, 0.08), transparent 68%);
+  transition: opacity 320ms ease;
+}
+
+.gk-vault-card:hover::before,
+.gk-vault-card:focus-visible::before {
+  opacity: 1;
+}
+
+.gk-vault-entrance::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent 0 49.9%, rgba(255, 255, 255, 0.022) 50%, transparent 50.1%),
+    radial-gradient(circle at 75% 30%, rgba(225, 189, 101, 0.09), transparent 34%);
+}
+
+.gk-enquiry-cta {
+  box-shadow: 0 12px 38px rgba(232, 106, 47, 0.18);
+}
+
+.gk-enquiry-cta:hover {
+  box-shadow: 0 18px 52px rgba(232, 106, 47, 0.28);
+}
+
+.gk-journey-grid {
+  background-image:
+    linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+  background-size: clamp(48px, 7vw, 96px) clamp(48px, 7vw, 96px);
+  mask-image: linear-gradient(to right, black, transparent 72%);
+}
+
+.gk-dock-item {
+  position: relative;
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  padding-bottom: 8px;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  transition: color 180ms ease, transform 180ms ease;
+}
+
+.gk-dock-item:active {
+  transform: scale(.96);
+}
+
+.gk-dock-marker {
+  position: absolute;
+  top: 0;
+  width: 18px;
+  height: 1px;
+  background: #E1BD65;
+  box-shadow: 0 0 12px rgba(225, 189, 101, .52);
+}
+
+@media (max-width: 1023px) {
+  body:has(.gk-mobile-dock) {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom));
+  }
+
+  body:has(.gk-mobile-dock) main,
+  body:has(.gk-mobile-dock) footer {
+    scroll-padding-bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (min-width: 1024px) and (max-height: 820px) {
+  .gk-mobile-dock + * { min-height: 0; }
+}
+
+@media (max-width: 1023px) {
+  .gk-journey-grid {
+    mask-image: linear-gradient(to bottom, black, transparent 78%);
+  }
+}
+
+@supports not (height: 100svh) {
+  .h-\[100svh\] { height: calc(var(--gk-vh, 1vh) * 100); }
+}
+
 .artifact-pedestal-shadow {
   box-shadow: 0 16px 36px -12px rgba(0, 0, 0, 0.85);
 }
 
 .gk-focus-ring:focus-visible {
-  outline: 2px solid #E86A2F;
+  outline: 2px solid #E1BD65;
   outline-offset: 3px;
   box-shadow: 0 0 0 4px rgba(200, 174, 125, 0.25);
 }
@@ -154,6 +250,15 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
   .gk-shimmer-veil::after {
     animation: none;
   }

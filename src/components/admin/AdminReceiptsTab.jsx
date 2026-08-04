@@ -7,7 +7,7 @@ import DebouncedSearchBar from "../common/DebouncedSearchBar";
 import ProductTypeahead from "./ProductTypeahead";
 
 const FORMAT_NOTES = {
-  standard:   "In the event that the order cannot be fulfilled from our end, a full refund will be issued.",
+  standard:   "If fulfilment becomes unavailable, the GarageKings team will contact you to discuss the resolution under the terms confirmed for this acquisition.",
   prebooking: "This receipt is for the Pre-Order (PO) of the item. Rest of the payment is due when the stock arrives. Pre-Orders are non-refundable unless unfulfilled by Garage Kings India.",
 };
 

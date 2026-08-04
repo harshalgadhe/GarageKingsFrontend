@@ -84,7 +84,7 @@ const TechnicalArchive = forwardRef(function TechnicalArchive(props, ref) {
   const navigate = useNavigate()
 
   return (
-    <div ref={ref} id="archive" className="w-full bg-gk-black">
+    <div ref={ref} id="brands" className="w-full scroll-mt-16 bg-gk-black">
       {/* SECTION 3: THE BRANDS WE SELL */}
       <section className="relative w-full py-24 md:py-32 px-6 md:px-12 lg:px-16 border-t border-zinc-900 overflow-hidden bg-gk-black">
         {/* Decorative Grid Lines */}
@@ -111,7 +111,7 @@ const TechnicalArchive = forwardRef(function TechnicalArchive(props, ref) {
                 CURATED SELECTIONS
               </span>
               <p className="text-xs text-zinc-500 font-inter">
-                Directly sourced from official global lines to ensure absolute authenticity and mint-condition packaging.
+                Catalogued with available model, edition and packaging details so collectors can enquire with better context.
               </p>
             </div>
           </div>

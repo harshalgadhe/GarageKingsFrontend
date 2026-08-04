@@ -1,511 +1,148 @@
-import { useState, useEffect } from 'react'
-import { createPortal } from 'react-dom'
-import { motion, AnimatePresence } from 'framer-motion'
-import { BRAND } from '../data/content'
+import { useEffect, useState } from 'react'
+import { motion, useReducedMotion } from 'framer-motion'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Home, Search, Share2, User } from 'lucide-react'
+import { SiInstagram, SiWhatsapp } from 'react-icons/si'
+import { BRAND, CONTACT, WHATSAPP_URL } from '../data/content'
+import { getCurrentUser } from '../lib/auth'
 import { scrollToSection, useLenis } from '../providers/SmoothScroll'
-import { getCurrentUser, signOutCognito } from '../lib/auth'
-import { readCart, writeCart, clearCart as clearUserCart, notifyCartUpdated } from '../lib/cart'
 import AuthModal from './AuthModal'
-import { LogOut, User, X, Settings, Trash2, ShoppingBag, ShoppingCart, Home } from 'lucide-react'
-import { Link, useNavigate } from 'react-router-dom'
-import ReserveModal from './checkout/ReserveModal'
 
-const MotionLink = motion.create(Link)
-
-const links = [
+const sections = [
   { id: 'hero', label: 'Home' },
-  { id: 'archive', label: 'Brands' },
-  { id: 'gallery', label: 'Collections' },
-]
-
-const mobileLinks = [
-  { id: 'hero', label: 'Home', type: 'anchor' },
-  { id: 'archive', label: 'Brands', type: 'anchor' },
-  { id: 'gallery', label: 'Collections', type: 'anchor' },
-  { id: 'marketplace', label: 'Marketplace', type: 'route', path: '/marketplace' },
+  { id: 'brands', label: 'Brands' },
+  { id: 'collections', label: 'Collections' },
 ]
 
 export default function Navigation({ activeSection }) {
   const lenisRef = useLenis()
   const navigate = useNavigate()
-  const [isOpen, setIsOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState('hero')
-  // Initialize synchronously from the user-scoped cart key to prevent flash
+  const location = useLocation()
+  const reduce = useReducedMotion()
+  const [authOpen, setAuthOpen] = useState(false)
+  const [socialOpen, setSocialOpen] = useState(false)
   const [user, setUser] = useState(() => getCurrentUser())
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
-  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false)
-  // readCart() uses the current user's scoped key — empty if unauthenticated
-  const [cart, setCart] = useState(() => readCart())
 
   useEffect(() => {
-    const handleUserUpdate = () => {
-      const nextUser = getCurrentUser()
-      setUser(nextUser)
-      // Re-read cart from the new user's scoped key immediately
-      setCart(readCart())
-    }
-    handleUserUpdate()
-    window.addEventListener('gk_user_updated', handleUserUpdate)
-    return () => window.removeEventListener('gk_user_updated', handleUserUpdate)
+    const syncUser = () => setUser(getCurrentUser())
+    window.addEventListener('gk_user_updated', syncUser)
+    return () => window.removeEventListener('gk_user_updated', syncUser)
   }, [])
 
-  // Sync cart state with localStorage across components and browser tabs
   useEffect(() => {
-    const loadCart = (e) => {
-      setCart(readCart())
-      if (e?.detail?.open) {
-        navigate('/cart')
-      }
+    if (location.pathname !== '/' || !location.hash) return
+
+    const target = location.hash.slice(1)
+    let secondFrame = 0
+    const frame = window.requestAnimationFrame(() => {
+      secondFrame = window.requestAnimationFrame(() => scrollToSection(lenisRef, target))
+    })
+
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.cancelAnimationFrame(secondFrame)
     }
-    loadCart()
-    window.addEventListener('gk_cart_updated', loadCart)
-    return () => window.removeEventListener('gk_cart_updated', loadCart)
-  }, [])
+  }, [lenisRef, location.hash, location.pathname])
 
-  const removeFromCart = (id) => {
-    const currentCart = readCart()
-    const newCart = currentCart.filter(item => item.id !== id)
-    writeCart(newCart)
-    notifyCartUpdated()
-  }
+  useEffect(() => setSocialOpen(false), [location.pathname])
 
-  const updateCartItemQty = (id, newQty) => {
-    const currentCart = readCart()
-    let newCart
-    if (newQty <= 0) {
-      newCart = currentCart.filter(item => item.id !== id)
-    } else {
-      newCart = currentCart.map(item =>
-        item.id === id ? { ...item, quantity: newQty } : item
-      )
-    }
-    writeCart(newCart)
-    notifyCartUpdated()
-  }
-
-  const clearCart = () => {
-    clearUserCart()
-  }
-
-  const handleSearchClick = () => {
-    navigate('/marketplace?focus=true');
-  }
-
-  const handleProfileClick = () => {
-    if (user) {
-      setIsProfileDropdownOpen(prev => !prev)
-    } else {
-      setIsAuthModalOpen(true)
-    }
-  }
-
-  const handleLogout = async () => {
-    await signOutCognito()
-    window.location.href = '/account'
-  }
-
-  // Lock body scroll when mobile menu is open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = 'unset'
-    }
-  }, [isOpen])
-
-  // Hash Scroll Effect for single-page cross-navigation
-  useEffect(() => {
-    if (window.location.hash) {
-      const hashId = window.location.hash.substring(1)
-      setTimeout(() => {
-        const element = document.getElementById(hashId)
-        if (element) {
-          if (lenisRef && lenisRef.current) {
-            lenisRef.current.scrollTo(element)
-          } else {
-            element.scrollIntoView({ behavior: 'smooth' })
-          }
-        }
-      }, 500)
-    }
-  }, [window.location.hash, lenisRef])
-
-  const handleNavClick = (id) => {
-    setIsOpen(false)
-    setActiveTab(id)
-    if (window.location.pathname !== '/') {
+  const goToSection = (id) => {
+    if (location.pathname !== '/') {
       navigate(`/#${id}`)
-    } else {
-      scrollToSection(lenisRef, id)
+      return
     }
+
+    window.history.replaceState(null, '', `/#${id}`)
+    scrollToSection(lenisRef, id)
   }
+
+  const openCollectorProfile = () => {
+    if (user) navigate('/account')
+    else setAuthOpen(true)
+  }
+
+  const isHome = location.pathname === '/'
+  const isVault = location.pathname === '/marketplace' || location.pathname.startsWith('/product/')
+  const enquiryMessage = location.pathname.startsWith('/product/')
+    ? `Hi GarageKings, I would like to enquire about this model: ${window.location.href}`
+    : `Hi GarageKings, I would like help finding a collectible. ${window.location.href}`
 
   return (
     <>
       <motion.header
-        className="fixed top-0 right-0 left-0 z-[70] bg-[#090909]/85 backdrop-blur-md border-b border-white/5 py-1 pointer-events-none"
-        initial={{ y: -64, opacity: 0 }}
+        initial={reduce ? false : { y: -70, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
+        className="fixed inset-x-0 top-0 z-[80] border-b border-white/[0.06] bg-[#050505]/78 backdrop-blur-xl"
       >
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-2 md:px-12 pointer-events-auto">
-          {/* Logo Brand */}
-          <button
-            type="button"
-            onClick={() => handleNavClick('hero')}
-            className="flex shrink-0 items-center gap-3 relative z-[80]"
-          >
-            <img
-              src="/brand-logo.png"
-              alt={BRAND.name}
-              className="h-10 w-10 md:h-12 md:w-12 object-contain"
-            />
-            <span className="text-left">
-              <span className="block text-[8px] md:text-[9px] font-black uppercase tracking-[0.25em] text-gk-yellow">
-                Collector Vault
-              </span>
-              <span className="block text-sm md:text-base font-black tracking-tight text-white">{BRAND.name}</span>
+        <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between px-5 md:px-10 lg:px-16">
+          <button onClick={() => goToSection('hero')} className="group flex items-center text-left" aria-label="GarageKings home">
+            <span className="grid h-11 w-24 shrink-0 place-items-center">
+              <img src="/brand-wordmark.png?v=3" alt="" className="max-h-11 w-full object-contain drop-shadow-[0_0_10px_rgba(225,189,101,.16)] transition-transform duration-500 group-hover:scale-[1.02]" />
             </span>
           </button>
 
-          {/* Desktop Navigation Links */}
-          <nav className="hidden lg:block">
-            <ul className="flex gap-8 items-center">
-              {links.map((link) => (
-                <li key={link.id}>
-                  <button
-                    type="button"
-                    onClick={() => handleNavClick(link.id)}
-                    className={`whitespace-nowrap text-xs font-mono font-bold uppercase tracking-widest transition-colors duration-200 py-1.5 px-0.5 border-b-2 ${
-                      activeTab === link.id || activeSection === link.id
-                        ? 'text-[#E86A2F] border-[#E86A2F]'
-                        : 'text-[#A9A49C] border-transparent hover:text-[#F4F1EC]'
-                    }`}
-                  >
-                    {link.label}
-                  </button>
-                </li>
-              ))}
-              <li>
-                <Link
-                  to="/marketplace"
-                  className={`whitespace-nowrap text-xs font-mono font-bold uppercase tracking-widest transition-colors duration-200 py-1.5 px-0.5 border-b-2 ${
-                    window.location.pathname === '/marketplace'
-                      ? 'text-[#E86A2F] border-[#E86A2F]'
-                      : 'text-[#A9A49C] border-transparent hover:text-[#F4F1EC]'
-                  }`}
-                >
-                  The Vault
-                </Link>
-              </li>
-            </ul>
+          <nav className="hidden items-center gap-8 lg:flex" aria-label="Primary navigation">
+            {sections.map((item) => (
+              <button key={item.id} onClick={() => goToSection(item.id)} className={`relative py-5 text-[13px] font-semibold tracking-[0.015em] transition-colors ${activeSection === item.id ? 'text-[#F4F1EC]' : 'text-[#8A867F] hover:text-[#F4F1EC]'}`}>
+                {item.label}
+                {activeSection === item.id && <span className="absolute inset-x-0 bottom-0 h-px bg-[#E1BD65]" />}
+              </button>
+            ))}
+            <Link to="/marketplace" className={`relative py-5 text-[13px] font-semibold tracking-[0.015em] transition-colors ${isVault ? 'text-[#F4F1EC]' : 'text-[#8A867F] hover:text-[#F4F1EC]'}`}>
+              Marketplace
+              {isVault && <span className="absolute inset-x-0 bottom-0 h-px bg-[#E1BD65]" />}
+            </Link>
           </nav>
 
-          <div className="hidden lg:flex items-center gap-2 sm:gap-3 relative z-[80]">
-            <div className="relative hidden lg:block">
-              <button 
-                type="button"
-                onClick={handleProfileClick}
-                className={`p-2.5 rounded-xl bg-white/5 border hover:border-[var(--color-gk-orange)]/30 hover:bg-[var(--color-gk-orange)]/5 hover:text-white transition-all cursor-pointer group ${user ? 'border-gk-yellow/40 text-gk-yellow' : 'border-white/5 text-white/80'}`}
-                title={user ? `Collector Menu (${user.displayName || user.email})` : "Collector Profile"}
-              >
-                <svg className="w-4.5 h-4.5 group-hover:scale-105 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </button>
-
-              {/* Profile dropdown menu */}
-              <AnimatePresence>
-                {isProfileDropdownOpen && user && (
-                  <>
-                    <div className="fixed inset-0 z-30" onClick={() => setIsProfileDropdownOpen(false)} />
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      className="absolute right-0 top-full mt-2 w-56 rounded-2xl bg-[#0a0a0d] border border-white/10 p-2 shadow-2xl z-40 text-left"
-                    >
-                      <div className="px-3 py-2 border-b border-white/5 mb-1.5">
-                        <p className="text-[9px] uppercase tracking-widest text-white/30 font-black">Logged In As</p>
-                        <p className="text-xs font-bold text-white truncate" title={user.displayName || user.email}>{user.displayName || user.email}</p>
-                        <p className="text-[10px] text-white/50 truncate mt-0.5">{user.email}</p>
-                      </div>
-                      <Link 
-                        to="/account" 
-                        onClick={() => setIsProfileDropdownOpen(false)}
-                        className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold text-white/70 hover:text-white hover:bg-white/5 transition-all"
-                      >
-                        <User size={14} className="text-gk-yellow" />
-                        <span>My Account</span>
-                      </Link>
-                      {(user.roles?.includes('admin') || user.roles?.includes('owner')) && (
-                        <Link 
-                          to="/admin" 
-                          onClick={() => setIsProfileDropdownOpen(false)}
-                          className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold text-white/70 hover:text-white hover:bg-white/5 transition-all"
-                        >
-                          <Settings size={14} className="text-purple-400" />
-                          <span>Admin Console</span>
-                        </Link>
-                      )}
-                      <button 
-                        onClick={() => {
-                          setIsProfileDropdownOpen(false);
-                          handleLogout();
-                        }}
-                        className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-medium text-zinc-400 hover:text-white hover:bg-white/5 transition-all text-left cursor-pointer bg-transparent border-none"
-                      >
-                        <LogOut size={14} className="text-zinc-500" />
-                        <span>Sign Out</span>
-                      </button>
-                    </motion.div>
-                  </>
-                )}
-              </AnimatePresence>
-            </div>
+          <div className="hidden items-center lg:flex">
+            <button onClick={openCollectorProfile} className="flex items-center gap-2 rounded-full border border-white/[0.09] bg-white/[0.025] px-4 py-2 text-[12px] font-medium text-[#B0ACA4] transition hover:border-[#C8AE7D]/30 hover:bg-[#C8AE7D]/[0.05] hover:text-[#F4F1EC]" aria-label="Collector profile"><User size={15} strokeWidth={1.7} /><span>Account</span></button>
           </div>
 
-          {/* Mobile Menu Button */}
           <button
-            type="button"
-            className="lg:hidden relative z-[80] flex flex-col justify-center items-center w-11 h-11 rounded-xl bg-white/5 border border-white/5"
-            onClick={() => setIsOpen(!isOpen)}
-            aria-label="Toggle menu"
+            onClick={openCollectorProfile}
+            className="relative grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full border border-[#C8AE7D]/25 bg-[#C8AE7D]/[0.07] text-[#D7C59D] shadow-[inset_0_1px_0_rgba(255,255,255,.06),0_5px_18px_rgba(0,0,0,.22)] transition duration-300 active:scale-95 lg:hidden"
+            aria-label="Collector profile"
           >
-            <span className={`bg-white block transition-all duration-300 ease-out h-[2px] w-5 rounded-sm ${isOpen ? 'rotate-45 translate-y-[3px]' : '-translate-y-1'}`} />
-            <span className={`bg-white block transition-all duration-300 ease-out h-[2px] w-5 rounded-sm my-0.5 ${isOpen ? 'opacity-0' : 'opacity-100'}`} />
-            <span className={`bg-white block transition-all duration-300 ease-out h-[2px] w-5 rounded-sm ${isOpen ? '-rotate-45 -translate-y-[5px]' : 'translate-y-1'}`} />
+            {user ? (
+              <span className="text-[12px] font-semibold uppercase tracking-[0.04em] text-[#E6D6B2]">
+                {(user.name || user.email || 'G').charAt(0)}
+              </span>
+            ) : (
+              <User size={16} strokeWidth={1.65} />
+            )}
+            <span className="pointer-events-none absolute inset-x-2 bottom-0 h-px bg-gradient-to-r from-transparent via-[#C8AE7D]/70 to-transparent" />
           </button>
         </div>
       </motion.header>
 
-      {/* Mobile Menu Overlay */}
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, backdropFilter: "blur(0px)" }}
-            animate={{ opacity: 1, backdropFilter: "blur(20px)" }}
-            exit={{ opacity: 0, backdropFilter: "blur(0px)" }}
-            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed inset-0 z-[60] bg-[#050505]/98 flex flex-col justify-between"
-          >
-            {/* Scrollable Container */}
-            <div className="flex-1 overflow-y-auto px-6 pt-24 pb-8 flex flex-col justify-between min-h-0" data-lenis-prevent="true">
-              <div className="flex-1 flex flex-col justify-center max-w-md mx-auto w-full space-y-8">
-                {/* Explore Navigation */}
-                <div className="flex flex-col gap-4 w-full">
-                  <div className="text-[10px] font-mono tracking-[0.25em] text-[var(--color-gk-orange)]/60 uppercase pl-1 font-bold">
-                    EXPLORE VAULT
-                  </div>
-                  <nav className="flex flex-col gap-3 w-full">
-                    {mobileLinks.map((link, i) => {
-                      const isActive = link.type === 'anchor' 
-                        ? activeSection === link.id 
-                        : window.location.pathname === link.path;
-                      
-                      return (
-                        <motion.div
-                          key={link.id}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: -20 }}
-                          transition={{ duration: 0.35, delay: i * 0.05, ease: [0.23, 1, 0.32, 1] }}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsOpen(false);
-                              if (link.type === 'anchor') {
-                                handleNavClick(link.id);
-                              } else {
-                                navigate(link.path);
-                              }
-                            }}
-                            className="flex items-baseline gap-4 w-full text-left group cursor-pointer py-1.5"
-                          >
-                            <span className="font-mono text-xs text-[var(--color-gk-orange)]/50 group-hover:text-[var(--color-gk-orange)] transition-colors">
-                              {String(i + 1).padStart(2, '0')}
-                            </span>
-                            <span className={`text-2xl font-black uppercase tracking-wider transition-colors duration-300 ${
-                              isActive ? 'text-[var(--color-gk-orange)]' : 'text-white/60 group-hover:text-white'
-                            }`}>
-                              {link.label}
-                            </span>
-                          </button>
-                        </motion.div>
-                      );
-                    })}
-                  </nav>
-                </div>
+      {socialOpen && <button className="fixed inset-0 z-[85] bg-black/20 lg:hidden" onClick={() => setSocialOpen(false)} aria-label="Close social menu" />}
 
-                {/* Collector Portal */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 20 }}
-                  transition={{ duration: 0.4, delay: 0.25, ease: [0.23, 1, 0.32, 1] }}
-                  className="w-full p-5 rounded-2xl bg-white/[0.02] border border-white/5 backdrop-blur-md"
-                >
-                  <div className="text-[9px] font-mono tracking-[0.25em] text-white/30 uppercase mb-4 font-bold">
-                    COLLECTOR PORTAL
-                  </div>
-                  {user ? (
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gk-yellow/10 border border-gk-yellow/20 flex items-center justify-center text-gk-yellow shrink-0">
-                          <User size={18} strokeWidth={2.2} />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-white truncate">{user.displayName || user.email}</p>
-                          <p className="text-[10px] text-white/40 truncate">{user.email}</p>
-                        </div>
-                      </div>
-                      
-                      <div className="pt-2 border-t border-white/5">
-                        <button
-                          onClick={() => {
-                            setIsOpen(false);
-                            navigate('/account');
-                          }}
-                          className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-[10px] font-black uppercase tracking-wider text-white transition-all cursor-pointer border border-white/5 active:scale-[0.98]"
-                        >
-                          <User size={12} className="text-gk-yellow" />
-                          Account
-                        </button>
-                      </div>
-                      
-                      {(user.roles?.includes('admin') || user.roles?.includes('owner')) && (
-                        <button
-                          onClick={() => {
-                            setIsOpen(false);
-                            navigate('/admin');
-                          }}
-                          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-[10px] font-black uppercase tracking-wider text-purple-400 hover:bg-purple-500/20 transition-all cursor-pointer active:scale-[0.98]"
-                        >
-                          <Settings size={12} />
-                          Admin Console
-                        </button>
-                      )}
+      <nav className="gk-mobile-dock fixed inset-x-0 bottom-0 z-[90] grid h-[calc(64px+env(safe-area-inset-bottom))] grid-cols-3 items-end border-t border-white/[0.1] bg-black/94 px-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-14px_40px_rgba(0,0,0,.62)] backdrop-blur-2xl lg:hidden" aria-label="Mobile navigation">
+        <button onClick={() => goToSection('hero')} className={`gk-dock-item ${isHome ? 'text-[#F4F1EC]' : 'text-[#74716B]'}`} aria-current={isHome ? 'page' : undefined}>
+          <Home size={18} strokeWidth={isHome ? 2.4 : 1.8} />
+          <span>Home</span>
+          {isHome && <span className="gk-dock-marker" />}
+        </button>
 
-                      <button
-                        onClick={() => {
-                          setIsOpen(false);
-                          handleLogout();
-                        }}
-                        className="w-full py-2.5 rounded-xl bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-wider text-zinc-400 hover:text-white hover:bg-white/10 transition-all cursor-pointer text-center active:scale-[0.98]"
-                      >
-                        Sign Out
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <p className="text-[11px] text-white/50 leading-relaxed font-medium">
-                        Sign in to access your reserved castings, check drops, and manage your collection details.
-                      </p>
-                      <button
-                        onClick={() => {
-                          setIsOpen(false);
-                          setIsAuthModalOpen(true);
-                        }}
-                        className="w-full py-3.5 rounded-xl bg-[var(--color-gk-orange)] hover:bg-gk-orange/90 text-white font-black text-xs uppercase tracking-widest transition-all cursor-pointer hover:shadow-[0_0_25px_rgba(255,85,0,0.25)] text-center border-none active:scale-[0.98]"
-                      >
-                        Log In to Vault
-                      </button>
-                    </div>
-                  )}
-                </motion.div>
-              </div>
-              
-              {/* Footer Section */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.4, delay: 0.35 }}
-                className="max-w-md mx-auto w-full flex items-center justify-between border-t border-white/5 pt-5 mt-8 shrink-0"
-              >
-                <span className="text-[9px] font-mono tracking-widest text-white/30 uppercase">
-                  © 2026 {BRAND.name}
-                </span>
-                <div className="flex gap-4">
-                  <a
-                    href="https://instagram.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[9px] font-mono tracking-wider uppercase text-white/40 hover:text-white transition-colors"
-                  >
-                    Instagram
-                  </a>
-                  <a
-                    href="https://twitter.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[9px] font-mono tracking-wider uppercase text-white/40 hover:text-white transition-colors"
-                  >
-                    Twitter
-                  </a>
-                </div>
-              </motion.div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+        <Link to="/marketplace" className={`gk-dock-item ${isVault ? 'text-[#F4F1EC]' : 'text-[#74716B]'}`} aria-current={isVault ? 'page' : undefined}>
+          <Search size={18} strokeWidth={isVault ? 2.4 : 1.8} />
+          <span>Vault</span>
+          {isVault && <span className="gk-dock-marker" />}
+        </Link>
 
-       {/* 📱 Persistent Glassmorphic Mobile Bottom Navigation */}
-      {createPortal(
-        <div className="md:hidden no-print print:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#111111]/90 backdrop-blur-xl border-t border-[#222222] px-2 py-2.5 flex justify-between items-center text-white/50 shadow-[0_-10px_35px_rgba(0,0,0,0.9)] pb-[calc(10px+env(safe-area-inset-bottom))]">
-          <button 
-            onClick={() => handleNavClick('hero')} 
-            className={`flex flex-col items-center gap-1 flex-1 py-1 transition-all cursor-pointer active:scale-90 ${
-              window.location.pathname === '/' ? 'text-[var(--color-gk-orange)]' : 'hover:text-white'
-            }`}
-          >
-            <Home className="w-5 h-5" strokeWidth={2.2} />
-            <span className="text-[9px] font-black uppercase tracking-wider">Home</span>
-          </button>
-          
-          <button 
-            onClick={() => navigate('/marketplace')} 
-            className={`flex flex-col items-center gap-1 flex-1 py-1 transition-all cursor-pointer active:scale-90 ${
-              window.location.pathname === '/marketplace' ? 'text-[var(--color-gk-orange)]' : 'hover:text-white'
-            }`}
-          >
-            <ShoppingBag className="w-5 h-5" strokeWidth={2.2} />
-            <span className="text-[9px] font-black uppercase tracking-wider">Shop</span>
-          </button>
+        <button onClick={() => setSocialOpen((open) => !open)} className={`gk-dock-item ${socialOpen ? 'text-white' : 'text-[#A1A1A6]'}`} aria-expanded={socialOpen} aria-controls="mobile-social-arc">
+          <Share2 size={18} strokeWidth={2} />
+          <span>Social</span>
+        </button>
 
-          <button 
-            onClick={() => {
-              if (user) {
-                navigate('/account');
-              } else {
-                setIsAuthModalOpen(true);
-              }
-            }}
-            className={`flex flex-col items-center gap-1 flex-1 py-1 transition-all cursor-pointer active:scale-90 ${
-              window.location.pathname === '/account' || window.location.pathname === '/admin' ? 'text-[var(--color-gk-orange)]' : 'hover:text-white'
-            }`}
-          >
-            <User className="w-5 h-5" strokeWidth={2.2} />
-            <span className="text-[9px] font-black uppercase tracking-wider">Account</span>
-          </button>
-        </div>,
-        document.body
-      )}
+        <motion.div id="mobile-social-arc" initial={false} animate={socialOpen ? 'open' : 'closed'} className="pointer-events-none absolute bottom-[calc(70px+env(safe-area-inset-bottom))] right-3 h-28 w-36" aria-hidden={!socialOpen}>
+          <motion.a href={`${WHATSAPP_URL}?text=${encodeURIComponent(enquiryMessage)}`} target="_blank" rel="noreferrer" variants={{ closed: { opacity: 0, scale: 0.6, x: 38, y: 55 }, open: { opacity: 1, scale: 1, x: 0, y: 0 } }} transition={{ type: 'spring', stiffness: 420, damping: 27 }} className={`absolute bottom-1 right-16 grid h-12 w-12 place-items-center rounded-full bg-[#25D366] text-white shadow-xl ${socialOpen ? 'pointer-events-auto' : ''}`} aria-label="Contact GarageKings on WhatsApp"><SiWhatsapp size={23} /></motion.a>
+          <motion.a href={CONTACT.instagramUrl} target="_blank" rel="noreferrer" variants={{ closed: { opacity: 0, scale: 0.6, x: 12, y: 70 }, open: { opacity: 1, scale: 1, x: 0, y: 0 } }} transition={{ type: 'spring', stiffness: 420, damping: 27, delay: socialOpen ? 0.035 : 0 }} className={`absolute right-1 top-0 grid h-12 w-12 place-items-center rounded-full bg-gradient-to-br from-[#833AB4] via-[#E1306C] to-[#F77737] text-white shadow-xl ${socialOpen ? 'pointer-events-auto' : ''}`} aria-label="Open GarageKings on Instagram"><SiInstagram size={22} /></motion.a>
+        </motion.div>
+      </nav>
 
-      <AnimatePresence>
-        {isAuthModalOpen && (
-          <AuthModal 
-            isOpen={isAuthModalOpen} 
-            onClose={() => setIsAuthModalOpen(false)} 
-            themeColor="orange" 
-            onAuthSuccess={() => {
-              setIsAuthModalOpen(false);
-              window.location.reload();
-            }}
-          />
-        )}
-      </AnimatePresence>
+      <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} onAuthSuccess={() => setUser(getCurrentUser())} />
     </>
   )
 }

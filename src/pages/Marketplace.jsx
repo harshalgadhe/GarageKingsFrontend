@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { getCars, getBrands } from '../lib/db'
 import { logError } from '../lib/telemetry'
 import Navigation from '../components/Navigation'
@@ -10,6 +10,7 @@ import VaultModuleCard from '../components/common/VaultModuleCard'
 import CommandBar from '../components/common/CommandBar'
 
 export default function Marketplace() {
+  const reduceMotion = useReducedMotion()
   const [cars, setCars] = useState([])
   const [backendBrands, setBackendBrands] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -191,23 +192,26 @@ export default function Marketplace() {
       <Navigation activeSection="vault" />
 
       {/* ── Compact Editorial Vault Header ── */}
-      <header className="py-8 md:py-12 bg-[#090909] border-b border-white/[0.06]">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div>
-            <div className="text-[10px] font-mono uppercase tracking-widest text-[#E86A2F] mb-1 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#E86A2F]" />
-              GARAGEKINGS VAULT ARCHIVE
+      <header className="gk-vault-entrance relative overflow-hidden border-b border-white/[0.07] bg-black py-10 md:py-14">
+        <div className="pointer-events-none absolute -right-6 -top-20 select-none font-mono text-[15rem] font-black leading-none text-white/[0.014] md:text-[21rem]">V</div>
+        <div className="relative mx-auto grid max-w-7xl grid-cols-1 gap-7 px-6 md:grid-cols-12 md:items-end">
+          <motion.div className="md:col-span-8" initial={reduceMotion ? false : { opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}>
+            <div className="text-[10px] font-mono uppercase tracking-widest text-[#D8BC78] mb-1 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#E1BD65]" />
+              THE GARAGEKINGS COLLECTION
             </div>
-            <h1 className="text-3xl md:text-5xl font-extrabold text-[#F4F1EC] tracking-tight">
-              The Vault.
+            <h1 className="mt-3 max-w-3xl text-5xl font-semibold leading-[0.94] tracking-[-0.045em] text-[#F4F1EC] md:text-6xl lg:text-7xl">
+              Every model has<br /><span className="text-[#E1BD65]">a reason to be here.</span>
             </h1>
-            <p className="text-xs md:text-sm text-[#A9A49C] max-w-xl mt-1 leading-relaxed">
-              Curated automotive diecast inventory, strictly cataloged and condition-verified.
+            <p className="mt-5 max-w-xl text-sm leading-relaxed text-[#A9A49C]">
+              A considered selection of automotive miniatures, photographed, catalogued and presented by one collector-led team.
             </p>
-          </div>
+          </motion.div>
 
-          <div className="text-xs font-mono text-[#74716B] bg-[#050505] border border-white/[0.06] px-4 py-2 rounded-lg shrink-0">
-            Vault Index Status: <strong className="text-[#F4F1EC]">{totalItems} entries cataloged</strong>
+          <div className="md:col-span-4 md:border-l md:border-white/[0.08] md:pl-8">
+            <div className="text-[10px] uppercase tracking-[0.16em] text-[#74716B]">Current collection</div>
+            <div className="mt-2 flex items-baseline gap-3"><strong className="font-mono text-3xl text-[#F4F1EC]">{totalItems}</strong><span className="text-xs text-[#74716B]">models</span></div>
+            <p className="mt-3 max-w-xs text-xs leading-relaxed text-[#74716B]">Select a model to view its photos and current details.</p>
           </div>
         </div>
       </header>
@@ -230,7 +234,7 @@ export default function Marketplace() {
       />
 
       {/* ── Grid Container ── */}
-      <main className="max-w-7xl mx-auto px-6 py-8 md:py-12">
+      <main className="max-w-7xl mx-auto px-4 py-7 sm:px-6 md:py-12">
         {error ? (
           <div className="text-center py-20">
             <div className="inline-block bg-[#B85C5C]/10 border border-[#B85C5C]/30 text-[#F4F1EC] p-6 rounded-xl max-w-lg font-mono">
@@ -247,7 +251,7 @@ export default function Marketplace() {
           <div className="text-center py-20 border border-dashed border-white/[0.08] rounded-xl bg-[#0D0D0D] p-8 max-w-xl mx-auto space-y-4">
             <div className="text-xs font-mono uppercase tracking-widest text-[#E86A2F]">No Vault Entries Found</div>
             <p className="text-sm text-[#A9A49C]">
-              No collectibles in the vault match your active inspection parameters.
+              No models match the filters you selected.
             </p>
             <button
               onClick={handleResetFilters}
@@ -258,13 +262,17 @@ export default function Marketplace() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="mb-8 flex items-end justify-between border-b border-white/[0.06] pb-5">
+              <div><span className="text-[9px] uppercase tracking-[0.2em] text-[#D8BC78]">Browse models</span><h2 className="mt-1 text-2xl font-semibold tracking-tight">Available and incoming</h2></div>
+              <span className="hidden font-mono text-[10px] uppercase tracking-widest text-[#74716B] md:block">No checkout / direct collector enquiry</span>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
               {cars.map((car, index) => (
                 <motion.div
                   key={car.id}
-                  initial={{ opacity: 0, y: 16 }}
+                  initial={reduceMotion ? false : { opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: (index % 12) * 0.03, duration: 0.26 }}
+                  transition={{ delay: reduceMotion ? 0 : Math.min(index % 12, 5) * 0.045, duration: 0.38, ease: [0.16, 1, 0.3, 1] }}
                 >
                   <VaultModuleCard car={car} onClick={() => navigate(`/product/${car.id}`)} />
                 </motion.div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { BRAND } from '../data/content';
+import { SiInstagram, SiWhatsapp } from 'react-icons/si';
 
 export default function Footer() {
   return (
@@ -9,18 +10,12 @@ export default function Footer() {
         
         {/* Brand/About Brief */}
         <div className="col-span-2 md:col-span-1 flex flex-col gap-3">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center">
             <img
-              src="/brand-logo.png"
+              src="/brand-wordmark.png?v=3"
               alt={BRAND.name}
-              className="h-10 w-10 object-contain"
+              className="h-16 w-28 object-contain"
             />
-            <div>
-              <span className="block text-sm font-black tracking-tight text-white">{BRAND.name}</span>
-              <span className="block text-[8px] font-bold uppercase tracking-widest text-gk-orange mt-0.5">
-                Scale Collectibles
-              </span>
-            </div>
           </div>
           <p className="text-[11px] text-zinc-500 leading-relaxed max-w-xs mt-2">
             Providing high-quality scale diecast cars for collectors. Verified condition, direct sourcing, and secure packaging.
@@ -42,16 +37,18 @@ export default function Footer() {
             href="https://chat.whatsapp.com/EX1NbXHU63ZCQ4qhFVCubb" 
             target="_blank" 
             rel="noopener noreferrer" 
-            className="text-xs text-gk-orange hover:text-white transition-colors py-0.5 font-bold"
+            className="flex items-center gap-2 text-xs text-[#A9A49C] hover:text-white transition-colors py-0.5 font-semibold"
           >
+            <SiWhatsapp size={14} className="text-[#25D366]" />
             WhatsApp Support
           </a>
           <a 
             href="https://www.instagram.com/garagekingsindia/" 
             target="_blank" 
             rel="noopener noreferrer" 
-            className="text-xs hover:text-white transition-colors py-0.5"
+            className="flex items-center gap-2 text-xs hover:text-white transition-colors py-0.5"
           >
+            <SiInstagram size={14} className="text-[#E1306C]" />
             Instagram
           </a>
         </div>

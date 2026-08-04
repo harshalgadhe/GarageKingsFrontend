@@ -25,7 +25,7 @@ export function LoadingProvider({ children }) {
     }
   }, [loading])
 
-  // Route transition bridge — show the overlay briefly on every navigation
+  // Route transition bridge: show the overlay briefly on every navigation
   // This masks the unmount/mount seam between pages
   useEffect(() => {
     // Don't interrupt programmatic loaders (Checkout, Auth, etc.)
@@ -40,7 +40,7 @@ export function LoadingProvider({ children }) {
     setMessage('')
     setLoading(true)
 
-    // Hide after a short bridge delay — long enough for new page to render its shell
+    // Hide after a short bridge delay, long enough for new page to render its shell
     routeTimerRef.current = setTimeout(() => {
       if (!programmaticRef.current) {
         setLoading(false)
@@ -104,7 +104,7 @@ export function LoadingProvider({ children }) {
                 </div>
               </div>
 
-              {/* Loader typography — only show for programmatic (non-route-transition) loads */}
+              {/* Loader typography, only shown for programmatic (non-route-transition) loads */}
               {message && (
                 <div className="text-center space-y-1.5">
                   <motion.div

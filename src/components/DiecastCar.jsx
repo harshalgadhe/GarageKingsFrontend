@@ -1,4 +1,4 @@
-/** Die-cast silhouette — brand red / white / chrome */
+/** Die-cast silhouette in brand red, white and chrome */
 export default function DiecastCar({ className = '' }) {
   return (
     <svg

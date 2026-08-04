@@ -1,4 +1,4 @@
-/** SVG path in viewBox 0 0 100 100 — winds across the viewport like a real pit lane */
+/** SVG path in viewBox 0 0 100 100 that winds across the viewport like a real pit lane */
 export const ROAD_PATH_D =
   'M 50 2 C 58 4, 68 7, 74 12 C 80 17, 78 22, 70 25 C 58 28, 38 30, 26 34 C 14 38, 16 44, 26 48 C 36 52, 52 54, 68 56 C 80 58, 84 64, 76 70 C 64 76, 42 78, 30 82 C 20 86, 24 92, 36 95 C 44 97, 48 99, 50 99.5'
 

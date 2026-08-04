@@ -8,23 +8,23 @@ export default function Policies() {
   const [activeTab, setActiveTab] = useState('terms'); // 'terms' or 'privacy'
 
   return (
-    <div className="min-h-[100svh] bg-gk-black text-white selection:bg-gk-yellow selection:text-black pt-16 relative overflow-x-hidden">
+    <div className="relative min-h-[100svh] overflow-x-hidden bg-[#050505] pt-16 text-[#F4F1EC] selection:bg-[#E1BD65] selection:text-black">
       {/* Background Grid Floor effect */}
-      <div className="absolute inset-0 gk-grid-floor opacity-40 pointer-events-none" />
+      <div className="pointer-events-none absolute inset-0 opacity-20 gk-grid-floor" />
       
       {/* Top soft glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[400px] bg-[radial-gradient(ellipse_at_top,rgba(225,91,44,0.06)_0%,transparent_65%)] pointer-events-none" />
+      <div className="pointer-events-none absolute left-1/2 top-0 h-[460px] w-full max-w-6xl -translate-x-1/2 bg-[radial-gradient(ellipse_at_top,rgba(225,189,101,0.08)_0%,transparent_65%)]" />
 
       <Navigation activeSection="" />
 
       {/* Main Content Area */}
-      <main className="relative z-10 max-w-4xl mx-auto px-6 py-16 md:py-24">
+      <main className="relative z-10 mx-auto max-w-5xl px-5 pb-24 pt-10 sm:px-8 md:pb-28 md:pt-16">
         
         {/* Back Link */}
-        <div className="mb-8">
+        <div className="mb-12 md:mb-16">
           <Link
             to="/"
-            className="inline-flex items-center gap-2 text-xs text-zinc-500 hover:text-white transition-colors uppercase font-mono tracking-wider font-bold"
+            className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#77736D] transition-colors hover:text-[#F4F1EC]"
           >
             <ArrowLeft size={14} />
             Back to Home
@@ -32,27 +32,27 @@ export default function Policies() {
         </div>
 
         {/* Hero Header */}
-        <div className="text-center space-y-3 mb-12">
-          <span className="text-[10px] font-black uppercase tracking-[0.25em] text-gk-orange">
-            Legal & Trust
+        <div className="mb-10 border-b border-white/[0.08] pb-10 text-left md:mb-12 md:pb-12">
+          <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#D8BC78]">
+            GarageKings policies
           </span>
-          <h1 className="text-4xl md:text-6xl font-black italic tracking-tighter uppercase font-grotesk">
-            Terms & Privacy
+          <h1 className="mt-4 max-w-3xl text-4xl font-semibold leading-[0.96] tracking-[-0.045em] text-[#F4F1EC] sm:text-5xl md:text-6xl">
+            Clear information,<br /><span className="text-[#E1BD65]">without the fine-print theatre.</span>
           </h1>
-          <p className="text-zinc-500 text-xs md:text-sm max-w-md mx-auto font-medium leading-relaxed">
-            Our guidelines, terms of service, and privacy safeguards.
+          <p className="mt-5 max-w-2xl text-sm leading-relaxed text-[#99958E] md:text-base">
+            How enquiries, arrangements and personal information are handled when you interact with GarageKings.
           </p>
         </div>
 
         {/* Tab Selection */}
-        <div className="flex justify-center mb-12">
-          <div className="bg-white/[0.02] border border-white/5 p-1 rounded-2xl flex max-w-xs w-full backdrop-blur-md">
+        <div className="mb-10 flex md:mb-12">
+          <div className="flex w-full gap-2 rounded-2xl border border-white/[0.08] bg-[#0A0A0A]/90 p-1.5 sm:w-auto">
             <button
               onClick={() => setActiveTab('terms')}
-              className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              className={`flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl px-5 py-3 text-xs font-semibold transition-all sm:flex-none ${
                 activeTab === 'terms'
-                  ? 'bg-gk-orange text-white shadow-[0_0_20px_rgba(225,91,44,0.25)]'
-                  : 'text-white/50 hover:text-white'
+                  ? 'bg-[#F4F1EC] text-black shadow-[0_8px_24px_rgba(0,0,0,.3)]'
+                  : 'text-[#85817A] hover:bg-white/[0.04] hover:text-white'
               }`}
             >
               <FileText size={14} />
@@ -60,10 +60,10 @@ export default function Policies() {
             </button>
             <button
               onClick={() => setActiveTab('privacy')}
-              className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              className={`flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl px-5 py-3 text-xs font-semibold transition-all sm:flex-none ${
                 activeTab === 'privacy'
-                  ? 'bg-gk-orange text-white shadow-[0_0_20px_rgba(225,91,44,0.25)]'
-                  : 'text-white/50 hover:text-white'
+                  ? 'bg-[#F4F1EC] text-black shadow-[0_8px_24px_rgba(0,0,0,.3)]'
+                  : 'text-[#85817A] hover:bg-white/[0.04] hover:text-white'
               }`}
             >
               <Shield size={14} />
@@ -73,18 +73,18 @@ export default function Policies() {
         </div>
 
         {/* Content Container */}
-        <div className="bg-[#0b0b0d]/50 border border-white/5 rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden backdrop-blur-md">
+        <div className="relative overflow-hidden rounded-[28px] border border-white/[0.09] bg-[#0B0B0A]/80 p-6 shadow-[0_30px_90px_rgba(0,0,0,.36)] sm:p-10 md:p-12">
           {activeTab === 'terms' ? (
             // Terms of Service Content
             <div className="space-y-8">
               <div>
-                <h2 className="text-xl md:text-2xl font-black uppercase tracking-wider text-white flex items-center gap-3">
-                  <Scale className="text-gk-orange w-5 h-5" />
+                <h2 className="flex items-center gap-3 text-2xl font-semibold tracking-[-0.025em] text-[#F4F1EC] md:text-3xl">
+                  <Scale className="h-5 w-5 text-[#D8BC78]" />
                   Terms of Service
                 </h2>
               </div>
 
-              <div className="space-y-6 text-zinc-400 text-xs md:text-sm font-medium leading-relaxed">
+              <div className="text-sm leading-relaxed text-[#A6A19A] [&>section]:border-t [&>section]:border-white/[0.065] [&>section]:py-6 [&>section:first-child]:border-t-0 [&>section:first-child]:pt-1 [&_h3]:mb-2 [&_h3]:text-[11px] [&_h3]:font-bold [&_h3]:uppercase [&_h3]:tracking-[0.12em] [&_h3]:text-[#E8E4DD] [&_li]:marker:text-[#D8BC78]">
                 <section className="space-y-2">
                   <h3 className="text-white font-bold uppercase tracking-wider text-xs md:text-sm">1. Acceptance of Terms</h3>
                   <p>
@@ -109,7 +109,7 @@ export default function Policies() {
                 <section className="space-y-2">
                   <h3 className="text-white font-bold uppercase tracking-wider text-xs md:text-sm">4. Shipping & Packaging</h3>
                   <p>
-                    We ship to pin codes across India. As scale collectors, we recognize the value of card/blister condition. While we pack all shipments securely using premium bubble wrap and sturdy outer boxes, we cannot guarantee box condition upon transit delivery and are not responsible for delivery partner delays or minor card creases.
+                    Delivery or collection availability, packing method, charges and timing are confirmed directly with the Collector Desk before an arrangement is finalized. Please ask about card, blister or box condition if packaging condition is important to you.
                   </p>
                 </section>
 
@@ -132,13 +132,13 @@ export default function Policies() {
             // Privacy Policy Content
             <div className="space-y-8">
               <div>
-                <h2 className="text-xl md:text-2xl font-black uppercase tracking-wider text-white flex items-center gap-3">
-                  <Shield className="text-gk-orange w-5 h-5" />
+                <h2 className="flex items-center gap-3 text-2xl font-semibold tracking-[-0.025em] text-[#F4F1EC] md:text-3xl">
+                  <Shield className="h-5 w-5 text-[#D8BC78]" />
                   Privacy Policy
                 </h2>
               </div>
 
-              <div className="space-y-6 text-zinc-400 text-xs md:text-sm font-medium leading-relaxed">
+              <div className="text-sm leading-relaxed text-[#A6A19A] [&>section]:border-t [&>section]:border-white/[0.065] [&>section]:py-6 [&>section:first-child]:border-t-0 [&>section:first-child]:pt-1 [&_h3]:mb-2 [&_h3]:text-[11px] [&_h3]:font-bold [&_h3]:uppercase [&_h3]:tracking-[0.12em] [&_h3]:text-[#E8E4DD] [&_li]:marker:text-[#D8BC78]">
                 <section className="space-y-2">
                   <h3 className="text-white font-bold uppercase tracking-wider text-xs md:text-sm">1. Data We Collect</h3>
                   <p>
@@ -191,9 +191,9 @@ export default function Policies() {
         </div>
 
         {/* Customer Support Notice */}
-        <div className="mt-8 text-center bg-white/[0.01] border border-white/5 p-4 rounded-2xl flex items-center justify-center gap-3 text-xs text-zinc-500 font-medium max-w-lg mx-auto">
-          <AlertCircle size={16} className="text-gk-orange shrink-0" />
-          <span>Need further clarification? Check out our <Link to="/help" className="text-white hover:text-gk-orange underline font-bold">Help Center</Link>.</span>
+        <div className="mt-6 flex items-center gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.018] p-4 text-xs text-[#85817A]">
+          <AlertCircle size={16} className="shrink-0 text-[#D8BC78]" />
+          <span>Need clarification? Visit the <Link to="/help" className="font-semibold text-[#F4F1EC] underline decoration-[#D8BC78]/50 underline-offset-4 hover:text-[#E1BD65]">Help Center</Link>.</span>
         </div>
 
       </main>

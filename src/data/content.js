@@ -4,8 +4,21 @@ export const BRAND = {
   pillars: 'Authenticated. Graded (by Condition). Delivered.',
 }
 
-export const WHATSAPP_URL =
-  'https://wa.me/919000000000?text=Join%20Garage%20Kings%20WhatsApp%20Clubhouse'
+export const CONTACT = {
+  whatsappNumber: '917300240424',
+  instagramUrl: 'https://www.instagram.com/garagekingsindia/',
+  communityUrl: 'https://chat.whatsapp.com/EX1NbXHU63ZCQ4qhFVCubb',
+}
+
+export const WHATSAPP_URL = `https://wa.me/${CONTACT.whatsappNumber}`
+
+export function createProductEnquiryUrl(product, archiveId, pageUrl = window.location.href) {
+  const name = [product?.brand, product?.name].filter(Boolean).join(' ')
+  const price = Number(product?.price || product?.sellingPrice || 0)
+  const priceLine = price > 0 ? ` Displayed price: ₹${price.toLocaleString('en-IN')}.` : ''
+  const message = `Hi GarageKings, I'm interested in ${name || 'this collectible'} (${archiveId}).${priceLine} Is it currently available? ${pageUrl}`
+  return `${WHATSAPP_URL}?text=${encodeURIComponent(message)}`
+}
 
 /** Real product shots */
 export const vaultProducts = [
@@ -98,7 +111,7 @@ export const pitStopLanes = [
   {
     id: 'jdm',
     title: 'JDM Legends',
-    body: 'From R34s to Supras—the icons of Japanese car culture.',
+    body: 'From R34s to Supras, these are the icons of Japanese car culture.',
   },
   {
     id: 'nostalgia',

@@ -1,5 +1,5 @@
 /**
- * cart.js — User-scoped database-backed cart persistence utility
+ * cart.js: User-scoped database-backed cart persistence utility
  *
  * Design rules:
  * - LocalStorage is NOT the primary cart for authenticated users.

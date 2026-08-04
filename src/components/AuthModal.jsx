@@ -4,7 +4,7 @@ import { X, Mail, Lock, ShieldAlert, CheckCircle2, ArrowRight, ArrowLeft, Loader
 import { signInCognito, signUpCognito, confirmSignUpCognito, signInWithGoogleProfile, autoConfirmUserBackend, parseJwt } from '../lib/auth'
 import { useLoading } from '../providers/LoadingProvider'
 
-export default function AuthModal({ isOpen, onClose, themeColor = 'purple', onAuthSuccess }) {
+export default function AuthModal({ isOpen, onClose, themeColor = 'champagne', onAuthSuccess }) {
   const [mode, setMode] = useState('login') // 'login' | 'signup' | 'verify'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -24,7 +24,7 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'purple', onAu
     if (!isGoogleAvailable) return;
 
     // Pre-initialize the token client so it's ready when the button is clicked.
-    // We intentionally do NOT call prompt() here — the user must click the button.
+    // We intentionally do NOT call prompt() here. The user must click the button.
     // Using initCodeClient with select_account ensures the account picker always appears.
     const waitForGIS = () => {
       if (window.google && window.google.accounts) {
@@ -80,10 +80,8 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'purple', onAu
 
   if (!isOpen) return null;
 
-  const accentClass = themeColor === 'orange' ? 'text-gk-orange border-gk-orange/20 bg-gk-orange/10' : 'text-purple-400 border-purple-500/40 bg-purple-500/10';
-  const buttonClass = themeColor === 'orange' 
-    ? 'bg-gk-orange hover:bg-[#C7FDFF] hover:shadow-[0_0_30px_rgba(165,243,252,0.45)] text-zinc-950 font-bold' 
-    : 'bg-purple-600 hover:bg-purple-500 hover:shadow-[0_0_30px_rgba(168,85,247,0.5)]';
+  const accentClass = 'text-[#C8AE7D] border-[#C8AE7D]/20 bg-[#C8AE7D]/[0.07]';
+  const buttonClass = 'bg-[#F2EEE7] hover:bg-white !text-[#11100E] font-bold';
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -178,11 +176,11 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'purple', onAu
         animate={{ scale: 1, y: 0 }} 
         exit={{ scale: 0.95, y: 15 }}
         transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-        className="w-full max-w-md bg-[#0a0a0d] border border-white/10 rounded-3xl p-6 sm:p-8 shadow-[0_20px_60px_rgba(0,0,0,0.8)] relative overflow-hidden"
+        className="w-full max-w-md bg-[#0B0B0B] border border-white/[0.08] rounded-[28px] p-6 sm:p-8 shadow-[0_28px_80px_rgba(0,0,0,0.75)] relative overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         {/* Top brand lightbar */}
-        <div className={`absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r ${themeColor === 'orange' ? 'from-gk-orange to-transparent' : 'from-purple-500 to-transparent'}`} />
+        <div className="absolute top-0 inset-x-12 h-px bg-gradient-to-r from-transparent via-[#C8AE7D]/80 to-transparent" />
 
         <button 
           onClick={onClose} 
@@ -207,14 +205,14 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'purple', onAu
         ) : (
           <>
             <div className="mb-8 text-center sm:text-left">
-              <h3 className="text-2xl font-black italic tracking-tight text-white leading-tight uppercase font-grotesk">
-                {mode === 'login' ? 'Welcome Back' : mode === 'signup' ? 'Join the Vault' : 'Account Verification'}
+              <h3 className="text-2xl font-semibold tracking-[-0.03em] text-[#F4F1EC] leading-tight font-grotesk">
+                {mode === 'login' ? 'Welcome back' : mode === 'signup' ? 'Create your account' : 'Verify your email'}
               </h3>
-              <p className="text-white/40 text-xs mt-2.5 font-medium leading-relaxed">
+              <p className="text-[#9A968F] text-sm mt-2.5 font-medium leading-relaxed">
                 {mode === 'login' 
-                  ? 'Sign in to access your custom garage, secure exclusive drops, and track your orders.' 
+                  ? 'Sign in to manage your contact information and delivery details.'
                   : mode === 'signup' 
-                    ? 'Create a profile to begin collecting, tracking, and unlocking exclusive premium drops.' 
+                    ? 'Create a profile to keep your enquiry and delivery details together.'
                     : 'A 6-digit verification code has been dispatched to ' + email}
               </p>
             </div>
@@ -228,7 +226,7 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'purple', onAu
 
             {loading ? (
               <div className="flex flex-col items-center justify-center py-16 space-y-5">
-                <Loader2 size={40} className={`animate-spin ${themeColor === 'orange' ? 'text-gk-orange' : 'text-purple-500'}`} />
+                <Loader2 size={36} className="animate-spin text-[#C8AE7D]" />
                 <p className="text-white/60 text-sm font-medium animate-pulse text-center">
                   {mode === 'login' 
                     ? 'Accessing exclusive secure vault...' 
@@ -250,7 +248,7 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'purple', onAu
                         value={email} 
                         onChange={e => setEmail(e.target.value)} 
                         placeholder="Email Address"
-                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-11 pr-4 py-3.5 text-white placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors text-sm" 
+                        className="w-full bg-[#111111] border border-white/[0.1] rounded-xl pl-11 pr-4 py-3.5 text-[#F4F1EC] placeholder:text-[#6F6B65] focus:outline-none focus:border-[#C8AE7D]/45 transition-colors text-sm"
                       />
                     </div>
                     <div className="relative">
@@ -262,13 +260,13 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'purple', onAu
                         value={password} 
                         onChange={e => setPassword(e.target.value)} 
                         placeholder="Password"
-                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-11 pr-4 py-3.5 text-white placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors text-sm" 
+                        className="w-full bg-[#111111] border border-white/[0.1] rounded-xl pl-11 pr-4 py-3.5 text-[#F4F1EC] placeholder:text-[#6F6B65] focus:outline-none focus:border-[#C8AE7D]/45 transition-colors text-sm"
                       />
                     </div>
                     
                     <button 
                       type="submit" 
-                      className={`w-full py-4 rounded-xl text-white font-black text-sm uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2.5 relative overflow-hidden ${buttonClass}`}
+                      className={`w-full py-4 rounded-full text-sm uppercase tracking-[0.14em] transition-all cursor-pointer flex items-center justify-center gap-2.5 relative overflow-hidden ${buttonClass}`}
                     >
                       <div className="flex items-center gap-1.5">
                         <span>Sign In</span>
@@ -283,7 +281,7 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'purple', onAu
                       <div className="flex-grow border-t border-white/5"></div>
                     </div>
 
-                    {/* Google Sign In — always shows account picker popup */}
+                    {/* Google Sign In always shows the account picker popup */}
                     <div className="w-full py-1">
                       <button
                         type="button"
@@ -377,7 +375,7 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'purple', onAu
                     
                     <button 
                       type="submit" 
-                      className={`w-full py-4 rounded-xl text-white font-black text-sm uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2.5 relative overflow-hidden ${buttonClass}`}
+                      className={`w-full py-4 rounded-full text-sm uppercase tracking-[0.14em] transition-all cursor-pointer flex items-center justify-center gap-2.5 relative overflow-hidden ${buttonClass}`}
                     >
                       <div className="flex items-center gap-1.5">
                         <span>Create Account</span>
@@ -400,7 +398,7 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'purple', onAu
 
                 {mode === 'verify' && (
                   <form onSubmit={handleVerify} className="space-y-4">
-                    <p className="text-xs text-[#E10600] font-black uppercase tracking-wider mb-2 font-grotesk">Check Your Inbox</p>
+                    <p className="text-xs text-[#C8AE7D] font-semibold uppercase tracking-wider mb-2 font-grotesk">Check your inbox</p>
                     <div className="relative">
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
                       <input 
@@ -416,7 +414,7 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'purple', onAu
                     
                     <button 
                       type="submit" 
-                      className={`w-full py-4 rounded-xl text-white font-black text-sm uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2.5 relative overflow-hidden ${buttonClass}`}
+                      className={`w-full py-4 rounded-full text-sm uppercase tracking-[0.14em] transition-all cursor-pointer flex items-center justify-center gap-2.5 relative overflow-hidden ${buttonClass}`}
                     >
                       <div className="flex items-center gap-1.5">
                         <span>Confirm Registration</span>

@@ -55,7 +55,7 @@ export default function AdminOrdersTab({
                       url: `${API_BASE_URL}/admin/orders/${order.id}/screenshot`,
                       orderId: order.id,
                       status: order.status,
-                      orderRef: `ORDER ${order.id.slice(0, 8)} — ${order.items.map(item => `${item.productBrand} ${item.productName}${item.qty > 1 ? ` (x${item.qty})` : ''}`).join(', ')}`
+                      orderRef: `ORDER ${order.id.slice(0, 8)}: ${order.items.map(item => `${item.productBrand} ${item.productName}${item.qty > 1 ? ` (x${item.qty})` : ''}`).join(', ')}`
                     })}
                     className="flex-shrink-0 bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-[10px] px-4 py-2 rounded-lg uppercase tracking-wider transition-colors cursor-pointer"
                   >
@@ -240,7 +240,7 @@ export default function AdminOrdersTab({
                   >
                     Cancel / Void
                   </button>
-                  {/* Generate Receipt button — always visible */}
+                  {/* Generate Receipt button is always visible */}
                   <button
                     onClick={() => setReceiptOrderId(order.id)}
                     className="ml-auto bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white font-extrabold text-[10px] px-4 py-2 rounded-lg uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1.5"

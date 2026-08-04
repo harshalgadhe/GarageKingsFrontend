@@ -1,296 +1,151 @@
-"use client"
-
-import { useEffect, useState, forwardRef } from 'react'
+import { forwardRef, useEffect, useMemo, useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
+import { ArrowRight, ImageOff } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { getCars } from '../../lib/db'
 
-const INSTAGRAM_URL = "https://www.instagram.com/garagekingsindia/"
-
-const PREVIEW_MODELS = [
-  {
-    id: 'gtr-nissan',
-    name: 'Nissan Skyline GT-R',
-    brand: 'Mini GT',
-    scale: '1:64',
-    price: '₹4,999',
-    image: '/vault-1.png'
-  },
-  {
-    id: 'porsche-rsr',
-    name: 'Porsche 934 Turbo RSR',
-    brand: 'Inno64',
-    scale: '1:64',
-    price: '₹2,499',
-    image: '/vault-4.png'
-  },
-  {
-    id: 'gtr-liberwalk',
-    name: 'Nissan GT-R Liberty Walk',
-    brand: 'Mini GT',
-    scale: '1:64',
-    price: '₹1,500',
-    image: '/vault-2.png'
-  },
-  {
-    id: 's15-drift',
-    name: 'Nissan Skyline 2000GT-X',
-    brand: 'Mini GT',
-    scale: '1:64',
-    price: '₹8,999',
-    image: '/vault-8.png'
-  },
-  {
-    id: 'bronco-offroad',
-    name: "'83 Chevy Silverado",
-    brand: 'Hot Wheels Premium',
-    scale: '1:64',
-    price: '₹1,299',
-    image: '/vault-5.png'
-  },
-  {
-    id: 'camaro-1969',
-    name: "'69 Ford Mustang Boss 302",
-    brand: 'Hot Wheels Premium',
-    scale: '1:64',
-    price: '₹5,500',
-    image: '/vault-6.png'
-  },
-  {
-    id: 'mclaren-p1',
-    name: 'Lamborghini Countach Pace Car',
-    brand: 'Hot Wheels Premium',
-    scale: '1:64',
-    price: '₹3,200',
-    image: '/vault-7.png'
-  },
-  {
-    id: 'exotic-supercar',
-    name: 'Silver Supercar',
-    brand: 'Inno64',
-    scale: '1:64',
-    price: '₹1,899',
-    image: '/vault-3.png'
-  }
-]
-
-const TRUST_PILLARS = [
-  {
-    num: '01',
-    title: 'AUTHENTICITY',
-    body: 'Every model is carefully checked before being listed.'
-  },
-  {
-    num: '02',
-    title: 'TRUSTED TRANSACTIONS',
-    body: 'Transparent and reliable purchases.'
-  },
-  {
-    num: '03',
-    title: 'COLLECTOR FIRST DELIVERY',
-    body: 'Secure packaging designed for collectors.'
-  }
-]
+function formatPrice(value) {
+  const amount = Number(value)
+  return Number.isFinite(amount) && amount > 0
+    ? `₹${amount.toLocaleString('en-IN')}`
+    : 'Ask for price'
+}
 
 const LookbookGallery = forwardRef(function LookbookGallery(props, ref) {
-  const reduce = useReducedMotion()
   const navigate = useNavigate()
-  
-  // Clean preview fallbacks on production, keep them in dev for testing ease
-  const [models, setModels] = useState(import.meta.env.DEV ? PREVIEW_MODELS : [])
+  const reduceMotion = useReducedMotion()
+  const [models, setModels] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    setLoading(true)
-    getCars()
-      .then(cars => {
-        if (cars && cars.length > 0) {
-          // Take the first 8 products for the preview grid
-          const slice = cars.slice(0, 8)
-          const mapped = slice.map(car => {
-            const rawPrice = parseFloat(car.price)
-            const formattedPrice = !isNaN(rawPrice) 
-              ? `₹${rawPrice.toLocaleString('en-IN')}` 
-              : (car.price || 'Price on request')
+    let active = true
 
-            return {
-              id: car.id,
-              name: car.name,
-              brand: car.brand,
-              scale: car.scale || '1:64',
-              price: formattedPrice,
-              image: car.image || '/vault-1.png'
-            }
-          })
-          setModels(mapped)
-        } else if (!import.meta.env.DEV) {
-          setModels([])
-        }
-      })
-      .catch(err => {
-        console.error("Error fetching marketplace preview from backend:", err)
-        if (!import.meta.env.DEV) {
-          setModels([])
-        }
+    getCars({ limit: 8 })
+      .then((cars) => {
+        if (!active) return
+        setModels((cars || []).slice(0, 8).map((car) => ({
+          ...car,
+          priceLabel: formatPrice(car.sellingPrice ?? car.price),
+        })))
       })
       .finally(() => {
-        setLoading(false)
+        if (active) setLoading(false)
       })
+
+    return () => { active = false }
   }, [])
 
+  const featured = useMemo(() => models.find((model) => Boolean(model.image)) || null, [models])
+  const recent = useMemo(() => models.filter((model) => model.id !== featured?.id).slice(0, 6), [featured, models])
 
-  const handleOrder = (name) => {
-    window.open(INSTAGRAM_URL, '_blank')
-  }
+  const openModel = (id) => navigate(id ? `/product/${id}` : '/marketplace')
 
   return (
-    <div ref={ref} id="gallery" className="w-full bg-gk-black">
-      
-      {/* SECTION 4: MARKETPLACE PREVIEW */}
-      <section className="relative w-full py-24 md:py-32 px-6 md:px-12 lg:px-16 border-t border-zinc-900 overflow-hidden bg-gk-black">
-        <div className="max-w-7xl mx-auto w-full">
-          
-          {/* Section Header */}
-          <div className="flex flex-col items-start gap-2 mb-16 border-b border-zinc-900 pb-8 text-left w-full">
-            <span className="text-[10px] font-medium uppercase tracking-[0.25em] text-gk-orange block font-inter">
-              MODELS CURRENTLY IN STOCK.
-            </span>
-            <h2 className="text-4xl sm:text-5xl md:text-6.5xl font-bold tracking-normal text-[#F7F7F7] uppercase leading-[0.95] font-grotesk">
-              MARKETPLACE<br />
-              <span className="text-gk-gold">PREVIEW</span>
+    <section ref={ref} id="collections" className="relative scroll-mt-20 overflow-hidden border-t border-white/[0.08] bg-black px-4 py-20 sm:px-6 md:px-12 md:py-28 lg:px-16">
+      <div className="pointer-events-none absolute -left-32 top-20 h-96 w-96 rounded-full bg-white/[0.035] blur-[120px]" />
+      <div className="pointer-events-none absolute -right-32 bottom-0 h-96 w-96 rounded-full bg-[#E1BD65]/[0.07] blur-[130px]" />
+
+      <div className="relative mx-auto max-w-7xl">
+        <header className="mb-10 flex flex-col gap-6 border-b border-white/[0.08] pb-8 md:mb-14 md:flex-row md:items-end md:justify-between">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#D8BC78]">Current collection</span>
+            <h2 className="mt-3 max-w-3xl text-4xl font-semibold leading-[0.95] tracking-[-0.04em] text-[#F4F1EC] sm:text-5xl md:text-6xl">
+              A closer look at<br /><span className="text-[#E1BD65]">what’s here now.</span>
             </h2>
           </div>
+          <button onClick={() => navigate('/marketplace')} className="group flex w-fit items-center gap-3 text-xs font-bold text-[#A1A1A6] transition hover:text-white">
+            Browse all models <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
+          </button>
+        </header>
 
-          {/* Simple Grid (4 cols desktop, 2 cols tablet, 1 col mobile) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-6">
-            {loading ? (
-              Array.from({ length: 4 }).map((_, idx) => (
-                <div key={idx} className="bg-[#151515] rounded-xl border border-white/[0.02] p-4 flex flex-col justify-between h-[310px] animate-pulse">
-                  <div className="w-full h-[155px] bg-zinc-900/50 rounded-lg mb-4" />
-                  <div className="flex-1 flex flex-col justify-between">
-                    <div>
-                      <div className="h-4 bg-zinc-900/50 rounded w-3/4 mb-2" />
-                      <div className="h-3 bg-zinc-900/50 rounded w-1/2" />
-                    </div>
-                    <div className="flex items-center justify-between border-t border-zinc-900/60 pt-3 mt-3">
-                      <div className="h-4 bg-zinc-900/50 rounded w-1/4" />
-                      <div className="h-3 bg-zinc-900/50 rounded w-1/4" />
-                    </div>
-                  </div>
-                </div>
-              ))
-            ) : models.length === 0 ? (
-              <div className="col-span-full py-16 text-center border border-dashed border-white/5 rounded-2xl bg-zinc-950/20">
-                <p className="text-xs text-zinc-500 uppercase tracking-wider font-mono">No marketplace models available.</p>
-              </div>
-            ) : (
-              models.map((item, idx) => (
-                <motion.div
-                  key={item.id}
-                  initial={reduce ? false : { opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, amount: 0.15 }}
-                  transition={{ duration: 0.7, delay: idx * 0.1, ease: [0.22, 1, 0.36, 1] }}
-                  onClick={() => {
-                    if (item.id && item.id.length === 36) {
-                      navigate(`/product/${item.id}`)
-                    } else {
-                      navigate('/marketplace')
-                    }
-                  }}
-                  className="bg-[#151515] rounded-xl border border-white/[0.02] p-4 flex flex-col justify-between h-[310px] group hover:border-white/10 transition-all duration-500 relative overflow-hidden cursor-pointer hover:bg-zinc-900"
-                >
-                  {/* Image Container: 70% of Card Height */}
-                  <div className="relative w-full h-[155px] bg-zinc-950/20 rounded-lg flex items-center justify-center overflow-hidden mb-4 shrink-0">
-                    <div className="absolute inset-0 bg-gradient-to-tr from-zinc-950/10 via-transparent to-white/[0.01] pointer-events-none" />
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      className="max-h-[85%] max-w-[85%] object-contain filter drop-shadow-[0_12px_20px_rgba(0,0,0,0.8)] select-none pointer-events-none scale-100 group-hover:scale-104 transition-transform duration-700 ease-out"
-                    />
-                  </div>
-
-                  {/* Text Info & CTA */}
-                  <div className="flex flex-col justify-between flex-1 text-left">
-                    <div>
-                      <h4 className="text-sm font-bold tracking-normal uppercase text-[#F7F7F7] font-grotesk truncate block">
-                        {item.name}
-                      </h4>
-                      <span className="text-[10px] font-mono text-zinc-500 block mt-1">
-                        {item.brand} • {item.scale}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-zinc-900/60">
-                      <span className="text-xs font-bold text-gk-gold font-mono tracking-tight">{item.price}</span>
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-gk-orange group-hover:translate-x-1 transition-transform duration-300">
-                        View Model →
-                      </span>
-                    </div>
-                  </div>
-                </motion.div>
-              ))
-            )}
+        {loading ? (
+          <div className="grid min-h-[520px] animate-pulse gap-5 lg:grid-cols-12">
+            <div className="rounded-3xl bg-white/[0.035] lg:col-span-7" />
+            <div className="space-y-3 lg:col-span-5">{Array.from({ length: 6 }).map((_, index) => <div key={index} className="h-[76px] rounded-2xl bg-white/[0.035]" />)}</div>
           </div>
-
-
-          {/* View More Option */}
-          <div className="flex justify-center mt-14 w-full">
-            <button
-              onClick={() => navigate('/marketplace')}
-              className="px-10 py-3.5 rounded-xl border border-zinc-800 hover:border-zinc-500 text-[#F7F7F7] font-bold uppercase tracking-wider text-xs transition-all duration-300 hover:bg-white/[0.02] cursor-pointer shadow-lg"
-            >
-              View More in Marketplace
-            </button>
-          </div>
-
-        </div>
-      </section>
-
-      {/* SECTION 5: WHY COLLECTORS TRUST GARAGEKINGS */}
-      <section className="relative w-full py-24 md:py-32 px-6 md:px-12 lg:px-16 border-t border-zinc-900 overflow-hidden bg-gk-black">
-        <div className="max-w-7xl mx-auto w-full">
-          
-          <div className="max-w-3xl text-left mb-16">
-            <span className="text-[10px] font-medium uppercase tracking-[0.25em] text-gk-orange mb-3 block font-inter">
-              ASSURANCE
-            </span>
-            <h2 className="text-4xl sm:text-5xl md:text-6.5xl font-bold tracking-normal text-[#F7F7F7] uppercase leading-none font-grotesk">
-              WHY COLLECTORS TRUST<br />
-              <span className="text-gk-gold">GARAGEKINGS</span>
-            </h2>
-          </div>
-
-          {/* Three pillars layout - Typography led */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 lg:gap-16 items-start">
-            {TRUST_PILLARS.map((pillar, idx) => (
-              <motion.div
-                key={pillar.title}
-                initial={reduce ? false : { opacity: 0, y: 20 }}
+        ) : models.length === 0 ? (
+          <div className="rounded-3xl border border-dashed border-white/10 py-20 text-center text-sm text-[#77736D]">No models are available to preview yet.</div>
+        ) : (
+          <div className="grid gap-5 lg:grid-cols-12 lg:items-stretch">
+            {featured && (
+              <motion.button
+                type="button"
+                onClick={() => openModel(featured.id)}
+                initial={reduceMotion ? false : { opacity: 0, y: 24 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.2 }}
-                transition={{ duration: 0.8, delay: idx * 0.15, ease: [0.22, 1, 0.36, 1] }}
-                className="flex flex-col items-start text-left group"
+                transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
+                className="group relative min-h-[500px] overflow-hidden rounded-[28px] border border-white/[0.1] bg-[#101010] text-left shadow-[0_28px_80px_rgba(0,0,0,.5)] lg:col-span-7 lg:min-h-[620px]"
               >
-                {/* Giant Numbers as visual anchors */}
-                <span className="text-5xl sm:text-6xl md:text-7xl font-light font-grotesk text-zinc-800 tracking-tight leading-none mb-6 select-none group-hover:text-gk-orange/45 transition-colors duration-700">
-                  {pillar.num}
-                </span>
-                
-                <h3 className="text-xl font-bold tracking-normal text-[#F7F7F7] uppercase font-grotesk mb-3 leading-none">
-                  {pillar.title}
-                </h3>
-                
-                <p className="text-xs leading-relaxed text-[#A1A1A1] font-inter max-w-[36ch]">
-                  {pillar.body}
-                </p>
-              </motion.div>
-            ))}
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_55%_38%,rgba(255,255,255,.11),transparent_38%),linear-gradient(145deg,rgba(255,255,255,.04),transparent_42%)]" />
+                <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between p-5 sm:p-7">
+                  <span className="rounded-full border border-white/10 bg-black/70 px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.18em] text-[#E1BD65] backdrop-blur-md">Featured model</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#918C84]">{featured.scale || '1:64'}</span>
+                </div>
+
+                <div className="absolute inset-x-4 bottom-32 top-16 flex items-center justify-center sm:inset-x-8 sm:bottom-28">
+                  <img
+                    src={featured.image}
+                    alt={`${featured.brand || ''} ${featured.name}`}
+                    className="h-full w-full object-contain drop-shadow-[0_28px_38px_rgba(0,0,0,.72)] transition duration-700 ease-out group-hover:scale-[1.025]"
+                  />
+                </div>
+
+                <div className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black via-black/95 to-transparent px-5 pb-6 pt-20 sm:px-7 sm:pb-7">
+                  <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[#D8BC78]">{featured.brand}</div>
+                  <div className="flex items-end justify-between gap-5">
+                    <div>
+                      <h3 className="text-2xl font-semibold leading-tight tracking-[-0.025em] text-white sm:text-3xl">{featured.name}</h3>
+                      <p className="mt-2 font-mono text-sm text-[#E1BD65]">{featured.priceLabel}</p>
+                    </div>
+                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#F5F5F7] text-black transition-transform group-hover:translate-x-1"><ArrowRight size={18} /></span>
+                  </div>
+                </div>
+              </motion.button>
+            )}
+
+            <div className={`${featured ? 'lg:col-span-5' : 'lg:col-span-12'} overflow-hidden rounded-[28px] border border-white/[0.09] bg-[linear-gradient(155deg,rgba(19,18,16,.96),rgba(9,9,9,.98)_48%)] shadow-[0_28px_80px_rgba(0,0,0,.36)]`}>
+              <div className="flex items-center justify-between border-b border-white/[0.07] px-5 py-4 sm:px-6">
+                <h3 className="text-sm font-semibold text-[#F4F1EC]">Recently added</h3>
+                <span className="text-[10px] text-[#77736D]">{models.length} models</span>
+              </div>
+
+              <div className="divide-y divide-white/[0.06]">
+                {recent.map((model, index) => (
+                  <motion.button
+                    type="button"
+                    key={model.id}
+                    onClick={() => openModel(model.id)}
+                    initial={reduceMotion ? false : { opacity: 0, x: 18 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.42, delay: reduceMotion ? 0 : index * 0.045 }}
+                    className="group grid w-full grid-cols-[34px_1fr_auto] items-center gap-3 px-4 py-4 text-left transition hover:bg-white/[0.045] sm:grid-cols-[42px_1fr_auto] sm:px-6 sm:py-[18px]"
+                  >
+                    <span className="font-mono text-[10px] text-[#5E5A54]">{String(index + 1).padStart(2, '0')}</span>
+                    <span className="min-w-0">
+                      <span className="block text-[9px] font-bold uppercase tracking-[0.15em] text-[#D8BC78]">{model.brand || 'GarageKings'} · {model.scale || '1:64'}</span>
+                      <span className="mt-1 block truncate text-sm font-semibold text-[#E8E4DD] transition group-hover:text-white">{model.name}</span>
+                    </span>
+                    <span className="flex items-center gap-3 pl-2">
+                      {!model.image && <ImageOff size={13} className="hidden text-[#55514B] sm:block" aria-label="Photography coming soon" />}
+                      <span className="font-mono text-xs text-[#D7C189]">{model.priceLabel}</span>
+                      <ArrowRight size={14} className="hidden text-[#6F6A63] transition group-hover:translate-x-1 group-hover:text-white sm:block" />
+                    </span>
+                  </motion.button>
+                ))}
+              </div>
+
+              <div className="border-t border-white/[0.07] p-4 sm:p-5">
+                <button onClick={() => navigate('/marketplace')} className="flex w-full items-center justify-center gap-2 rounded-full border border-white/[0.14] bg-white/[0.04] py-3 text-[10px] font-bold uppercase tracking-[0.16em] text-[#D2D2D7] transition hover:bg-white hover:text-black">
+                  View the full collection <ArrowRight size={14} />
+                </button>
+              </div>
+            </div>
           </div>
-
-        </div>
-      </section>
-
-    </div>
+        )}
+      </div>
+    </section>
   )
 })
 

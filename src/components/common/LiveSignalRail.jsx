@@ -1,39 +1,51 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { getCars } from '../../lib/db'
 
-/**
- * LiveSignalRail — Operational Ticker Bar
- * Directly below hero section, displaying live collection metrics, pre-order deadlines, and archive entries.
- */
-export default function LiveSignalRail({ totalEntries = 215, latestBrand = 'Mini GT' }) {
-  const navigate = useNavigate();
+export default function LiveSignalRail() {
+  const navigate = useNavigate()
+  const [totalEntries, setTotalEntries] = useState(null)
+
+  useEffect(() => {
+    let active = true
+
+    getCars({ page: 1, limit: 1, paginated: true })
+      .then((data) => {
+        const total = Number(data?.total)
+        if (active && Number.isFinite(total)) setTotalEntries(total)
+      })
+      .catch(() => {
+        if (active) setTotalEntries(null)
+      })
+
+    return () => { active = false }
+  }, [])
 
   return (
-    <div className="w-full bg-[#090909] border-y border-white/[0.06] py-3 px-6 overflow-hidden">
-      <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono">
-        <div className="flex items-center gap-3 text-[#A9A49C]">
-          <span className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-[#E86A2F]/15 border border-[#E86A2F]/30 text-[#E86A2F] text-[10px] font-bold uppercase tracking-widest animate-pulse">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#E86A2F]" />
-            LIVE SIGNAL
+    <div className="w-full overflow-hidden border-y border-white/[0.06] bg-[#090909] px-5 py-4">
+      <div className="mx-auto flex max-w-7xl flex-col gap-3 text-xs sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex shrink-0 items-center gap-2 font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-[#D8BC78]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#E1BD65]" />
+            New additions
           </span>
-          <span className="text-[#F4F1EC] font-semibold tracking-wide truncate max-w-md sm:max-w-xl">
-            INCOMING TO THE VAULT — {latestBrand} Pre-Orders &amp; Curated Arrivals Active
+          <span className="truncate text-[11px] tracking-wide text-[#A9A49C] sm:text-xs">
+            Recently added models and incoming releases
           </span>
         </div>
 
-        <div className="flex items-center gap-4 text-[11px] text-[#74716B] shrink-0">
-          <span>
-            <strong className="text-[#F4F1EC] font-mono">{totalEntries}</strong> VAULT ENTRIES
-          </span>
-          <span className="text-white/10">•</span>
+        <div className="flex shrink-0 items-center justify-between gap-4 border-t border-white/[0.05] pt-3 font-mono text-[10px] text-[#74716B] sm:justify-start sm:border-0 sm:pt-0">
+          {totalEntries !== null && (
+            <span><strong className="text-[#F4F1EC]">{totalEntries}</strong> models</span>
+          )}
           <button
             onClick={() => navigate('/marketplace')}
-            className="text-[#C8AE7D] hover:text-[#F4F1EC] font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1"
+            className="flex cursor-pointer items-center gap-1 font-bold uppercase tracking-wider text-[#D8BC78] transition-colors hover:text-[#F4F1EC]"
           >
-            Explore Vault →
+            View collection <span aria-hidden="true">→</span>
           </button>
         </div>
       </div>
     </div>
-  );
+  )
 }

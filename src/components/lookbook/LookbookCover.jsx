@@ -2,10 +2,12 @@
 
 import { forwardRef } from 'react'
 import { motion, useScroll, useTransform, useReducedMotion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import { scrollToSection, useLenis } from '../../providers/SmoothScroll'
 
 const LookbookCover = forwardRef(function LookbookCover(props, ref) {
   const lenisRef = useLenis()
+  const navigate = useNavigate()
   const reduce = useReducedMotion()
   const { scrollY } = useScroll()
   
@@ -13,7 +15,7 @@ const LookbookCover = forwardRef(function LookbookCover(props, ref) {
   const yParallax = useTransform(scrollY, [0, 1000], [0, -20])
 
   const handleExplore = () => {
-    scrollToSection(lenisRef, 'gallery')
+    navigate('/marketplace')
   }
 
   const handleDrops = () => {
@@ -32,23 +34,23 @@ const LookbookCover = forwardRef(function LookbookCover(props, ref) {
         <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-16 items-center my-auto relative">
           
           {/* Left Column: Clear copy */}
-          <div className="lg:col-span-6 flex flex-col items-start text-left relative z-20">
+          <motion.div className="lg:col-span-6 flex flex-col items-start text-left relative z-20" initial={reduce ? false : { opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.18, ease: [0.16, 1, 0.3, 1] }}>
             <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-gk-orange mb-6 block font-inter">
-              PREMIUM DIECAST SELECTION
+              GARAGEKINGS / PRIVATE COLLECTOR PLATFORM
             </span>
             
             <h1 className="text-6xl sm:text-7xl lg:text-8.5xl font-bold tracking-normal text-[#F7F7F7] uppercase leading-[0.88] font-grotesk">
-              CURATE YOUR<br />
-              DREAM<br />
-              <span className="text-gk-gold">GARAGE</span>
+              BUILT FOR THOSE<br />
+              WHO NEVER<br />
+              <span className="text-gk-gold">STOPPED COLLECTING.</span>
             </h1>
             
             <div className="mt-8 flex flex-col gap-2 max-w-[42ch]">
               <p className="text-sm md:text-base leading-relaxed text-[#F7F7F7] font-medium font-inter">
-                India's destination to discover premium diecast models.
+                A collector-led archive of exceptional automotive miniatures.
               </p>
               <p className="text-xs md:text-sm leading-relaxed text-[#A1A1A1] font-inter">
-                We started GarageKings because we love scale models and wanted a simpler way to buy them in India.
+                Inspect every model, understand its condition, then speak directly with us on WhatsApp or Instagram.
               </p>
             </div>
 
@@ -59,7 +61,7 @@ const LookbookCover = forwardRef(function LookbookCover(props, ref) {
                 whileTap={{ scale: 0.99 }}
                 className="px-8 py-4 rounded-xl bg-gk-orange hover:bg-gk-orange/90 text-gk-black font-bold uppercase tracking-wider text-xs transition-all duration-300 shadow-lg cursor-pointer"
               >
-                Browse Marketplace
+                Enter the Vault
               </motion.button>
               
               <motion.button
@@ -68,15 +70,18 @@ const LookbookCover = forwardRef(function LookbookCover(props, ref) {
                 whileTap={{ scale: 0.99 }}
                 className="px-8 py-4 rounded-xl bg-transparent border border-zinc-800 hover:border-zinc-500 text-[#F7F7F7] font-bold uppercase tracking-wider text-xs transition-all duration-300 hover:bg-white/[0.01] cursor-pointer"
               >
-                View New Arrivals
+                Explore the marques
               </motion.button>
             </div>
-          </div>
+          </motion.div>
 
           {/* Right Column: Parallax Cinematic Hero Image */}
           <div className="lg:col-span-6 flex justify-center items-center w-full relative z-10">
             <motion.div
               style={{ y: reduce ? 0 : yParallax }}
+              initial={reduce ? false : { opacity: 0, scale: 0.975, clipPath: 'inset(8% 0 8% 0)' }}
+              animate={{ opacity: 1, scale: 1, clipPath: 'inset(0% 0 0% 0)' }}
+              transition={{ duration: 1.05, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
               className="relative w-full aspect-[4/3] max-w-[580px] rounded-2xl border border-white/[0.03] bg-zinc-950/45 overflow-hidden shadow-[0_35px_80px_-25px_rgba(0,0,0,0.95)]"
             >
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(216,198,163,0.06)_0%,transparent_75%)] pointer-events-none" />
@@ -95,8 +100,8 @@ const LookbookCover = forwardRef(function LookbookCover(props, ref) {
       <section className="relative w-full py-16 md:py-20 px-6 md:px-12 lg:px-16 border-t border-zinc-900 bg-[#090909] z-10 flex flex-col justify-center items-center text-center max-h-[40vh]">
         <div className="max-w-4xl mx-auto w-full flex flex-col items-center justify-center">
           <h2 className="text-4xl sm:text-6xl lg:text-7.5xl font-bold tracking-normal text-[#F7F7F7] uppercase leading-[0.95] font-grotesk max-w-4xl">
-            DISCOVER RARE MODELS.<br />
-            <span className="text-gk-gold">BUILT FOR COLLECTORS.</span>
+            NOT ANOTHER PRODUCT FEED.<br />
+            <span className="text-gk-gold">A COLLECTION WITH A POINT OF VIEW.</span>
           </h2>
         </div>
       </section>

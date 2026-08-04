@@ -58,7 +58,7 @@ export function ProductDetailSkeleton() {
     <div className="flex-1 max-w-7xl mx-auto px-6 py-8 md:py-16 w-full font-mono">
       <Shimmer className="h-3.5 w-40 rounded mb-8" />
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
-        {/* Left — 60% gallery */}
+        {/* Left: 60% gallery */}
         <div className="lg:col-span-7 space-y-4">
           <Shimmer className="aspect-[4/3] w-full rounded-xl" />
           <div className="flex gap-3">
@@ -67,7 +67,7 @@ export function ProductDetailSkeleton() {
             ))}
           </div>
         </div>
-        {/* Right — 40% acquisition panel */}
+        {/* Right: 40% acquisition panel */}
         <div className="lg:col-span-5 bg-[#0D0D0D] border border-white/[0.06] rounded-xl p-6 space-y-6">
           <Shimmer className="h-3 w-24 rounded" />
           <Shimmer className="h-8 w-4/5 rounded" />

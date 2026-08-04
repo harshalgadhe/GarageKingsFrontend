@@ -150,7 +150,7 @@ export async function updateGlobalSettings(settings) {
 }
 
 export async function getCars(params = {}) {
-  // Extract signal separately — it's not a query param
+  // Extract signal separately because it is not a query param
   const { signal, ...queryOptions } = params;
   try {
     const queryParams = new URLSearchParams();
@@ -196,7 +196,7 @@ export async function getCars(params = {}) {
 
 
 export async function addCar(car) {
-  // Try admin endpoint first — it creates full product & variant records with stock
+  // Try admin endpoint first because it creates full product and variant records with stock
   const adminRes = await fetch(`${API_BASE_URL.replace('/api/v1', '')}/api/v1/admin/products`, {
     method: 'POST',
     headers: getAuthHeaders(),
@@ -219,7 +219,7 @@ export async function addCar(car) {
 }
 
 export async function updateCar(id, updatedFields) {
-  // Try admin endpoint first — it has full write access to all fields
+  // Try admin endpoint first because it has full write access to all fields
   // (stock, arrivalDate, customerEta etc). The public PATCH /products/:id
   // has restricted field access and silently ignores stock/date fields.
   const adminRes = await fetch(`${API_BASE_URL.replace('/api/v1', '')}/api/v1/admin/products/${id}`, {

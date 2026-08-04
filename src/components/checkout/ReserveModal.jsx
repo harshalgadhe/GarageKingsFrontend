@@ -458,7 +458,7 @@ export default function ReserveModal({ product, cartItems, onClose }) {
                 onClick={() => setStep(3)}
                 className="w-full bg-[#ff5500] hover:bg-[#ff6611] active:bg-[#e64d00] text-black font-extrabold text-xs py-3.5 px-4 rounded-xl transition-all duration-200 uppercase tracking-wider mt-2 shadow-[0_4px_20px_-4px_rgba(255,85,0,0.3)] cursor-pointer"
               >
-                {isPreOrder ? `I've Paid ₹${advanceAmount} Advance — Upload Receipt` : 'I Have Paid, Proceed to Upload Receipt'}
+                {isPreOrder ? `I've Paid ₹${advanceAmount} Advance. Upload Receipt` : 'I Have Paid, Proceed to Upload Receipt'}
               </button>
             </div>
           )}

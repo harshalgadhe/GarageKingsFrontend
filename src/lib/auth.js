@@ -70,7 +70,7 @@ export async function signOutCognito() {
   } catch (e) {
     console.warn("Logout request failed, cleaning up local storage anyway:", e);
   }
-  // Purge all user cart data — prevents cart leaking to the next user on this device
+  // Purge all user cart data to prevent cart leakage to the next user on this device
   clearAllUserCarts();
   localStorage.removeItem('gk_user');
   // Notify all components that the user has logged out

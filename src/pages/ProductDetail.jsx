@@ -1,450 +1,256 @@
-import React, { useState, useEffect } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { getProduct, getCars } from '../lib/db'
-import { getCurrentUser } from '../lib/auth'
-import { readCart, writeCart, notifyCartUpdated } from '../lib/cart'
-import { logError } from '../lib/telemetry'
+import { useEffect, useMemo, useState } from 'react'
+import { motion, useReducedMotion } from 'framer-motion'
+import { ArrowLeft, ArrowRight, Check } from 'lucide-react'
+import { SiInstagram, SiWhatsapp } from 'react-icons/si'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import Navigation from '../components/Navigation'
 import Footer from '../components/Footer'
-import CollectorStandardTrust from '../components/common/CollectorStandardTrust'
 import VaultModuleCard from '../components/common/VaultModuleCard'
 import { ProductDetailSkeleton } from '../components/Skeletons'
-import { ArrowLeft, ShoppingBag, Check, ShieldCheck, Package, RotateCcw, ChevronDown, MessageSquare } from 'lucide-react'
+import { CONTACT, createProductEnquiryUrl } from '../data/content'
+import { getCars, getProduct } from '../lib/db'
+import { logError } from '../lib/telemetry'
+
+function imageUrl(image) {
+  if (typeof image === 'string') return image
+  return image?.fullUrl || image?.thumbnailUrl || image?.url || image?.src || null
+}
+
+function money(value) {
+  const number = Number(value)
+  return Number.isFinite(number) && number > 0 ? `₹${number.toLocaleString('en-IN')}` : 'Ask for price'
+}
 
 export default function ProductDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const reduceMotion = useReducedMotion()
   const [product, setProduct] = useState(null)
-  const [bestSellers, setBestSellers] = useState([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [related, setRelated] = useState([])
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [activeImage, setActiveImage] = useState(null)
-  const [addedToCart, setAddedToCart] = useState(false)
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(0)
 
-  const caseVariants = React.useMemo(() => {
-    if (Array.isArray(product?.caseVariants) && product.caseVariants.length > 0) {
-      return product.caseVariants;
-    }
-    if (Array.isArray(product?.variants) && product.variants.length > 0) {
-      return product.variants;
-    }
+  useEffect(() => {
+    let active = true
+    setLoading(true)
+    setError('')
+
+    Promise.all([getProduct(id), getCars({ page: 1, limit: 8, paginated: true })])
+      .then(([productData, cars]) => {
+        if (!active) return
+        if (!productData) {
+          setError('This model could not be found.')
+          return
+        }
+        setProduct(productData)
+        setSelectedVariantIndex(0)
+        const others = (cars?.products || [])
+          .filter((car) => car.id !== id)
+          .slice(0, 4)
+        setRelated(others)
+      })
+      .catch((err) => {
+        if (!active) return
+        setError('We could not load this model right now.')
+        logError(err.message || 'Product detail load failed', err.stack)
+      })
+      .finally(() => active && setLoading(false))
+
+    return () => { active = false }
+  }, [id])
+
+  const variants = useMemo(() => {
+    if (product?.caseVariants?.length) return product.caseVariants
+    if (product?.variants?.length) return product.variants
     return [{
       casingType: product?.casingType || product?.casing || 'Box',
       price: product?.price ?? product?.sellingPrice ?? 0,
       poAmount: product?.poAmount || product?.prebookDepositAmount || 0,
-      availableStock: product?.availableStock ?? product?.totalStock ?? 10,
-      images: Array.isArray(product?.images) ? product.images : (product?.image ? [product.image] : [])
-    }];
-  }, [product]);
+      availableStock: product?.availableStock ?? product?.totalStock,
+      images: product?.images || (product?.image ? [product.image] : []),
+    }]
+  }, [product])
 
-  const currentVariant = caseVariants[selectedVariantIndex] || caseVariants[0] || {};
+  const variant = variants[selectedVariantIndex] || variants[0] || {}
 
-  const allImages = React.useMemo(() => {
-    const list = [];
-    if (product?.image) {
-      const url = typeof product.image === 'string' ? product.image : (product.image?.fullUrl || product.image?.url);
-      if (url && !list.includes(url)) list.push(url);
+  const images = useMemo(() => {
+    const result = []
+    const add = (value) => {
+      const url = imageUrl(value)
+      if (url && !result.includes(url)) result.push(url)
     }
-    const varImages = currentVariant.images || [];
-    if (Array.isArray(varImages)) {
-      varImages.forEach(img => {
-        const url = typeof img === 'string' ? img : (img?.fullUrl || img?.thumbnailUrl || img?.url || img?.src);
-        if (url && !list.includes(url)) list.push(url);
-      });
-    }
-    if (Array.isArray(product?.images)) {
-      product.images.forEach(img => {
-        const url = typeof img === 'string' ? img : (img?.fullUrl || img?.thumbnailUrl || img?.url || img?.src);
-        if (url && !list.includes(url)) list.push(url);
-      });
-    }
-    return list;
-  }, [product, currentVariant]);
+    add(product?.image)
+    ;(variant.images || []).forEach(add)
+    ;(product?.images || []).forEach(add)
+    return result
+  }, [product, variant])
 
-  useEffect(() => {
-    if (allImages.length > 0) {
-      setActiveImage(allImages[0]);
-    }
-  }, [allImages]);
+  useEffect(() => setActiveImage(images[0] || null), [images])
 
-  useEffect(() => {
-    async function loadProductData() {
-      setIsLoading(true)
-      try {
-        const [prodData, allCars] = await Promise.all([
-          getProduct(id),
-          getCars()
-        ])
-
-        if (!prodData) {
-          setError('The requested casting could not be located in our archives.')
-          return
-        }
-
-        setProduct(prodData)
-        setSelectedVariantIndex(0)
-        if (prodData.image) setActiveImage(prodData.image)
-
-        const otherCars = (allCars?.products || allCars || [])
-          .filter(c => c.id !== id)
-          .slice(0, 4)
-        
-        setBestSellers(otherCars)
-      } catch (err) {
-        setError('Connection interrupted. Unable to load vault entry.')
-        logError(err.message || 'Product Detail Load Failed', err.stack)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    loadProductData()
-  }, [id])
-
-  if (isLoading) {
-    return (
-      <div className="min-h-[100svh] bg-[#050505] text-[#F4F1EC] pt-16 flex flex-col justify-between">
-        <Navigation activeSection="vault" />
-        <ProductDetailSkeleton />
-        <Footer />
-      </div>
-    );
+  if (loading) {
+    return <div className="flex min-h-[100svh] flex-col justify-between bg-black pt-16 text-[#F5F5F7]"><Navigation activeSection="vault" /><ProductDetailSkeleton /><Footer /></div>
   }
 
   if (error || !product) {
     return (
-      <div className="min-h-[100svh] bg-[#050505] text-[#F4F1EC] pt-16 flex flex-col justify-between">
+      <div className="flex min-h-[100svh] flex-col justify-between bg-black pt-16 text-[#F5F5F7]">
         <Navigation activeSection="vault" />
-        <div className="max-w-xl mx-auto my-24 p-8 bg-[#0D0D0D] border border-white/[0.06] rounded-xl text-center space-y-4 font-mono">
-          <div className="text-xs uppercase tracking-widest text-[#E86A2F]">Vault Inspection Notice</div>
-          <h2 className="text-xl font-bold text-[#F4F1EC]">Entry Not Found</h2>
-          <p className="text-xs text-[#A9A49C]">{error || 'This collectible entry does not exist or has been archived.'}</p>
-          <button onClick={() => navigate('/marketplace')} className="px-5 py-2.5 rounded-lg bg-[#E86A2F] text-black font-bold text-xs uppercase tracking-wider cursor-pointer">
-            Return to Vault Catalog
-          </button>
-        </div>
+        <main className="mx-auto my-24 max-w-lg px-6 text-center">
+          <p className="text-sm text-[#86868B]">{error || 'This model is no longer available.'}</p>
+          <button onClick={() => navigate('/marketplace')} className="mt-6 rounded-full bg-white px-6 py-3 text-xs font-bold text-black">Return to collection</button>
+        </main>
         <Footer />
       </div>
-    );
+    )
   }
 
-  const isSoldOut = product.isSoldOut !== undefined
+  const soldOut = product.isSoldOut !== undefined
     ? product.isSoldOut
-    : (product.availableStock !== undefined ? Number(product.availableStock) <= 0 : false);
+    : (product.availableStock !== undefined ? Number(product.availableStock) <= 0 : false)
+  const preOrder = Boolean(product.isPrebook || product.status === 'Pre-Order')
+  const total = Number(variant.price || product.price || product.sellingPrice || 0)
+  const deposit = Number(variant.poAmount || product.poAmount || product.prebookDepositAmount || 0)
+  const balance = Math.max(0, total - deposit)
+  const reference = `GK-${String(product.id || '').replace(/-/g, '').slice(0, 8).toUpperCase()}`
+  const condition = product.condition || product.packagingCondition || 'Ask to confirm'
 
-  const isPrebook = Boolean(product.isPrebook || product.status === 'Pre-Order');
-  const totalPrice = Number(currentVariant.price || product.price || product.sellingPrice || 0);
-  const depositAmount = Number(currentVariant.poAmount || product.poAmount || product.prebookDepositAmount || 0);
-  const remainingBalance = Math.max(0, totalPrice - depositAmount);
+  const enquire = () => window.open(
+    createProductEnquiryUrl({ ...product, price: total }, reference),
+    '_blank',
+    'noopener,noreferrer',
+  )
 
-  const shortHash = String(product.id || '').replace(/-/g, '').substring(0, 4).toUpperCase();
-  const vaultIndex = `GK-2026-${shortHash}`;
-
-  const handleAddToCart = () => {
-    const cartItem = {
-      id: product.id,
-      variantId: currentVariant.id || product.id,
-      name: product.name,
-      brand: product.brand,
-      casing: currentVariant.casingType || product.casing || 'Box',
-      price: totalPrice,
-      poAmount: depositAmount,
-      isPrebook: isPrebook,
-      image: activeImage || product.image,
-      quantity: 1
-    };
-
-    const currentCart = readCart();
-    const existingIdx = currentCart.findIndex(it => it.id === cartItem.id && it.variantId === cartItem.variantId);
-    let newCart;
-    if (existingIdx >= 0) {
-      newCart = currentCart.map((it, idx) => idx === existingIdx ? { ...it, quantity: it.quantity + 1 } : it);
-    } else {
-      newCart = [...currentCart, cartItem];
-    }
-
-    writeCart(newCart);
-    notifyCartUpdated();
-    setAddedToCart(true);
-    setTimeout(() => setAddedToCart(false), 2500);
-  };
-
-  const handleWhatsAppInquiry = () => {
-    const text = `Hello GarageKings! I am inspecting collectible "${product.brand} ${product.name}" (Ref: ${vaultIndex}). I would like to confirm acquisition details.`;
-    window.open(`https://wa.me/917300240424?text=${encodeURIComponent(text)}`, '_blank');
-  };
+  const facts = [
+    ['Brand', product.brand || 'Not specified'],
+    ['Scale', product.scale || 'Not specified'],
+    ['Packaging', variant.casingType || product.casing || 'Not specified'],
+    ['Condition', condition],
+    ['SKU', product.sku || reference],
+    ['Availability', soldOut ? 'Unavailable' : preOrder ? 'Incoming' : 'Available'],
+  ]
 
   return (
-    <div className="min-h-[100svh] bg-[#050505] text-[#F4F1EC] pt-16">
+    <div className="min-h-[100svh] bg-black pt-16 text-[#F5F5F7]">
       <Navigation activeSection="vault" />
 
-      {/* ── Inspection Room Top Bar ── */}
-      <div className="border-b border-white/[0.06] bg-[#090909] py-3.5 px-6 font-mono text-xs text-[#74716B]">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-          <button
-            onClick={() => navigate('/marketplace')}
-            className="flex items-center gap-2 text-[#A9A49C] hover:text-[#F4F1EC] transition-colors cursor-pointer"
-          >
-            <ArrowLeft size={14} />
-            <span>Return to Vault Index</span>
-          </button>
-          <div className="flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#C8AE7D]" />
-            <span>INSPECTION ROOM: <strong className="text-[#F4F1EC]">{vaultIndex}</strong></span>
-          </div>
+      <div className="border-b border-white/[0.08]">
+        <div className="mx-auto flex max-w-[1440px] items-center justify-between px-4 py-4 sm:px-6 lg:px-12">
+          <button onClick={() => navigate('/marketplace')} className="flex items-center gap-2 text-xs font-semibold text-[#A1A1A6] transition hover:text-white"><ArrowLeft size={15} /> Back to collection</button>
+          <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-[#6E6E73]">{reference}</span>
         </div>
       </div>
 
-      {/* ── Main Inspection Layout (60/40 Split) ── */}
-      <main className="max-w-7xl mx-auto px-6 py-8 md:py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
-
-          {/* ── LEFT: 60% IMMERSIVE GALLERY & INSPECTION RAIL ── */}
-          <div className="lg:col-span-7 space-y-4">
-            {/* Primary Media Stage */}
-            <div className="aspect-[4/3] w-full bg-[#080808] artifact-stage-light border border-white/[0.06] rounded-xl relative overflow-hidden flex items-center justify-center p-6">
-              <div className="absolute bottom-6 inset-x-16 h-6 rounded-full bg-black/90 blur-lg pointer-events-none" />
-
-              <img
-                src={activeImage || product.image || '/brand-logo.png'}
-                alt={product.name}
-                className="max-h-full max-w-full object-contain relative z-10 select-none pointer-events-none transition-opacity duration-200"
-              />
-
-              {/* Status Badge Overlay */}
-              <div className="absolute top-4 left-4 z-20 font-mono">
-                {isSoldOut ? (
-                  <span className="px-2.5 py-1 rounded bg-[#B85C5C]/15 border border-[#B85C5C]/30 text-[#B85C5C] text-[10px] font-bold tracking-wider uppercase">
-                    ARCHIVED / SOLD OUT
-                  </span>
-                ) : isPrebook ? (
-                  <span className="px-2.5 py-1 rounded bg-[#C99652]/15 border border-[#C99652]/30 text-[#C99652] text-[10px] font-bold tracking-wider uppercase">
-                    INCOMING PRE-ORDER
-                  </span>
-                ) : (
-                  <span className="px-2.5 py-1 rounded bg-[#5E9F78]/15 border border-[#5E9F78]/30 text-[#5E9F78] text-[10px] font-bold tracking-wider uppercase">
-                    AVAILABLE IN VAULT
-                  </span>
-                )}
+      <main>
+        <section className="mx-auto grid max-w-[1440px] gap-8 px-4 pb-12 pt-6 sm:px-6 md:pt-8 lg:min-h-[calc(100svh-121px)] lg:grid-cols-12 lg:items-center lg:gap-12 lg:px-12 lg:pb-5 lg:pt-5">
+          <motion.div initial={reduceMotion ? false : { opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.65 }} className="relative lg:col-span-7">
+            <div className="relative flex min-h-[500px] items-center justify-center overflow-hidden rounded-[26px] border border-white/[0.09] bg-[#0C0C0C] p-5 sm:min-h-[600px] sm:p-10 lg:h-[calc(100svh-166px)] lg:min-h-[500px] lg:max-h-[680px] lg:pl-24">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(255,255,255,.11),transparent_34%),linear-gradient(145deg,rgba(255,255,255,.025),transparent_45%)]" />
+              <div className="absolute left-5 top-5 z-20 sm:left-7 sm:top-7">
+                <span className={`rounded-full px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.14em] ${soldOut ? 'bg-[#FF453A]/12 text-[#FF6961]' : preOrder ? 'bg-[#E1BD65]/12 text-[#E1BD65]' : 'bg-[#30D158]/12 text-[#53D769]'}`}>
+                  {soldOut ? 'Unavailable' : preOrder ? 'Incoming' : 'Available'}
+                </span>
               </div>
-            </div>
 
-            {/* Thumbnail Inspection Rail */}
-            {allImages.length > 1 && (
-              <div className="flex items-center gap-3 overflow-x-auto pb-2">
-                {allImages.map((img, idx) => {
-                  const isActive = activeImage === img;
-                  return (
-                    <button
-                      key={idx}
-                      onClick={() => setActiveImage(img)}
-                      className={`w-20 h-20 rounded-lg bg-[#0D0D0D] border overflow-hidden shrink-0 relative transition-all cursor-pointer ${
-                        isActive
-                          ? 'border-[#E86A2F] ring-1 ring-[#E86A2F]'
-                          : 'border-white/[0.08] opacity-60 hover:opacity-100'
-                      }`}
-                    >
-                      <img src={img} alt="" className="w-full h-full object-contain p-1.5" />
-                      {isActive && <div className="absolute bottom-0 inset-x-0 h-0.5 bg-[#E86A2F]" />}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Factual Description / Collector Notes */}
-            {product.description && (
-              <div className="pt-6 border-t border-white/[0.06] space-y-2">
-                <h4 className="text-xs font-mono uppercase tracking-widest text-[#74716B] font-bold">COLLECTOR NOTES</h4>
-                <p className="text-xs md:text-sm text-[#A9A49C] leading-relaxed font-sans">{product.description}</p>
-              </div>
-            )}
-
-            {/* Technical Data Definition List */}
-            <div className="pt-6 border-t border-white/[0.06] space-y-3 font-mono">
-              <h4 className="text-xs uppercase tracking-widest text-[#74716B] font-bold">TECHNICAL SPECIFICATIONS</h4>
-              <dl className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs bg-[#0D0D0D] border border-white/[0.06] p-4 rounded-xl">
-                <div>
-                  <dt className="text-[10px] text-[#74716B] uppercase">BRAND</dt>
-                  <dd className="font-bold text-[#F4F1EC] mt-0.5">{product.brand || 'Mini GT'}</dd>
-                </div>
-                <div>
-                  <dt className="text-[10px] text-[#74716B] uppercase">SCALE</dt>
-                  <dd className="font-bold text-[#F4F1EC] mt-0.5">{product.scale || '1:64'}</dd>
-                </div>
-                <div>
-                  <dt className="text-[10px] text-[#74716B] uppercase">CASING TYPE</dt>
-                  <dd className="font-bold text-[#F4F1EC] mt-0.5">{currentVariant.casingType || product.casing || 'Box'}</dd>
-                </div>
-                <div>
-                  <dt className="text-[10px] text-[#74716B] uppercase">RELEASE</dt>
-                  <dd className="font-bold text-[#F4F1EC] mt-0.5">{isPrebook ? 'Pre-Order' : 'Standard'}</dd>
-                </div>
-                <div>
-                  <dt className="text-[10px] text-[#74716B] uppercase">SKU</dt>
-                  <dd className="font-bold text-[#F4F1EC] mt-0.5">{product.sku || vaultIndex}</dd>
-                </div>
-                <div>
-                  <dt className="text-[10px] text-[#74716B] uppercase">CONDITION</dt>
-                  <dd className="font-bold text-[#5E9F78] mt-0.5">Mint Sealed</dd>
-                </div>
-              </dl>
-            </div>
-          </div>
-
-          {/* ── RIGHT: 40% STICKY ACQUISITION PANEL ── */}
-          <div className="lg:col-span-5 bg-[#0D0D0D] border border-white/[0.06] rounded-xl p-6 md:p-8 space-y-6 sticky top-24">
-            
-            {/* Identity Header */}
-            <div>
-              <div className="flex items-center justify-between gap-2 mb-2 font-mono text-xs">
-                <span className="text-[#E86A2F] font-bold uppercase tracking-widest">{product.brand || 'Mini GT'}</span>
-                <span className="text-[#74716B]">{vaultIndex}</span>
-              </div>
-              <h1 className="text-xl md:text-2xl font-extrabold text-[#F4F1EC] leading-snug">
-                {product.name}
-              </h1>
-              <div className="flex items-center gap-2 mt-2 font-mono text-xs text-[#74716B]">
-                <span>{product.scale || '1:64'}</span>
-                <span>•</span>
-                <span>{currentVariant.casingType || product.casing || 'Box'}</span>
-                <span>•</span>
-                <span>2026 Edition</span>
-              </div>
-            </div>
-
-            {/* Multiple Casing Variant Selector if present */}
-            {caseVariants.length > 1 && (
-              <div className="space-y-2 pt-2 border-t border-white/[0.06] font-mono">
-                <label className="text-[10px] uppercase tracking-widest text-[#74716B] font-bold block">
-                  Select Packaging Option:
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {caseVariants.map((v, idx) => {
-                    const isSelected = selectedVariantIndex === idx;
-                    return (
-                      <button
-                        key={idx}
-                        onClick={() => setSelectedVariantIndex(idx)}
-                        className={`p-3 rounded-lg border text-left text-xs transition-all cursor-pointer ${
-                          isSelected
-                            ? 'bg-[#E86A2F]/10 border-[#E86A2F] text-[#F4F1EC]'
-                            : 'bg-[#050505] border-white/[0.08] text-[#A9A49C] hover:border-white/[0.16]'
-                        }`}
-                      >
-                        <div className="font-bold uppercase">{v.casingType || v.casing || `Option ${idx+1}`}</div>
-                        <div className="text-[11px] text-[#74716B] font-mono mt-0.5">₹{Number(v.price || 0).toLocaleString('en-IN')}</div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Financial Breakdown Panel */}
-            <div className="p-4 bg-[#050505] border border-white/[0.06] rounded-xl space-y-3 font-mono">
-              {isPrebook ? (
-                <>
-                  <div className="flex justify-between items-center text-xs text-[#A9A49C]">
-                    <span>Pay Today (Pre-Order Deposit):</span>
-                    <strong className="text-base text-[#E86A2F]">₹{depositAmount.toLocaleString('en-IN')}</strong>
-                  </div>
-                  <div className="flex justify-between items-center text-xs text-[#74716B] pt-2 border-t border-white/[0.04]">
-                    <span>Remaining Balance (Due at dispatch):</span>
-                    <span>₹{remainingBalance.toLocaleString('en-IN')}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-xs text-[#F4F1EC] pt-2 border-t border-white/[0.06] font-bold">
-                    <span>Total Item Price:</span>
-                    <span>₹{totalPrice.toLocaleString('en-IN')}</span>
-                  </div>
-                </>
+              {activeImage ? (
+                <img src={activeImage} alt={`${product.brand || ''} ${product.name}`} className="relative z-10 max-h-[450px] max-w-full object-contain drop-shadow-[0_35px_42px_rgba(0,0,0,.72)] sm:max-h-[530px] lg:max-h-[calc(100svh-220px)]" />
               ) : (
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-[#74716B] uppercase font-bold">Total Acquisition Price:</span>
-                  <strong className="text-xl md:text-2xl text-[#F4F1EC]">₹{totalPrice.toLocaleString('en-IN')}</strong>
-                </div>
-              )}
-
-              {product.customerEta && (
-                <div className="text-[10px] text-[#C99652] pt-2 border-t border-white/[0.04] flex items-center justify-between">
-                  <span>Estimated Vault Arrival:</span>
-                  <strong className="font-bold">{product.customerEta}</strong>
-                </div>
+                <div className="relative z-10 text-center text-sm text-[#6E6E73]">Photography coming soon</div>
               )}
             </div>
 
-            {/* Primary Action Buttons */}
-            <div className="space-y-3 pt-2 font-mono">
-              {isSoldOut ? (
-                <button disabled className="w-full py-4 rounded-lg bg-[#56524D]/20 border border-[#56524D]/30 text-[#56524D] text-xs uppercase font-bold tracking-widest cursor-not-allowed">
-                  Archived / Sold Out
-                </button>
-              ) : (
-                <>
-                  <button
-                    onClick={handleAddToCart}
-                    className={`w-full py-4 rounded-lg text-xs uppercase font-black tracking-widest transition-all cursor-pointer flex items-center justify-center gap-2 ${
-                      addedToCart
-                        ? 'bg-[#5E9F78] text-black shadow-lg'
-                        : 'bg-[#E86A2F] hover:bg-[#F2793F] text-black shadow-[0_0_24px_rgba(232,106,47,0.3)]'
-                    }`}
-                  >
-                    {addedToCart ? (
-                      <>
-                        <Check size={16} /> Added to Acquisition Queue
-                      </>
-                    ) : (
-                      <>
-                        <ShoppingBag size={16} /> {isPrebook ? 'Secure Pre-Order' : 'Begin Acquisition'}
-                      </>
-                    )}
+            {images.length > 1 && (
+              <div className="mt-4 flex gap-3 overflow-x-auto pb-2 lg:absolute lg:left-5 lg:top-1/2 lg:z-30 lg:mt-0 lg:max-h-[calc(100%-40px)] lg:-translate-y-1/2 lg:flex-col lg:overflow-y-auto lg:rounded-2xl lg:bg-black/45 lg:p-2 lg:backdrop-blur-md">
+                {images.map((image, index) => (
+                  <button key={image} onClick={() => setActiveImage(image)} className={`h-20 w-20 shrink-0 overflow-hidden rounded-2xl border bg-[#101010] p-1.5 transition lg:h-16 lg:w-16 ${activeImage === image ? 'border-[#E1BD65]' : 'border-white/[0.08] opacity-60 hover:opacity-100'}`} aria-label={`View image ${index + 1}`}>
+                    <img src={image} alt="" className="h-full w-full object-contain" />
                   </button>
+                ))}
+              </div>
+            )}
+          </motion.div>
 
-                  <button
-                    onClick={handleWhatsAppInquiry}
-                    className="w-full py-3.5 rounded-lg bg-[#050505] hover:bg-white/[0.04] border border-white/[0.08] text-xs font-bold text-[#A9A49C] hover:text-[#F4F1EC] transition-all cursor-pointer flex items-center justify-center gap-2"
-                  >
-                    <MessageSquare size={14} className="text-[#5E9F78]" />
-                    <span>Inquire via WhatsApp Collector Desk</span>
-                  </button>
-                </>
-              )}
+          <motion.aside initial={reduceMotion ? false : { opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.65, delay: 0.08 }} className="self-start lg:col-span-5 lg:self-center">
+            <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#D8BC78]">{product.brand || 'GarageKings'}</div>
+            <h1 className="mt-3 text-4xl font-semibold leading-[0.96] tracking-[-0.045em] text-white sm:text-5xl lg:text-5xl">{product.name}</h1>
+
+            <div className="mt-5 flex flex-wrap gap-2 text-[10px] font-semibold text-[#A1A1A6]">
+              <span className="rounded-full border border-white/[0.1] px-3 py-1.5">{product.scale || 'Scale not specified'}</span>
+              <span className="rounded-full border border-white/[0.1] px-3 py-1.5">{variant.casingType || product.casing || 'Packaging not specified'}</span>
             </div>
 
-            {/* Trust Accordions */}
-            <div className="pt-6 border-t border-white/[0.06] space-y-2 text-xs">
-              <div className="flex items-center gap-2 text-[#A9A49C]">
-                <ShieldCheck size={14} className="text-[#5E9F78]" />
-                <span>100% Genuine Authenticity Guaranteed</span>
-              </div>
-              <div className="flex items-center gap-2 text-[#A9A49C]">
-                <Package size={14} className="text-[#C8AE7D]" />
-                <span>5-Ply Heavy Armor Packaging Protection</span>
-              </div>
-            </div>
-          </div>
-
-        </div>
-
-        {/* ── Related Collection Entries ── */}
-        {bestSellers.length > 0 && (
-          <section className="mt-20 pt-12 border-t border-white/[0.06] space-y-8">
-            <div className="flex justify-between items-end">
-              <div>
-                <div className="text-[10px] font-mono uppercase tracking-widest text-[#E86A2F] mb-1">RELATED RELEASES</div>
-                <h3 className="text-xl md:text-2xl font-bold text-[#F4F1EC]">Complete the Collection</h3>
-              </div>
-              <Link to="/marketplace" className="text-xs font-mono text-[#C8AE7D] hover:text-white uppercase font-bold">
-                View All Vault →
-              </Link>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {bestSellers.map(car => (
-                <VaultModuleCard key={car.id} car={car} onClick={() => navigate(`/product/${car.id}`)} />
+            <div className="mt-5 grid grid-cols-2 gap-x-6 gap-y-0 border-y border-white/[0.08] py-2">
+              {facts.map(([label, value]) => (
+                <div key={label} className="flex min-w-0 items-center justify-between gap-3 border-b border-white/[0.055] py-2.5 [&:nth-last-child(-n+2)]:border-b-0">
+                  <div className="text-[8px] font-bold uppercase tracking-[0.13em] text-[#68655F]">{label}</div>
+                  <div className="truncate text-[10px] font-semibold text-[#C9C6C0]" title={String(value)}>{value}</div>
+                </div>
               ))}
             </div>
+
+            {variants.length > 1 && (
+              <div className="mt-5">
+                <div className="mb-3 text-[10px] font-bold uppercase tracking-[0.16em] text-[#86868B]">Choose packaging</div>
+                <div className="grid grid-cols-2 gap-2">
+                  {variants.map((option, index) => (
+                    <button key={index} onClick={() => setSelectedVariantIndex(index)} className={`rounded-2xl border p-3 text-left transition ${selectedVariantIndex === index ? 'border-white bg-white text-black' : 'border-white/[0.1] bg-[#0A0A0A] text-[#D2D2D7] hover:border-white/25'}`}>
+                      <span className="flex items-center justify-between text-xs font-semibold">{option.casingType || option.casing || `Option ${index + 1}`}{selectedVariantIndex === index && <Check size={14} />}</span>
+                      <span className={`mt-1 block font-mono text-[10px] ${selectedVariantIndex === index ? 'text-black/60' : 'text-[#86868B]'}`}>{money(option.price)}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="mt-5 border-y border-white/[0.09] py-4">
+              {preOrder && deposit > 0 ? (
+                <div>
+                  <div className="flex items-end justify-between gap-4"><span className="text-sm text-[#A1A1A6]">Deposit shown</span><strong className="text-3xl font-semibold text-white">{money(deposit)}</strong></div>
+                  <div className="mt-3 flex justify-between text-xs text-[#86868B]"><span>Remaining amount shown</span><span>{money(balance)}</span></div>
+                  <div className="mt-2 flex justify-between text-xs text-[#86868B]"><span>Total shown</span><span>{money(total)}</span></div>
+                </div>
+              ) : (
+                <div className="flex items-end justify-between gap-4"><span className="text-sm text-[#A1A1A6]">Listed price</span><strong className="text-3xl font-semibold text-white">{money(total)}</strong></div>
+              )}
+              <p className="mt-3 text-[10px] leading-relaxed text-[#6E6E73]">Contact us to confirm current availability, price and delivery or collection details.</p>
+            </div>
+
+            <div className="mt-4">
+              <div className="mb-3">
+                <div className="text-sm font-semibold text-[#F5F5F7]">Interested in this model?</div>
+                <p className="mt-1 text-[11px] leading-relaxed text-[#6E6E73]">Choose how you would like to contact GarageKings.</p>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+              {soldOut ? (
+                <div className="col-span-full rounded-full border border-white/[0.1] py-3.5 text-center text-xs font-semibold text-[#86868B]">Enquiries closed</div>
+              ) : (
+                <>
+                  <button onClick={enquire} className="flex items-center justify-center gap-2 rounded-full border border-white/[0.11] bg-white/[0.045] px-5 py-3 text-xs font-semibold text-[#E8E8ED] transition hover:bg-white hover:text-black"><SiWhatsapp size={18} className="text-[#25D366]" /> WhatsApp</button>
+                  <a href={CONTACT.instagramUrl} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 rounded-full border border-white/[0.11] bg-white/[0.045] px-5 py-3 text-xs font-semibold text-[#E8E8ED] transition hover:bg-white hover:text-black"><SiInstagram size={17} className="text-[#E1306C]" /> Instagram</a>
+                </>
+              )}
+              </div>
+            </div>
+
+            <p className="mt-2 px-2 text-center text-[9px] leading-relaxed text-[#5F5D58]">Availability and arrangements are confirmed directly.</p>
+          </motion.aside>
+        </section>
+
+        {product.description && product.description.trim().toLowerCase() !== product.name?.trim().toLowerCase() && (
+          <section className="mx-auto max-w-4xl px-6 py-14 text-left md:py-18">
+            <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#D8BC78]">About this model</div>
+            <p className="mt-5 max-w-3xl text-lg leading-relaxed tracking-[-0.015em] text-[#B8B5AF] md:text-xl">{product.description}</p>
+          </section>
+        )}
+
+        {related.length > 0 && (
+          <section className="mx-auto max-w-[1440px] border-t border-white/[0.08] px-4 py-16 sm:px-6 lg:px-12 lg:py-24">
+            <div className="mb-9 flex items-end justify-between">
+              <div><span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#D8BC78]">You may also like</span><h2 className="mt-2 text-3xl font-semibold tracking-tight">More from the collection</h2></div>
+              <Link to="/marketplace" className="hidden items-center gap-2 text-xs font-semibold text-[#A1A1A6] hover:text-white sm:flex">View all <ArrowRight size={15} /></Link>
+            </div>
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">{related.map((car) => <VaultModuleCard key={car.id} car={car} onClick={() => navigate(`/product/${car.id}`)} />)}</div>
           </section>
         )}
       </main>

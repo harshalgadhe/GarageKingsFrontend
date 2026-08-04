@@ -5,7 +5,7 @@ import { Analytics } from '@vercel/analytics/react'
 import { SmoothScrollProvider } from './providers/SmoothScroll'
 import { LoadingProvider } from './providers/LoadingProvider'
 
-// Lazy-loaded page routes — allows the initial JS bundle to be smaller
+// Lazy-loaded page routes keep the initial JS bundle smaller
 // and defers parsing of heavy admin/account/product pages until needed.
 // Frequently-visited routes (Home, Marketplace) are imported first so
 // the bundler places them in higher-priority chunks.
@@ -13,7 +13,6 @@ const Home       = lazy(() => import('./pages/Home'))
 const Marketplace = lazy(() => import('./pages/Marketplace'))
 const ProductDetail = lazy(() => import('./pages/ProductDetail'))
 const Cart       = lazy(() => import('./pages/Cart'))
-const Checkout   = lazy(() => import('./pages/Checkout'))
 const Account    = lazy(() => import('./pages/Account'))
 const Admin      = lazy(() => import('./pages/Admin'))
 const Help       = lazy(() => import('./pages/Help'))
@@ -37,7 +36,7 @@ function PageFallback() {
         justifyContent: 'center',
       }}
     >
-      {/* Minimal branded indicator — same spinner style as the rest of the app */}
+      {/* Minimal branded indicator using the same spinner style as the rest of the app */}
       <div style={{ position: 'relative', width: 48, height: 48 }}>
         <div style={{
           position: 'absolute', inset: 0,
@@ -47,7 +46,7 @@ function PageFallback() {
           animation: 'spin 1.2s linear infinite',
         }} />
       </div>
-      {/* Inline keyframe — avoids dependency on the CSS bundle being loaded */}
+      {/* Inline keyframe avoids dependency on the CSS bundle being loaded */}
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
@@ -69,7 +68,7 @@ export default function App() {
               <Route path="/policies"    element={<Policies />} />
               <Route path="/product/:id" element={<ProductDetail />} />
               <Route path="/cart"        element={<Navigate to="/marketplace" replace />} />
-              <Route path="/checkout"    element={<Checkout />} />
+              <Route path="/checkout"    element={<Navigate to="/marketplace" replace />} />
               <Route path="*"            element={<NotFound />} />
             </Routes>
           </Suspense>

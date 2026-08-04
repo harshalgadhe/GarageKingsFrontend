@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { MessageSquare, X, ArrowUpRight, HelpCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import { SiInstagram, SiWhatsapp } from 'react-icons/si';
 
 export default function FloatingSupport() {
   const [isOpen, setIsOpen] = useState(false);
@@ -26,7 +27,7 @@ export default function FloatingSupport() {
   if (shouldHide) return null;
 
   return (
-    <div className="fixed bottom-20 md:bottom-6 right-6 z-[150] font-sans text-left">
+    <div className="fixed bottom-20 right-6 z-[150] hidden font-sans text-left md:block md:bottom-6">
       <AnimatePresence>
         {isOpen && (
           <>
@@ -66,7 +67,7 @@ export default function FloatingSupport() {
                   className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs font-bold text-zinc-300 hover:text-white bg-white/[0.02] hover:bg-emerald-500/10 border border-white/5 hover:border-emerald-500/20 transition-all group"
                 >
                   <span className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    <SiWhatsapp size={14} className="text-[#25D366]" />
                     WhatsApp Community
                   </span>
                   <ArrowUpRight size={12} className="opacity-40 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
@@ -79,7 +80,7 @@ export default function FloatingSupport() {
                   className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs font-bold text-zinc-300 hover:text-white bg-white/[0.02] hover:bg-gk-orange/10 border border-white/5 hover:border-gk-orange/20 transition-all group"
                 >
                   <span className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-gk-orange" />
+                    <SiInstagram size={14} className="text-[#E1306C]" />
                     Instagram DM
                   </span>
                   <ArrowUpRight size={12} className="opacity-40 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />

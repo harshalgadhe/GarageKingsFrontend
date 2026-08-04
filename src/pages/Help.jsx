@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ArrowUpRight, Check, ShoppingBag, CreditCard, RefreshCw, AlertCircle, FileText, Compass } from 'lucide-react';
+import { SiInstagram, SiWhatsapp } from 'react-icons/si';
 import Navigation from '../components/Navigation';
 import Footer from '../components/Footer';
 
@@ -264,8 +265,8 @@ export default function Help() {
               rel="noopener noreferrer"
               className="w-full sm:w-auto flex items-center justify-center gap-2 py-3 px-6 rounded-xl bg-gk-orange hover:bg-gk-orange/90 text-white text-xs font-black uppercase tracking-widest transition-all cursor-pointer shadow-lg shadow-gk-orange/10"
             >
+              <SiInstagram size={16} />
               Instagram DM
-              <ArrowUpRight size={13} className="text-white/80" />
             </a>
 
             <a
@@ -274,8 +275,8 @@ export default function Help() {
               rel="noopener noreferrer"
               className="w-full sm:w-auto flex items-center justify-center gap-2 py-3 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black uppercase tracking-widest transition-all cursor-pointer shadow-lg shadow-emerald-600/10"
             >
+              <SiWhatsapp size={17} />
               WhatsApp Community
-              <ArrowUpRight size={13} className="text-white/80" />
             </a>
           </div>
         </div>

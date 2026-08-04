@@ -7,7 +7,7 @@ import { readCart, writeCart, notifyCartUpdated } from '../lib/cart'
 
 export default function Cart() {
   const navigate = useNavigate()
-  // Cart is user-scoped — readCart() returns [] when unauthenticated
+  // Cart is user-scoped. readCart() returns [] when unauthenticated
   const [cartItems, setCartItems] = useState(() => readCart())
 
   // Keep cart in sync with updates from other components
@@ -98,10 +98,10 @@ export default function Cart() {
                     {/* Image */}
                     <div className="w-18 h-18 rounded-xl overflow-hidden bg-black/25 flex-shrink-0 border border-white/5 relative">
                       <img 
-                        src={item.image || '/brand-logo.png'} 
+                        src={item.image || '/brand-mark.webp'}
                         alt={item.name} 
                         onError={(e) => {
-                          e.target.src = '/brand-logo.png';
+                          e.target.src = '/brand-mark.webp';
                           e.target.className = "w-full h-full object-contain p-3 bg-zinc-950/80 pointer-events-none select-none";
                         }}
                         className={item.image ? "w-full h-full object-cover pointer-events-none select-none" : "w-full h-full object-contain p-3 bg-zinc-950/80 pointer-events-none select-none"}

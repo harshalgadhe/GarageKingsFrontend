@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Package, RotateCcw, ChevronDown } from 'lucide-react';
+import { ShieldCheck, Package, MessageCircle, ChevronDown } from 'lucide-react';
 
 /**
- * CollectorStandardTrust — Full-width Archival Trust Section & Policy Accordion
+ * CollectorStandardTrust: Full-width archival trust section and policy accordion
  * 
  * Replaces generic 4-tile icon boxes with plain-language, operationally accurate collector guarantees.
  */
@@ -12,24 +12,24 @@ export default function CollectorStandardTrust() {
   const pillars = [
     {
       id: 'authenticity',
-      title: 'Direct Sourcing & Verified Authenticity',
+      title: 'Collector-Led Cataloguing',
       icon: ShieldCheck,
-      summary: '100% genuine diecast collectibles sourced directly from authorized brand distributors.',
-      details: 'Every item entering the GarageKings Vault undergoes physical inspection. We verify manufacturer security holograms, casting details, and packaging integrity before listing. No counterfeit or unauthorized reproductions are ever cataloged.'
+      summary: 'Useful model, edition and condition information presented before you enquire.',
+      details: 'We catalogue each model using the information and images available to us. If a specific detail matters to your decision, ask the Collector Desk and we will confirm what we can before you proceed.'
     },
     {
       id: 'packaging',
-      title: 'Collector-Grade Packaging Protection',
+      title: 'Condition & Handover Clarity',
       icon: Package,
-      summary: 'Double-walled heavy armor boxes with custom bubble cushioning for blister card & box preservation.',
-      details: 'We understand that mint packaging is essential for collector value. Every order is dispatched inside a 5-ply cardboard box with multi-layer bubble wrap to protect blister cards from soft corners and box sleeves from crushing during transit.'
+      summary: 'Ask about card, box and model condition before arranging delivery or collection.',
+      details: 'Packaging and handover arrangements can vary by model and destination. The Collector Desk can share available condition details and discuss the intended delivery or collection method before anything is confirmed.'
     },
     {
       id: 'preorder',
-      title: 'Pre-Order Transparency & Price Guarantee',
-      icon: RotateCcw,
-      summary: 'Clear deposit structure with locked final prices. No surprise price hikes when stock arrives.',
-      details: 'When you place a Pre-Order deposit on GarageKings, your total purchase price is locked. The remaining balance is due only when stock lands at our vault. If an item cannot be fulfilled from our end, a 100% full refund is immediately issued.'
+      title: 'Pre-Order Enquiry Clarity',
+      icon: MessageCircle,
+      summary: 'Indicative pricing and availability are discussed directly with the Collector Desk.',
+      details: 'GarageKings does not accept checkout on this website. For an incoming model, contact us on WhatsApp or Instagram to confirm current availability, pricing, payment stages and the terms that apply before making any commitment.'
     }
   ];
 
@@ -38,15 +38,15 @@ export default function CollectorStandardTrust() {
       <div className="max-w-6xl mx-auto px-6">
         {/* Section Header */}
         <div className="max-w-2xl mb-12">
-          <div className="text-[10px] font-mono uppercase tracking-widest text-[#E86A2F] mb-2 flex items-center gap-2">
-            <span className="w-2 h-0.5 bg-[#E86A2F]" />
+          <div className="text-[10px] font-mono uppercase tracking-widest text-[#C8AE7D] mb-2 flex items-center gap-2">
+            <span className="w-2 h-0.5 bg-[#C8AE7D]" />
             THE GARAGEKINGS PROMISE
           </div>
           <h2 className="text-2xl md:text-4xl font-extrabold text-[#F4F1EC] tracking-tight">
             The Collector Standard.
           </h2>
           <p className="text-sm md:text-base text-[#A9A49C] mt-3 leading-relaxed">
-            Built by collectors, for collectors. Clear terms, pristine packaging, and absolute authenticity across every vault acquisition.
+            Built by collectors, for collectors. Clear information, direct conversation and no anonymous checkout flow.
           </p>
         </div>
 

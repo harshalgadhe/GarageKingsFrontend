@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { ImageOff } from 'lucide-react';
 
 /**
- * VaultModuleCard — Signature GarageKings Collector Display Card
+ * VaultModuleCard: Signature GarageKings collector display card
  * 
  * Replaces generic dark ecommerce cards with an archival vault entry module:
  * - Internal Archive Reference (Vault Index)
@@ -11,7 +12,9 @@ import React from 'react';
  * - Complete touch & keyboard parity (composite focus ring)
  */
 export default function VaultModuleCard({ car, onClick, isPreview = false }) {
+  const [imageFailed, setImageFailed] = useState(false);
   if (!car) return null;
+  const hasImage = Boolean(car.image) && !imageFailed;
 
   // Determine stock availability state
   const isSoldOut = car.isSoldOut !== undefined
@@ -40,6 +43,11 @@ export default function VaultModuleCard({ car, onClick, isPreview = false }) {
   return (
     <article
       onClick={onClick}
+      onPointerMove={(event) => {
+        const bounds = event.currentTarget.getBoundingClientRect();
+        event.currentTarget.style.setProperty('--pointer-x', `${event.clientX - bounds.left}px`);
+        event.currentTarget.style.setProperty('--pointer-y', `${event.clientY - bounds.top}px`);
+      }}
       tabIndex={0}
       role="region"
       aria-label={`Vault entry: ${car.name || 'Collectible'}`}
@@ -49,8 +57,8 @@ export default function VaultModuleCard({ car, onClick, isPreview = false }) {
           onClick();
         }
       }}
-      className={`group relative flex flex-col rounded-xl bg-[#0D0D0D] border border-white/[0.06] overflow-hidden transition-all duration-300 gk-focus-ring ${
-        isPreview ? 'w-full shadow-lg' : 'hover:border-[#E86A2F]/40 hover:bg-[#121212] hover:-translate-y-1 hover:shadow-[0_16px_36px_rgba(0,0,0,0.8)] cursor-pointer h-full min-h-[440px]'
+      className={`gk-vault-card group relative flex flex-col rounded-xl bg-[#0D0D0D] border border-white/[0.06] overflow-hidden transition-[transform,border-color,box-shadow,background-color] duration-300 gk-focus-ring ${
+        isPreview ? 'w-full shadow-lg' : 'hover:border-white/[0.18] hover:bg-[#141414] hover:-translate-y-1.5 hover:shadow-[0_24px_60px_rgba(0,0,0,0.82)] cursor-pointer h-full min-h-[440px]'
       }`}
     >
       {/* ── 1. ARCHIVE / VAULT INDEX HEADER BAR ── */}
@@ -81,23 +89,35 @@ export default function VaultModuleCard({ car, onClick, isPreview = false }) {
       </div>
 
       {/* ── 2. ARTIFACT STAGE (Controlled Radial Spotlight & Museum Presentation) ── */}
-      <div className="h-52 w-full bg-[#080808] artifact-stage-light relative overflow-hidden flex items-center justify-center p-4 border-b border-white/[0.04]">
+      <div className="relative flex h-72 w-full items-center justify-center overflow-hidden border-b border-white/[0.04] bg-[#080808] p-3 sm:h-60 sm:p-5">
+        {hasImage && (
+          <>
+            <img src={car.image} alt="" aria-hidden="true" className="absolute -inset-6 h-[calc(100%+3rem)] w-[calc(100%+3rem)] scale-110 object-cover opacity-20 blur-2xl saturate-75" />
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,.18),rgba(5,5,5,.7)),radial-gradient(circle_at_50%_42%,rgba(255,255,255,.12),transparent_52%)]" />
+          </>
+        )}
         {/* Soft Pedestal Shadow under the model */}
         <div className="absolute bottom-3 inset-x-12 h-4 rounded-full bg-black/80 blur-md pointer-events-none" />
 
-        <img
-          src={car.image || '/brand-logo.png'}
-          alt={`${car.brand || ''} ${car.name || 'Diecast model'}`}
-          loading="lazy"
-          onLoad={(e) => { e.target.style.opacity = '1'; }}
-          onError={(e) => {
-            e.target.src = '/brand-logo.png';
-            e.target.style.opacity = '0.7';
-            e.target.className = "max-h-full max-w-full object-contain p-6 grayscale transition-all duration-500 pointer-events-none select-none";
-          }}
-          className="max-h-full max-w-full object-contain group-hover:scale-[1.025] transition-transform duration-500 ease-out pointer-events-none select-none relative z-10"
-          style={{ WebkitUserDrag: 'none', opacity: car.image ? 1 : 0.8 }}
-        />
+        {hasImage ? (
+          <img
+            src={car.image}
+            alt={`${car.brand || ''} ${car.name || 'Diecast model'}`}
+            loading="lazy"
+            onError={() => setImageFailed(true)}
+            className="pointer-events-none relative z-10 h-full w-full select-none object-contain drop-shadow-[0_22px_30px_rgba(0,0,0,.72)] transition-transform duration-700 ease-[cubic-bezier(.16,1,.3,1)] group-hover:-translate-y-1 group-hover:scale-[1.035]"
+            style={{ WebkitUserDrag: 'none' }}
+          />
+        ) : (
+          <div className="relative z-10 flex flex-col items-center text-center">
+            <div className="relative grid h-16 w-16 place-items-center rounded-full border border-white/[0.08] bg-white/[0.025] text-[#77736B]">
+              <ImageOff size={20} strokeWidth={1.35} />
+              <span className="absolute inset-2 rounded-full border border-[#C8AE7D]/[0.08]" />
+            </div>
+            <span className="mt-4 text-[9px] font-bold uppercase tracking-[0.2em] text-[#8B867E]">Photography pending</span>
+            <span className="mt-1 max-w-[22ch] text-[10px] leading-relaxed text-[#55514C]">Model details are available while images are being prepared.</span>
+          </div>
+        )}
 
         {/* Grade / Lane Accent Badge */}
         {car.tag && !['standard', 'standard edition', 'none', ''].includes(String(car.tag).trim().toLowerCase()) && (
@@ -112,7 +132,7 @@ export default function VaultModuleCard({ car, onClick, isPreview = false }) {
         <div>
           {/* Brand + Metadata Line */}
           <div className="flex items-center justify-between gap-2 mb-1.5">
-            <span className="text-[10px] font-black uppercase tracking-widest text-[#E86A2F]">
+            <span className="text-[10px] font-black uppercase tracking-widest text-[#C8AE7D]">
               {car.brand || 'Mini GT'}
             </span>
             <div className="flex items-center gap-1.5">
@@ -128,7 +148,7 @@ export default function VaultModuleCard({ car, onClick, isPreview = false }) {
           </div>
 
           {/* Title Line */}
-          <h3 className="text-sm font-bold text-[#F4F1EC] leading-snug group-hover:text-[#E86A2F] transition-colors line-clamp-2 mb-1.5">
+          <h3 className="text-sm font-bold text-[#F4F1EC] leading-snug group-hover:text-[#D8C49A] transition-colors line-clamp-2 mb-1.5">
             {car.name || 'Collectible Title'}
           </h3>
 
@@ -164,7 +184,7 @@ export default function VaultModuleCard({ car, onClick, isPreview = false }) {
         <div className="pt-3 border-t border-white/[0.06] flex items-end justify-between gap-2">
           <div>
             <div className="text-[8px] font-bold uppercase tracking-widest text-[#74716B] mb-0.5">
-              {isPrebook ? (poDeposit ? 'PO Deposit' : 'Pre-Booking') : 'Acquisition Price'}
+              {isPrebook ? (poDeposit ? 'Pre-order reference' : 'Incoming release') : 'Listed at'}
             </div>
 
             {displayPrice ? (
@@ -181,8 +201,8 @@ export default function VaultModuleCard({ car, onClick, isPreview = false }) {
             )}
           </div>
 
-          <div className="px-3 py-1.5 rounded-lg bg-white/[0.04] group-hover:bg-[#E86A2F] border border-white/[0.08] group-hover:border-[#E86A2F] text-[#F4F1EC] text-[10px] font-extrabold tracking-wider uppercase transition-all duration-200 shrink-0 flex items-center gap-1">
-            <span>Inspect</span>
+          <div className="px-3 py-1.5 rounded-full bg-white/[0.04] group-hover:bg-white border border-white/[0.08] group-hover:border-white text-[#F4F1EC] group-hover:text-black text-[10px] font-extrabold tracking-wider uppercase transition-all duration-200 shrink-0 flex items-center gap-1">
+            <span>View details</span>
             <span className="text-xs">→</span>
           </div>
         </div>
