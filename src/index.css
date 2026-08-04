@@ -123,6 +123,23 @@ h1, h2, h3, h4, h5, h6 {
   background-image: radial-gradient(circle at 50% 38%, rgba(255, 255, 255, 0.075) 0%, rgba(255, 255, 255, 0.025) 28%, transparent 64%);
 }
 
+/* Admin console palette bridge for legacy operational modules */
+.gk-admin-shell [class*="text-[#ff5500]"] {
+  color: #d8bc78 !important;
+}
+
+.gk-admin-shell [class*="border-[#ff5500]"] {
+  border-color: rgba(200, 174, 125, 0.32) !important;
+}
+
+.gk-admin-shell [class*="bg-[#ff5500]"] {
+  background-color: rgba(200, 174, 125, 0.12) !important;
+}
+
+.gk-admin-shell [class*="accent-[#ff5500]"] {
+  accent-color: #c8ae7d !important;
+}
+
 .gk-vault-card::before {
   content: '';
   position: absolute;

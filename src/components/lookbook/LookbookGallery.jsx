@@ -106,7 +106,7 @@ const LookbookGallery = forwardRef(function LookbookGallery(props, ref) {
 
             <div className={`${featured ? 'lg:col-span-5' : 'lg:col-span-12'} overflow-hidden rounded-[28px] border border-white/[0.09] bg-[linear-gradient(155deg,rgba(19,18,16,.96),rgba(9,9,9,.98)_48%)] shadow-[0_28px_80px_rgba(0,0,0,.36)]`}>
               <div className="flex items-center justify-between border-b border-white/[0.07] px-5 py-4 sm:px-6">
-                <h3 className="text-sm font-semibold text-[#F4F1EC]">Recently added</h3>
+                <h3 className="text-sm font-medium text-[#F4F1EC]">Recently added</h3>
                 <span className="text-[10px] text-[#77736D]">{models.length} models</span>
               </div>
 
@@ -125,11 +125,11 @@ const LookbookGallery = forwardRef(function LookbookGallery(props, ref) {
                     <span className="font-mono text-[10px] text-[#5E5A54]">{String(index + 1).padStart(2, '0')}</span>
                     <span className="min-w-0">
                       <span className="block text-[9px] font-bold uppercase tracking-[0.15em] text-[#D8BC78]">{model.brand || 'GarageKings'} · {model.scale || '1:64'}</span>
-                      <span className="mt-1 block truncate text-sm font-semibold text-[#E8E4DD] transition group-hover:text-white">{model.name}</span>
+                      <span className="mt-1 block truncate text-sm font-normal leading-snug text-[#DDD9D2] transition group-hover:text-white">{model.name}</span>
                     </span>
                     <span className="flex items-center gap-3 pl-2">
                       {!model.image && <ImageOff size={13} className="hidden text-[#55514B] sm:block" aria-label="Photography coming soon" />}
-                      <span className="font-mono text-xs text-[#D7C189]">{model.priceLabel}</span>
+                      <span className="font-mono text-[11px] font-normal text-[#CBB983]">{model.priceLabel}</span>
                       <ArrowRight size={14} className="hidden text-[#6F6A63] transition group-hover:translate-x-1 group-hover:text-white sm:block" />
                     </span>
                   </motion.button>

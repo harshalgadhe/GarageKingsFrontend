@@ -38,7 +38,7 @@ export default function AdminCatalogTab({
         <button
           onClick={() => setCatalogSubTab('products')}
           className={`pb-2 text-xs font-black uppercase tracking-wider transition-colors cursor-pointer border-b-2 ${
-            catalogSubTab === 'products' ? 'border-[#ff5500] text-white' : 'border-transparent text-zinc-500 hover:text-white'
+            catalogSubTab === 'products' ? 'border-[#C8AE7D] text-[#F4F1EC]' : 'border-transparent text-[#77736D] hover:text-white'
           }`}
         >
           Products Catalog
@@ -46,7 +46,7 @@ export default function AdminCatalogTab({
         <button
           onClick={() => setCatalogSubTab('lookups')}
           className={`pb-2 text-xs font-black uppercase tracking-wider transition-colors cursor-pointer border-b-2 ${
-            catalogSubTab === 'lookups' ? 'border-[#ff5500] text-white' : 'border-transparent text-zinc-500 hover:text-white'
+            catalogSubTab === 'lookups' ? 'border-[#C8AE7D] text-[#F4F1EC]' : 'border-transparent text-[#77736D] hover:text-white'
           }`}
         >
           Lookup Settings
@@ -57,7 +57,7 @@ export default function AdminCatalogTab({
         <div className="space-y-6">
           {/* Search Bar & Actions */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-2 bg-[#141414] border border-white/5 rounded-xl px-3.5 py-2.5 w-full max-w-md">
+            <div className="flex w-full max-w-md items-center gap-2 rounded-xl border border-white/[0.09] bg-[#080808] px-3.5 py-2.5 focus-within:border-[#C8AE7D]/40">
               <Search size={14} className="text-zinc-500" />
               <input
                 type="text"
@@ -74,17 +74,17 @@ export default function AdminCatalogTab({
                 if (typeof setEditingProductData === 'function') setEditingProductData(null);
                 setIsAddingProduct(true);
               }}
-              className="bg-[#ff5500]/10 hover:bg-[#ff5500]/20 text-[#ff5500] border border-[#ff5500]/30 font-extrabold text-[10px] px-4 py-2.5 rounded-xl uppercase tracking-wider flex items-center gap-1.5 shadow-[0_2px_10px_rgba(255,85,0,0.15)] cursor-pointer transition-all shrink-0"
+              className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-[#C8AE7D]/25 bg-[#C8AE7D]/[0.09] px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-[#E1BD65] transition hover:bg-[#C8AE7D]/[0.16]"
             >
               <Plus size={14} /> Add Casting
             </button>
           </div>
 
           {/* Table list */}
-          <div className="overflow-x-auto border border-white/5 rounded-2xl">
+          <div className="overflow-x-auto rounded-2xl border border-white/[0.08] bg-[#080808]/70">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-[#141414] border-b border-white/5 text-[#888888] uppercase tracking-widest text-[9px]">
+                <tr className="border-b border-white/[0.07] bg-[#11110F] text-[9px] uppercase tracking-widest text-[#77736D]">
                   <th className="p-4 font-bold">Casting</th>
                   <th className="p-4 font-bold">SKU</th>
                   <th className="p-4 font-bold">Type</th>
@@ -111,7 +111,7 @@ export default function AdminCatalogTab({
                       <td className="p-4">
                         {isPoItem ? (
                           <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-[#ff5500]/15 text-[#ff5500] border border-[#ff5500]/30 shadow-[0_0_10px_rgba(225,6,0,0.15)] animate-pulse">
-                            PO (Pre-Order)
+                            Pre-booking
                           </span>
                         ) : (
                           <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-green-500/15 text-green-400 border border-green-500/30">
@@ -137,7 +137,7 @@ export default function AdminCatalogTab({
                             onClick={() => handleEditProduct(car)} 
                             disabled={loadingProductId !== null || isArchivingProductId !== null}
                             title="Edit Casting"
-                            className="text-white hover:text-[#ff5500] p-1.5 rounded bg-white/5 hover:bg-white/10 transition-colors border border-white/5 cursor-pointer inline-flex disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="inline-flex cursor-pointer rounded-lg border border-white/[0.07] bg-white/[0.035] p-2 text-[#A9A49C] transition hover:border-[#C8AE7D]/25 hover:bg-[#C8AE7D]/[0.08] hover:text-[#E1BD65] disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             {loadingProductId === car.id ? <RefreshCw className="animate-spin" size={12} /> : <Edit2 size={12} />}
                           </button>

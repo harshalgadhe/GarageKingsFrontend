@@ -1918,10 +1918,10 @@ export default function Admin() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#090909] text-white flex justify-center items-center font-sans">
+      <div className="flex min-h-screen items-center justify-center bg-[#050505] font-sans text-[#F4F1EC]">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 rounded-full border-4 border-[#ff5500]/20 border-t-[#ff5500] animate-spin" />
-          <div className="text-xs uppercase tracking-widest text-[#ff5500] font-black animate-pulse">Launching Admin Console...</div>
+          <img src="/brand-mark.webp" alt="" className="h-12 w-12 object-contain opacity-80" />
+          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#C8AE7D] animate-pulse">Opening operations</div>
         </div>
       </div>
     );
@@ -1945,11 +1945,11 @@ export default function Admin() {
   }
 
   return (
-    <div className="min-h-screen bg-[#090909] text-white font-sans flex flex-col selection:bg-[#ff5500] selection:text-black">
+    <div className="gk-admin-shell flex min-h-screen flex-col bg-[#050505] font-sans text-[#F4F1EC] selection:bg-[#C8AE7D] selection:text-black">
       <Navigation activeSection="garage" />
 
       {/* Main Container Layout */}
-      <div className="flex-1 flex flex-col lg:flex-row max-w-[1600px] w-full mx-auto px-4 md:px-8 py-24 gap-6">
+      <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-5 px-4 pb-10 pt-20 md:px-8 lg:flex-row lg:pt-24">
         
         {/* Left Side Dashboard Nav */}
         <AdminSidebar
@@ -1962,15 +1962,15 @@ export default function Admin() {
         />
 
         {/* Right Side Content Panel */}
-        <main className="flex-1 min-w-0 bg-[#111111]/40 border border-white/5 rounded-3xl p-6 md:p-8 backdrop-blur-xl relative">
+        <main className="relative min-w-0 flex-1 rounded-[28px] border border-white/[0.08] bg-[linear-gradient(145deg,rgba(17,17,16,.92),rgba(8,8,8,.96))] p-5 shadow-[0_30px_90px_rgba(0,0,0,.38)] md:p-8">
           
           {/* Header */}
-          <div className="flex items-center justify-between mb-8 pb-6 border-b border-white/5">
+          <div className="mb-8 flex items-end justify-between border-b border-white/[0.07] pb-6">
             <div>
-              <p className="text-[10px] font-bold text-[#ff5500] uppercase tracking-widest">
-                Admin Console
+              <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#C8AE7D]">
+                GarageKings operations
               </p>
-              <h1 className="text-2xl font-black uppercase tracking-wide text-white mt-1">
+              <h1 className="mt-2 text-3xl font-semibold capitalize tracking-[-0.035em] text-[#F4F1EC]">
                 {adminTab.replace('_', ' ')}
               </h1>
             </div>

@@ -21,7 +21,7 @@ export default function AdminSidebar({
 }) {
 
   return (
-    <aside className={`flex-shrink-0 flex flex-row lg:flex-col overflow-x-auto lg:overflow-x-visible gap-1.5 bg-[#111111] border border-white/5 rounded-2xl h-fit lg:sticky lg:top-24 scrollbar-none transition-all duration-200 ${
+    <aside className={`scrollbar-none flex h-fit flex-shrink-0 flex-row gap-1.5 overflow-x-auto rounded-2xl border border-white/[0.08] bg-[#0B0B0A]/95 shadow-[0_18px_55px_rgba(0,0,0,.28)] transition-all duration-200 lg:sticky lg:top-24 lg:flex-col lg:overflow-x-visible ${
       isSidebarCollapsed ? 'lg:w-16 p-2 items-center' : 'lg:w-60 p-3'
     }`}>
       {/* Desktop collapse toggle */}
@@ -30,7 +30,7 @@ export default function AdminSidebar({
       }`}>
         {!isSidebarCollapsed && (
           <span className="text-[10px] font-black uppercase tracking-widest text-white/30 px-1">
-            Navigation
+            Operations
           </span>
         )}
         <button
@@ -62,8 +62,8 @@ export default function AdminSidebar({
               isSidebarCollapsed ? 'justify-center w-10 h-10 p-0 mx-auto' : 'gap-3 px-3.5 py-2'
             } rounded-xl text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap lg:w-full cursor-pointer border ${
               active 
-                ? 'bg-[#ff5500]/10 border-[#ff5500]/30 text-[#ff5500] shadow-[0_0_15px_-5px_rgba(255,85,0,0.15)]' 
-                : 'border-transparent text-[#888888] hover:text-white hover:bg-white/5'
+                ? 'border-[#C8AE7D]/25 bg-[#C8AE7D]/[0.09] text-[#E1BD65] shadow-[inset_0_1px_0_rgba(255,255,255,.04)]' 
+                : 'border-transparent text-[#85817A] hover:bg-white/[0.045] hover:text-white'
             }`}
           >
             <Icon size={15} className="flex-shrink-0" />
