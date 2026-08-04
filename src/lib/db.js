@@ -540,21 +540,46 @@ export async function uploadImageToStorage(file) {
     console.warn("WebP client-side conversion warning:", e);
   }
 
-  // 2. Upload to AWS S3 via NestJS API (/images/upload)
-  const formData = new FormData();
-  formData.append('file', webpFile);
-  formData.append('folder', 'products');
+  // 2. Build deterministic multipart bytes. CloudFront OAC requires the
+  // SHA-256 of the exact POST body before it will forward the request to the
+  // IAM-protected Lambda Function URL.
+  const boundary = `----GarageKingsUpload${crypto.randomUUID().replaceAll('-', '')}`;
+  const encoder = new TextEncoder();
+  const safeName = (webpFile.name || 'upload.webp').replace(/["\r\n]/g, '_');
+  const fileType = webpFile.type || 'application/octet-stream';
+  const fileBytes = new Uint8Array(await webpFile.arrayBuffer());
+  const prefix = encoder.encode(
+    `--${boundary}\r\n` +
+    `Content-Disposition: form-data; name="file"; filename="${safeName}"\r\n` +
+    `Content-Type: ${fileType}\r\n\r\n`
+  );
+  const folderPart = encoder.encode(
+    `\r\n--${boundary}\r\n` +
+    'Content-Disposition: form-data; name="folder"\r\n\r\n' +
+    `products\r\n--${boundary}--\r\n`
+  );
+  const multipartBody = new Uint8Array(prefix.length + fileBytes.length + folderPart.length);
+  multipartBody.set(prefix, 0);
+  multipartBody.set(fileBytes, prefix.length);
+  multipartBody.set(folderPart, prefix.length + fileBytes.length);
+
+  const digest = await crypto.subtle.digest('SHA-256', multipartBody);
+  const payloadHash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
 
   const token = localStorage.getItem('gk_cognito_id_token') || localStorage.getItem('gk_cognito_access_token');
-  const headers = token ? { 
+  const headers = {
+    'Content-Type': `multipart/form-data; boundary=${boundary}`,
+    'X-Amz-Content-Sha256': payloadHash,
+    ...(token ? {
     'Authorization': `Bearer ${token}`,
     'X-Authorization': `Bearer ${token}`
-  } : {};
+    } : {})
+  };
 
   const response = await fetch(`${API_BASE_URL}/images/upload`, {
     method: 'POST',
     headers: headers,
-    body: formData
+    body: multipartBody
   });
 
   if (!response.ok) {
