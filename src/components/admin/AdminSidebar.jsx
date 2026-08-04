@@ -62,7 +62,7 @@ export default function AdminSidebar({
               isSidebarCollapsed ? 'justify-center w-10 h-10 p-0 mx-auto' : 'gap-3 px-3.5 py-2'
             } rounded-xl text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap lg:w-full cursor-pointer border ${
               active 
-                ? 'border-[#C8AE7D]/25 bg-[#C8AE7D]/[0.09] text-[#E1BD65] shadow-[inset_0_1px_0_rgba(255,255,255,.04)]' 
+                ? 'border-[#C8AE7D]/25 bg-[#C8AE7D]/[0.09] text-[#E1BD65] shadow-[inset_0_1px_0_rgba(255,255,255,.04)]'
                 : 'border-transparent text-[#85817A] hover:bg-white/[0.045] hover:text-white'
             }`}
           >
