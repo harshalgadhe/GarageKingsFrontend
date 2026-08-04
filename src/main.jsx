@@ -21,6 +21,8 @@ async function calculateSHA256(body) {
       dataBuffer = await body.arrayBuffer();
     } else if (body instanceof ArrayBuffer) {
       dataBuffer = body;
+    } else if (ArrayBuffer.isView(body)) {
+      dataBuffer = body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength);
     } else if (body instanceof FormData) {
       // Serialize FormData to a Blob to extract the raw body binary payload
       const tempResponse = new Response(body);
@@ -53,10 +55,13 @@ window.fetch = async function (resource, config) {
 
   if (url.includes('/api/v1/')) {
     config = config || {};
+    const existingHeaders = new Headers(config.headers || {});
+    const hasPayloadHash = existingHeaders.has('x-amz-content-sha256');
     
     // AWS SigV4 requires x-amz-content-sha256 header containing the SHA-256 of the request body
     // Skip if body is FormData to prevent browser form boundaries serialization mismatch
-    if (config.body && config.body instanceof FormData) {
+    // and preserve hashes calculated by deterministic upload helpers.
+    if (hasPayloadHash || (config.body && config.body instanceof FormData)) {
       // Do not inject x-amz-content-sha256 for multipart uploads
     } else {
       const payloadHash = await calculateSHA256(config.body);
