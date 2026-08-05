@@ -1,7 +1,7 @@
 import React from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Edit2, Trash2, FileText, X } from "lucide-react";
+import { Plus, Edit2, Ban, FileText, X } from "lucide-react";
 import Pagination from "./Pagination";
 import DebouncedSearchBar from "../common/DebouncedSearchBar";
 import ProductTypeahead from "./ProductTypeahead";
@@ -136,7 +136,7 @@ export default function AdminReceiptsTab({
   editingReceiptId, setEditingReceiptId,
   receiptForm, setReceiptForm,
   createDefaultReceiptForm,
-  handleSaveReceipt, handleEditReceipt, handleDeleteReceipt, handlePrintReceipt,
+  handleSaveReceipt, handleEditReceipt, handleVoidReceipt, handlePrintReceipt,
   activeReceiptPreview, setActiveReceiptPreview,
   cars = [],
   isReceiptsLoading = false,
@@ -144,6 +144,21 @@ export default function AdminReceiptsTab({
   const paginated = receiptsList;
   const pageSize = RECEIPTS_PER_PAGE || 10;
   const totalPages = receiptsTotalPages || 1;
+  const [voidTarget, setVoidTarget] = React.useState(null);
+  const [voidReason, setVoidReason] = React.useState("");
+  const [isVoiding, setIsVoiding] = React.useState(false);
+
+  const confirmVoid = async () => {
+    if (!voidTarget || voidReason.trim().length < 5) return;
+    setIsVoiding(true);
+    try {
+      await handleVoidReceipt(voidTarget.id, voidReason.trim());
+      setVoidTarget(null);
+      setVoidReason("");
+    } finally {
+      setIsVoiding(false);
+    }
+  };
 
   // Typeahead search for products (triggers API only when query >= 3 letters)
   const API_BASE_URL = import.meta.env.PROD 
@@ -559,7 +574,7 @@ export default function AdminReceiptsTab({
             ) : paginated.length === 0 ? (
               <tr><td colSpan="6" className="p-8 text-center text-zinc-500 font-mono">No receipts found.</td></tr>
             ) : paginated.map(r => (
-              <tr key={r.id} className="border-b border-white/5 hover:bg-white/[0.015]">
+              <tr key={r.id} className={`border-b border-white/5 hover:bg-white/[0.015] ${r.status === 'Voided' ? 'opacity-55' : ''}`}>
                 <td className="p-4 font-mono font-bold text-[#ff5500]">{r.receiptNumber}</td>
                 <td className="p-4 text-zinc-400 text-[10px] font-mono">{r.dateString || new Date(r.createdAt || r.created_at).toLocaleDateString("en-IN")}</td>
                 <td className="p-4">
@@ -572,20 +587,21 @@ export default function AdminReceiptsTab({
                   )}
                 </td>
                 <td className="p-4">
-                  <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${
-                    r.formatType === "prebooking" ? "bg-amber-500/10 border border-amber-500/20 text-amber-400" :
-                    "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
-                  }`}>{r.formatType === "prebooking" ? "Prebooking / PO" : "Standard Sale"}</span>
+                  {r.status === 'Voided' ? (
+                    <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded bg-white/5 border border-white/10 text-zinc-400">Voided</span>
+                  ) : (
+                    <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${r.formatType === "prebooking" ? "bg-amber-500/10 border border-amber-500/20 text-amber-400" : "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"}`}>{r.formatType === "prebooking" ? "Prebooking / PO" : "Standard Sale"}</span>
+                  )}
                 </td>
                 <td className="p-4 text-right font-mono font-bold text-white">&#x20B9;{Number(r.totalAmount || 0).toLocaleString("en-IN", { minimumFractionDigits:2 })}</td>
                 <td className="p-4 text-center">
                   <div className="flex items-center justify-center gap-2">
                     <button onClick={() => handlePrintReceipt(r)} title="Print / Save PDF"
                       className="p-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 transition-colors cursor-pointer"><FileText size={14} /></button>
-                    <button onClick={() => handleEditReceipt(r)} title="Edit"
-                      className="p-1.5 rounded-lg bg-white/5 border border-white/10 text-zinc-300 hover:bg-white/10 transition-colors cursor-pointer"><Edit2 size={14} /></button>
-                    <button onClick={() => handleDeleteReceipt(r.id)} title="Delete"
-                      className="p-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors cursor-pointer"><Trash2 size={14} /></button>
+                    {r.status !== 'Voided' && <button onClick={() => handleEditReceipt(r)} title="Edit"
+                      className="p-1.5 rounded-lg bg-white/5 border border-white/10 text-zinc-300 hover:bg-white/10 transition-colors cursor-pointer"><Edit2 size={14} /></button>}
+                    {r.status !== 'Voided' && <button onClick={() => { setVoidTarget(r); setVoidReason(""); }} title="Void receipt"
+                      className="p-1.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-300 hover:bg-rose-500/20 transition-colors cursor-pointer"><Ban size={14} /></button>}
                   </div>
                 </td>
               </tr>
@@ -607,16 +623,13 @@ export default function AdminReceiptsTab({
         ) : paginated.length === 0 ? (
           <div className="p-8 text-center text-zinc-500 font-mono bg-[#141414] border border-white/5 rounded-2xl">No receipts found.</div>
         ) : paginated.map(r => (
-          <div key={r.id} className="bg-[#141414] border border-white/5 rounded-2xl p-4 space-y-3">
+          <div key={r.id} className={`bg-[#141414] border border-white/5 rounded-2xl p-4 space-y-3 ${r.status === 'Voided' ? 'opacity-55' : ''}`}>
             <div className="flex justify-between items-start">
               <div>
                 <span className="font-mono font-bold text-[#ff5500] text-sm block">{r.receiptNumber}</span>
                 <span className="text-[10px] text-zinc-400 font-mono mt-0.5 block">{r.dateString || new Date(r.createdAt || r.created_at).toLocaleDateString("en-IN")}</span>
               </div>
-              <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${
-                r.formatType === "prebooking" ? "bg-amber-500/10 border border-amber-500/20 text-amber-400" :
-                "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
-              }`}>{r.formatType === "prebooking" ? "Prebooking / PO" : "Standard Sale"}</span>
+              <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${r.status === 'Voided' ? 'bg-white/5 border border-white/10 text-zinc-400' : r.formatType === "prebooking" ? "bg-amber-500/10 border border-amber-500/20 text-amber-400" : "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"}`}>{r.status === 'Voided' ? 'Voided' : r.formatType === "prebooking" ? "Prebooking / PO" : "Standard Sale"}</span>
             </div>
 
             <div className="border-t border-b border-white/5 py-2.5 space-y-1">
@@ -641,12 +654,12 @@ export default function AdminReceiptsTab({
                 <button onClick={() => handlePrintReceipt(r)} className="px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold flex items-center gap-1 cursor-pointer">
                   <FileText size={14} /> Print
                 </button>
-                <button onClick={() => handleEditReceipt(r)} className="p-2 rounded-lg bg-white/5 border border-white/10 text-zinc-300 cursor-pointer">
+                {r.status !== 'Voided' && <button onClick={() => handleEditReceipt(r)} className="p-2 rounded-lg bg-white/5 border border-white/10 text-zinc-300 cursor-pointer">
                   <Edit2 size={14} />
-                </button>
-                <button onClick={() => handleDeleteReceipt(r.id)} className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 cursor-pointer">
-                  <Trash2 size={14} />
-                </button>
+                </button>}
+                {r.status !== 'Voided' && <button onClick={() => { setVoidTarget(r); setVoidReason(""); }} className="p-2 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-300 cursor-pointer">
+                  <Ban size={14} />
+                </button>}
               </div>
             </div>
           </div>
@@ -656,6 +669,29 @@ export default function AdminReceiptsTab({
       {(paginated.length > 0 || receiptsTotal > 0) && (
         <Pagination currentPage={receiptPage} totalPages={totalPages} onPageChange={p => setReceiptPage(p)} totalCount={receiptsTotal || paginated.length} pageSize={pageSize} />
       )}
+
+      <AnimatePresence>
+        {voidTarget && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[160] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm" onClick={() => !isVoiding && setVoidTarget(null)}>
+            <motion.div initial={{ scale: 0.96, y: 12 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.96, y: 12 }} className="w-full max-w-md rounded-2xl border border-white/10 bg-[#111111] p-6 shadow-2xl" onClick={event => event.stopPropagation()}>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#C8AE7D]">Audit-safe correction</p>
+                  <h3 className="mt-2 text-xl font-semibold text-white">Void {voidTarget.receiptNumber}</h3>
+                  <p className="mt-2 text-sm leading-6 text-zinc-400">The receipt remains in history. Its linked order is cancelled and allocated stock is restored when applicable.</p>
+                </div>
+                <button type="button" onClick={() => setVoidTarget(null)} disabled={isVoiding} className="rounded-lg border border-white/10 p-2 text-zinc-400 hover:text-white"><X size={16} /></button>
+              </div>
+              <label className="mt-5 block text-[10px] font-bold uppercase tracking-wider text-zinc-400">Reason</label>
+              <textarea value={voidReason} onChange={event => setVoidReason(event.target.value)} rows={4} maxLength={500} placeholder="Explain why this receipt is being voided" className="mt-2 w-full resize-none rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-[#C8AE7D]/50" />
+              <div className="mt-5 flex justify-end gap-3">
+                <button type="button" onClick={() => setVoidTarget(null)} disabled={isVoiding} className="rounded-xl border border-white/10 px-4 py-2.5 text-xs font-bold text-zinc-300">Keep receipt</button>
+                <button type="button" onClick={confirmVoid} disabled={isVoiding || voidReason.trim().length < 5} className="rounded-xl border border-rose-400/30 bg-rose-400/10 px-4 py-2.5 text-xs font-bold text-rose-200 disabled:opacity-40">{isVoiding ? 'Voiding...' : 'Void receipt'}</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* SCREEN PREVIEW MODAL (no-print) */}
       <AnimatePresence>

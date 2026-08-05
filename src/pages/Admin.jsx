@@ -10,7 +10,7 @@ import {
 import { getCurrentUser, signOutCognito } from '../lib/auth';
 import { 
   getCars, getProduct, addCar, updateCar, deleteCar, uploadImageToStorage, getGlobalSettings, updateGlobalSettings,
-  getReceipts, addReceipt, updateReceipt, deleteReceipt,
+  getReceipts, addReceipt, updateReceipt, voidReceipt,
   getSuppliers, createSupplier, getSupplierPurchases, getSupplierPurchaseDetails, addSupplierPurchase,
   recordSupplierPayment, receiveSupplierShipment, updateSupplierPurchaseStatus, getSupplierMetrics,
   getDashboardAggregates, getAdminVariants, getInventoryVariantDetails, getCategories, createCategory,
@@ -518,6 +518,9 @@ export default function Admin() {
       taxPercent: r.taxPercent !== undefined ? Number(r.taxPercent) : (r.tax_percent !== undefined ? Number(r.tax_percent) : 0),
       taxAmount: r.taxAmount !== undefined ? Number(r.taxAmount) : (r.tax_amount !== undefined ? Number(r.tax_amount) : 0),
       footerNote: r.footerNote || r.footer_note || 'Thank you for choosing Garage Kings!',
+      status: r.status || 'Issued',
+      voidReason: r.voidReason || r.void_reason || '',
+      voidedAt: r.voidedAt || r.voided_at || null,
       createdAt: createdAt,
       dateString: dateString,
       items: items.length > 0 ? items : [{ qty: 1, description: '', amount: 0 }]
@@ -589,6 +592,7 @@ export default function Admin() {
     }
 
     receiptsList.forEach(r => {
+      if (r.status === 'Voided') return;
       const amt = Number(r.totalAmount) || 0;
       const rDate = r.createdAt ? new Date(r.createdAt) : new Date();
 
@@ -631,6 +635,7 @@ export default function Admin() {
     let lastWeekRevenue = 0;
 
     receiptsList.forEach(r => {
+      if (r.status === 'Voided') return;
       const totalPaid = Number(r.totalAmount) || 0;
       const pending = Number(r.pendingBalance) || 0;
       const rDate = r.createdAt ? new Date(r.createdAt) : new Date();
@@ -660,7 +665,7 @@ export default function Admin() {
     });
 
     const totalRevenue = stockRevenue + poRevenue;
-    const totalReceiptsCount = receiptsList.length;
+    const totalReceiptsCount = receiptsList.filter(receipt => receipt.status !== 'Voided').length;
     const avgReceiptValue = totalReceiptsCount > 0 ? totalRevenue / totalReceiptsCount : 0;
 
     const monthGrowthPct = lastMonthRevenue > 0 
@@ -804,15 +809,15 @@ export default function Admin() {
     setIsAddingReceipt(true);
   };
 
-  const handleDeleteReceipt = async (id) => {
-    if (!confirm('Are you sure you want to delete this receipt record?')) return;
+  const handleVoidReceipt = async (id, reason) => {
     try {
-      await deleteReceipt(id);
-      showToast("Receipt record deleted successfully");
+      await voidReceipt(id, reason);
+      showToast("Receipt voided and retained in the audit history");
       fetchReceiptsList();
     } catch (err) {
       console.error(err);
-      showToast("Failed to delete receipt: " + err.message, "error");
+      showToast("Failed to void receipt: " + err.message, "error");
+      throw err;
     }
   };
 
@@ -1929,6 +1934,8 @@ export default function Admin() {
               hoveredPointIndex={hoveredPointIndex}
               setHoveredPointIndex={setHoveredPointIndex}
               isLoading={isReceiptsLoading}
+              operations={dashboardAggregates || {}}
+              onNavigate={setAdminTab}
               onNewReceiptClick={() => { setAdminTab('receipts'); setEditingReceiptId(null); setIsAddingReceipt(true); }}
             />
           )}
@@ -2024,7 +2031,7 @@ export default function Admin() {
               createDefaultReceiptForm={createDefaultReceiptForm}
               handleSaveReceipt={handleSaveReceipt}
               handleEditReceipt={handleEditReceipt}
-              handleDeleteReceipt={handleDeleteReceipt}
+              handleVoidReceipt={handleVoidReceipt}
               handlePrintReceipt={handlePrintReceipt}
               activeReceiptPreview={activeReceiptPreview}
               setActiveReceiptPreview={setActiveReceiptPreview}

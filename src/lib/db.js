@@ -471,12 +471,17 @@ export async function updateReceipt(id, receipt) {
   return await res.json();
 }
 
-export async function deleteReceipt(id) {
-  const res = await fetch(`${API_BASE_URL}/receipts/${id}`, {
-    method: 'DELETE',
-    headers: getAuthHeaders()
+export async function voidReceipt(id, reason) {
+  const res = await fetch(`${API_BASE_URL}/receipts/${id}/void`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ reason })
   });
-  if (!res.ok) throw new Error("Failed to delete receipt record");
+  if (!res.ok) {
+    const message = await res.text().catch(() => '');
+    throw new Error(message || 'Failed to void receipt');
+  }
+  return await res.json();
 }
 
 // Customer CRM Endpoints

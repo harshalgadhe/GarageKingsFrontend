@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShoppingBag, Clock, TrendingUp, DollarSign, BarChart3, Plus, FileText } from 'lucide-react';
+import { ShoppingBag, Clock, TrendingUp, DollarSign, BarChart3, Plus, FileText, AlertTriangle, Package, Tag, ReceiptText } from 'lucide-react';
 
 export default function AdminDashboardTab({
   dashboardStats,
@@ -9,7 +9,9 @@ export default function AdminDashboardTab({
   hoveredPointIndex,
   setHoveredPointIndex,
   isLoading = false,
-  onNewReceiptClick
+  onNewReceiptClick,
+  operations = {},
+  onNavigate
 }) {
   const [chartMetric, setChartMetric] = useState('all'); // 'all', 'stock', 'po'
 
@@ -53,6 +55,12 @@ export default function AdminDashboardTab({
   const totalReceipts = stats.totalReceiptsCount || 0;
   const standardPct = totalReceipts > 0 ? Math.round((stats.standardCount / totalReceipts) * 100) : 0;
   const poPct = totalReceipts > 0 ? Math.round((stats.poCount / totalReceipts) * 100) : 0;
+  const operationalItems = [
+    { label: 'Low-stock variants', value: operations.lowStockAlerts || 0, detail: 'Review inventory before accepting enquiries', icon: AlertTriangle, tab: 'catalog', tone: 'text-amber-300 bg-amber-400/10 border-amber-400/20' },
+    { label: 'Catalog data missing', value: (operations.productsWithoutSKU || 0) + (operations.productsWithoutPrice || 0), detail: `${operations.productsWithoutSKU || 0} without SKU, ${operations.productsWithoutPrice || 0} without price`, icon: Tag, tab: 'catalog', tone: 'text-rose-300 bg-rose-400/10 border-rose-400/20' },
+    { label: 'Pending receipt balance', value: `₹${Number(operations.pendingReceiptBalance || 0).toLocaleString('en-IN')}`, detail: `${operations.pendingReceiptCount || 0} receipts need follow-up`, icon: ReceiptText, tab: 'receipts', tone: 'text-[#E4C982] bg-[#C8AE7D]/10 border-[#C8AE7D]/25' },
+    { label: 'Purchase orders delayed', value: operations.overduePurchaseOrders || 0, detail: `${operations.incomingInventory || 0} incoming units across ${operations.totalPurchaseOrders || 0} open POs`, icon: Package, tab: 'catalog', tone: 'text-zinc-200 bg-white/5 border-white/10' }
+  ];
 
   // SVG Line Graph Calculations
   const svgWidth = 800;
@@ -166,6 +174,36 @@ export default function AdminDashboardTab({
           <p className="text-[10px] text-white/60 mt-1 font-medium">Combined Collected (PO + Stock)</p>
         </div>
       </div>
+
+      <section className="rounded-2xl border border-white/[0.08] bg-[#111111] p-5 sm:p-6">
+        <div className="flex flex-col gap-2 border-b border-white/[0.07] pb-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#C8AE7D]">Action centre</p>
+            <h2 className="mt-1 text-lg font-semibold text-white">What needs attention now</h2>
+          </div>
+          <p className="text-xs text-zinc-500">Live operational exceptions, not vanity metrics</p>
+        </div>
+        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {operationalItems.map(item => {
+            const Icon = item.icon;
+            return (
+              <button key={item.label} type="button" onClick={() => onNavigate?.(item.tab)} className="group rounded-xl border border-white/[0.07] bg-black/30 p-4 text-left transition-colors hover:border-[#C8AE7D]/35 hover:bg-white/[0.035]">
+                <div className="flex items-start justify-between gap-3">
+                  <div className={`rounded-lg border p-2 ${item.tone}`}><Icon size={16} /></div>
+                  <span className="text-xl font-semibold tabular-nums text-white">{item.value}</span>
+                </div>
+                <p className="mt-4 text-sm font-medium text-zinc-200">{item.label}</p>
+                <p className="mt-1 text-[11px] leading-5 text-zinc-500">{item.detail}</p>
+              </button>
+            );
+          })}
+        </div>
+        {(operations.failedReceiptJobs || 0) > 0 && (
+          <div className="mt-3 flex w-full items-center gap-2 rounded-xl border border-rose-400/20 bg-rose-400/[0.06] px-4 py-3 text-left text-xs text-rose-200">
+            <AlertTriangle size={15} /> {operations.failedReceiptJobs} receipt generation job(s) require investigation
+          </div>
+        )}
+      </section>
 
       {/* Second Row: Time-Based Analytics & Operational Overview */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
