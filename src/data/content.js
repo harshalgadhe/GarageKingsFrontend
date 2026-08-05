@@ -5,7 +5,7 @@ export const BRAND = {
 }
 
 export const CONTACT = {
-  whatsappNumber: '917300240424',
+  whatsappNumber: '919251240424',
   instagramUrl: 'https://www.instagram.com/garagekingsindia/',
   communityUrl: 'https://chat.whatsapp.com/EX1NbXHU63ZCQ4qhFVCubb',
 }
