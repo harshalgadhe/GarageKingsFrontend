@@ -212,6 +212,7 @@ export async function getCars(params = {}) {
     if (queryOptions.search) queryParams.append('search', queryOptions.search);
     if (queryOptions.inStock !== undefined) queryParams.append('inStock', queryOptions.inStock);
     if (queryOptions.preBooking !== undefined) queryParams.append('preBooking', queryOptions.preBooking);
+    if (queryOptions.featured !== undefined) queryParams.append('featured', queryOptions.featured);
 
     const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
     const res = await fetch(`${API_BASE_URL}/products${queryString}`, {
@@ -460,13 +461,8 @@ export async function updateReceipt(id, receipt) {
     body: JSON.stringify(receipt)
   });
   if (!res.ok) {
-    const fallbackRes = await fetch(`${API_BASE_URL}/receipts`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ ...receipt, id })
-    });
-    if (!fallbackRes.ok) throw new Error("Failed to update receipt");
-    return await fallbackRes.json();
+    const message = await res.text().catch(() => '');
+    throw new Error(message || "Failed to update receipt");
   }
   return await res.json();
 }

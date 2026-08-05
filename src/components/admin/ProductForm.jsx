@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Upload, X, Check, Layers, Eye, MessageCircle, ShoppingBag } from 'lucide-react';
+import { Plus, Trash2, Upload, X, Check, Layers, Eye, MessageCircle, ShoppingBag, Star } from 'lucide-react';
 import { uploadImageToStorage } from '../../lib/db';
 import ProductCard from '../common/ProductCard';
 import SearchableSelect from './SearchableSelect';
@@ -55,6 +55,7 @@ export default function ProductForm({
 
   // Pre-Booking / PO Order
   const [isPrebook, setIsPrebook] = useState(false);
+  const [isFeatured, setIsFeatured] = useState(false);
   const [arrivalDate, setArrivalDate] = useState(''); // String: e.g. "Q3 2026"
 
   const handleAddSubtag = () => {
@@ -108,6 +109,7 @@ export default function ProductForm({
       setSubtagInput('');
 
       setIsPrebook(initialData.isPrebook || initialData.status === 'Pre-Order' || false);
+      setIsFeatured(Boolean(initialData.isFeatured));
       // arrivalDate can live on the product root OR on variants[0].customerEta
       setArrivalDate(
         initialData.arrivalDate ||
@@ -204,6 +206,7 @@ export default function ProductForm({
       setSubtagInput('');
 
       setIsPrebook(false);
+      setIsFeatured(false);
       setArrivalDate('');
 
       setCaseVariants([
@@ -406,6 +409,7 @@ export default function ProductForm({
         image: productImages[0] || '',
         images: productImages,
         isPrebook: isPrebook,
+        isFeatured: isFeatured,
         status: isPrebook ? 'Pre-Order' : 'Published',
         poAmount: poAmount,
         prebookDepositAmount: poAmount,
@@ -580,6 +584,30 @@ export default function ProductForm({
         </div>
 
         {/* PRE-BOOKING / PO RELEASE SECTION */}
+        <div className="rounded-xl border border-[#E1BD65]/20 bg-[#E1BD65]/[0.045] p-4">
+          <div className="flex items-center justify-between gap-5">
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-[#E1BD65]/20 bg-[#E1BD65]/10 text-[#E1BD65]">
+                <Star size={15} fill={isFeatured ? 'currentColor' : 'none'} />
+              </span>
+              <div>
+                <label htmlFor="featured-product" className="block text-xs font-bold text-white">Feature on homepage</label>
+                <span className="mt-1 block max-w-md text-[10px] leading-4 text-white/45">Makes this the main model in the homepage collection preview. Selecting it replaces the previously featured model.</span>
+              </div>
+            </div>
+            <label className="relative inline-flex shrink-0 cursor-pointer items-center">
+              <input
+                id="featured-product"
+                type="checkbox"
+                checked={isFeatured}
+                onChange={event => setIsFeatured(event.target.checked)}
+                className="peer sr-only"
+              />
+              <span className="h-6 w-11 rounded-full bg-white/10 transition peer-checked:bg-[#E1BD65] peer-focus-visible:ring-2 peer-focus-visible:ring-[#E1BD65]/40 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-white/20 after:bg-white after:transition-transform after:content-[''] peer-checked:after:translate-x-full" />
+            </label>
+          </div>
+        </div>
+
         <div className="bg-white/[0.02] border border-white/5 p-4 rounded-xl space-y-4">
           <div className="flex items-center justify-between">
             <div>

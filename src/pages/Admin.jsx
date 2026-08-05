@@ -506,7 +506,7 @@ export default function Admin() {
       companyLocation: r.companyLocation || r.company_location || 'Delhi',
       customerName: r.customerName || r.customer_name || '',
       customerPhone: r.customerPhone || r.customer_phone || '',
-      customerEmail: r.customerEmail || r.customer_email || r.email || '',
+      customerEmail: (r.customerEmail || r.customer_email || r.email || '').includes('@guest.garagekings.in') ? '' : (r.customerEmail || r.customer_email || r.email || ''),
       customerInsta: r.customerInsta || r.customer_instagram || '',
       customerAddress: r.customerAddress || r.customer_address || '',
       formatType: formatType,
@@ -2039,6 +2039,7 @@ export default function Admin() {
               activeReceiptPreview={activeReceiptPreview}
               setActiveReceiptPreview={setActiveReceiptPreview}
               cars={cars}
+              customersList={customersList}
               isReceiptsLoading={isReceiptsLoading}
             />
           )}

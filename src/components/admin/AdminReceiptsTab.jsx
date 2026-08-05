@@ -139,6 +139,7 @@ export default function AdminReceiptsTab({
   handleSaveReceipt, handleEditReceipt, handleDeleteReceipt, handlePrintReceipt,
   activeReceiptPreview, setActiveReceiptPreview,
   cars = [],
+  customersList = [],
   isReceiptsLoading = false,
 }) {
   const paginated = receiptsList;
@@ -210,6 +211,19 @@ export default function AdminReceiptsTab({
 
   const uniqueCustomers = React.useMemo(() => {
     const map = new Map();
+    (customersList || []).forEach(c => {
+      const name = c.fullName || c.name || c.full_name || '';
+      if (name.trim()) {
+        const key = name.trim().toLowerCase();
+        map.set(key, {
+          name: name.trim(),
+          phone: c.phone || '',
+          email: c.email || '',
+          insta: c.instagram || c.insta || '',
+          address: c.address || '',
+        });
+      }
+    });
     (receiptsList || []).forEach(r => {
       if (r.customerName && r.customerName.trim()) {
         const key = r.customerName.trim().toLowerCase();
@@ -225,17 +239,67 @@ export default function AdminReceiptsTab({
       }
     });
     return Array.from(map.values());
-  }, [receiptsList]);
+  }, [customersList, receiptsList]);
+
+  const [remoteCustomerSuggestions, setRemoteCustomerSuggestions] = React.useState([]);
+  const [isCustomerLoading, setIsCustomerLoading] = React.useState(false);
 
   const customerQuery = (receiptForm.customerName || "").trim();
+
+  React.useEffect(() => {
+    if (customerQuery.length < 3) {
+      setRemoteCustomerSuggestions([]);
+      setIsCustomerLoading(false);
+      return;
+    }
+
+    setIsCustomerLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/customers?search=${encodeURIComponent(customerQuery)}`, {
+          credentials: 'include'
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const items = Array.isArray(data) ? data : (data.customers || []);
+          setRemoteCustomerSuggestions(items.map(c => ({
+            name: c.name || c.full_name || c.fullName || '',
+            phone: c.phone || '',
+            email: c.email || '',
+            insta: c.insta || c.instagram || c.instagramUsername || '',
+            address: c.address || '',
+          })));
+        }
+      } catch (err) {
+        console.error("Error searching customers for receipt:", err);
+      } finally {
+        setIsCustomerLoading(false);
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [customerQuery]);
+
   const customerSuggestions = React.useMemo(() => {
-    if (customerQuery.length <= 3) return [];
+    if (customerQuery.length < 3) return [];
     const q = customerQuery.toLowerCase();
-    return uniqueCustomers.filter(c => 
-      c.name.toLowerCase().includes(q) || 
-      (c.phone && c.phone.toLowerCase().includes(q))
-    ).slice(0, 8);
-  }, [customerQuery, uniqueCustomers]);
+    const map = new Map();
+
+    remoteCustomerSuggestions.forEach(c => {
+      if (c.name && c.name.trim()) map.set(c.name.trim().toLowerCase(), c);
+    });
+
+    uniqueCustomers.forEach(c => {
+      if (c.name && c.name.trim()) {
+        const key = c.name.trim().toLowerCase();
+        if (!map.has(key) && (c.name.toLowerCase().includes(q) || (c.phone && c.phone.toLowerCase().includes(q)))) {
+          map.set(key, c);
+        }
+      }
+    });
+
+    return Array.from(map.values()).slice(0, 10);
+  }, [customerQuery, remoteCustomerSuggestions, uniqueCustomers]);
 
   const handleSelectCustomerSuggestion = (c) => {
     setReceiptForm(prev => ({
@@ -368,35 +432,42 @@ export default function AdminReceiptsTab({
                           }}
                           className="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500"
                         />
-                        {showCustomerDropdown && customerQuery.length > 3 && customerSuggestions.length > 0 && (
+                        {showCustomerDropdown && customerQuery.length >= 3 && (
                           <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-[#18181b] border border-white/15 rounded-xl shadow-2xl overflow-hidden max-h-56 overflow-y-auto">
-                            <div className="px-3 py-1.5 text-[9px] font-bold text-zinc-400 uppercase tracking-wider bg-black/40 border-b border-white/5">
-                              Suggested Customers (Autofill)
+                            <div className="px-3 py-1.5 text-[9px] font-bold text-zinc-400 uppercase tracking-wider bg-black/40 border-b border-white/5 flex items-center justify-between">
+                              <span>Suggested Customers (Autofill)</span>
+                              {isCustomerLoading && <span className="text-blue-400 font-mono animate-pulse">Searching DB...</span>}
                             </div>
-                            {customerSuggestions.map((c, idx) => (
-                              <button
-                                key={idx}
-                                type="button"
-                                onMouseDown={(e) => {
-                                  e.preventDefault();
-                                  handleSelectCustomerSuggestion(c);
-                                }}
-                                className="w-full text-left px-3.5 py-2.5 hover:bg-blue-500/20 hover:text-white border-b border-white/5 last:border-0 transition-colors flex items-center justify-between text-xs cursor-pointer group"
-                              >
-                                <span className="font-bold text-white group-hover:text-blue-300">
-                                  {c.name} {c.phone ? <span className="text-zinc-400 font-mono font-normal"> - {c.phone}</span> : ""}
-                                </span>
-                                <span className="text-[9px] font-bold uppercase tracking-wider text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">
-                                  Autofill
-                                </span>
-                              </button>
-                            ))}
+                            {isCustomerLoading && customerSuggestions.length === 0 ? (
+                              <div className="p-3 text-center text-xs text-zinc-400 font-mono">Searching customer records...</div>
+                            ) : customerSuggestions.length === 0 ? (
+                              <div className="p-3 text-center text-xs text-zinc-500">No matching customer found.</div>
+                            ) : (
+                              customerSuggestions.map((c, idx) => (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    handleSelectCustomerSuggestion(c);
+                                  }}
+                                  className="w-full text-left px-3.5 py-2.5 hover:bg-blue-500/20 hover:text-white border-b border-white/5 last:border-0 transition-colors flex items-center justify-between text-xs cursor-pointer group"
+                                >
+                                  <span className="font-bold text-white group-hover:text-blue-300">
+                                    {c.name} {c.phone ? <span className="text-zinc-400 font-mono font-normal"> - {c.phone}</span> : ""}
+                                  </span>
+                                  <span className="text-[9px] font-bold uppercase tracking-wider text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">
+                                    Autofill
+                                  </span>
+                                </button>
+                              ))
+                            )}
                           </div>
                         )}
                       </div>
                       <div>
                         <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">Phone Number *</label>
-                        <input type="text" placeholder="e.g. 9876543210" value={receiptForm.customerPhone} onChange={e => setReceiptForm(p => ({ ...p, customerPhone: e.target.value }))}
+                        <input type="number" placeholder="e.g. 9876543210" value={receiptForm.customerPhone} onChange={e => setReceiptForm(p => ({ ...p, customerPhone: e.target.value }))}
                           className="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500" />
                       </div>
                       <div>

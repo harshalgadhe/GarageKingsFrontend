@@ -15,18 +15,24 @@ const LookbookGallery = forwardRef(function LookbookGallery(props, ref) {
   const navigate = useNavigate()
   const reduceMotion = useReducedMotion()
   const [models, setModels] = useState([])
+  const [selectedFeatured, setSelectedFeatured] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let active = true
 
-    getCars({ limit: 8 })
-      .then((cars) => {
+    Promise.all([
+      getCars({ limit: 1, featured: true }),
+      getCars({ limit: 8 }),
+    ])
+      .then(([featuredCars, recentCars]) => {
         if (!active) return
-        setModels((cars || []).slice(0, 8).map((car) => ({
+        const formatModel = (car) => ({
           ...car,
           priceLabel: formatPrice(car.sellingPrice ?? car.price),
-        })))
+        })
+        setSelectedFeatured((featuredCars || []).map(formatModel).find((model) => Boolean(model.image)) || null)
+        setModels((recentCars || []).slice(0, 8).map(formatModel))
       })
       .finally(() => {
         if (active) setLoading(false)
@@ -35,7 +41,10 @@ const LookbookGallery = forwardRef(function LookbookGallery(props, ref) {
     return () => { active = false }
   }, [])
 
-  const featured = useMemo(() => models.find((model) => Boolean(model.image)) || null, [models])
+  const featured = useMemo(
+    () => selectedFeatured || models.find((model) => Boolean(model.image)) || null,
+    [models, selectedFeatured]
+  )
   const recent = useMemo(() => models.filter((model) => model.id !== featured?.id).slice(0, 6), [featured, models])
 
   const openModel = (id) => navigate(id ? `/product/${id}` : '/marketplace')
@@ -107,7 +116,7 @@ const LookbookGallery = forwardRef(function LookbookGallery(props, ref) {
             <div className={`${featured ? 'lg:col-span-5' : 'lg:col-span-12'} overflow-hidden rounded-[28px] border border-white/[0.09] bg-[linear-gradient(155deg,rgba(19,18,16,.96),rgba(9,9,9,.98)_48%)] shadow-[0_28px_80px_rgba(0,0,0,.36)]`}>
               <div className="flex items-center justify-between border-b border-white/[0.07] px-5 py-4 sm:px-6">
                 <h3 className="text-sm font-medium text-[#F4F1EC]">Recently added</h3>
-                <span className="text-[10px] text-[#77736D]">{models.length} models</span>
+                <span className="text-[10px] text-[#77736D]">{recent.length} models</span>
               </div>
 
               <div className="divide-y divide-white/[0.06]">
