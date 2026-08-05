@@ -1445,7 +1445,7 @@ export default function Admin() {
     if (isAuthenticated && isAdmin) {
       triggerTabFetch(adminTab);
     }
-  }, [adminTab, catalogSubTab, inventorySubTab, ordersSubTab, inventoryPage, variantsPage, ordersPage, orderFilter, receiptsPage, customersPage]);
+  }, [isAuthenticated, isAdmin, adminTab, catalogSubTab, inventorySubTab, ordersSubTab, inventoryPage, variantsPage, ordersPage, orderFilter, receiptsPage, customersPage]);
 
 
   const handleViewReceipt = (dbReceipt) => {
