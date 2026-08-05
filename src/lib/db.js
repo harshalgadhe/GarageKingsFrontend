@@ -246,21 +246,12 @@ export async function getCars(params = {}) {
 
 
 export async function addCar(car) {
-  // Try admin endpoint first because it creates full product and variant records with stock
-  const adminRes = await fetch(`${API_BASE_URL.replace('/api/v1', '')}/api/v1/admin/products`, {
+  const res = await fetch(`${API_BASE_URL.replace('/api/v1', '')}/api/v1/admin/products`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(car)
   });
 
-  if (adminRes.ok) return await adminRes.json();
-
-  // Fallback to public endpoint if admin route is unavailable
-  const res = await fetch(`${API_BASE_URL}/products`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify(car)
-  });
   if (!res.ok) {
     const errorText = await res.text().catch(() => '');
     throw new Error(`Failed to save casting (${res.status}): ${errorText || res.statusText}`);
@@ -269,23 +260,12 @@ export async function addCar(car) {
 }
 
 export async function updateCar(id, updatedFields) {
-  // Try admin endpoint first because it has full write access to all fields
-  // (stock, arrivalDate, customerEta etc). The public PATCH /products/:id
-  // has restricted field access and silently ignores stock/date fields.
-  const adminRes = await fetch(`${API_BASE_URL.replace('/api/v1', '')}/api/v1/admin/products/${id}`, {
+  const res = await fetch(`${API_BASE_URL.replace('/api/v1', '')}/api/v1/admin/products/${id}`, {
     method: 'PATCH',
     headers: getAuthHeaders(),
     body: JSON.stringify(updatedFields)
   });
 
-  if (adminRes.ok) return await adminRes.json();
-
-  // Fallback to public endpoint (e.g. if admin route doesn't exist yet)
-  const res = await fetch(`${API_BASE_URL}/products/${id}`, {
-    method: 'PATCH',
-    headers: getAuthHeaders(),
-    body: JSON.stringify(updatedFields)
-  });
   if (!res.ok) {
     const errorText = await res.text().catch(() => '');
     throw new Error(`Failed to update casting (${res.status}): ${errorText || res.statusText}`);

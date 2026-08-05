@@ -1,10 +1,11 @@
 import React from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Plus, Edit2, Trash2, FileText, X } from "lucide-react";
+import { Plus, Edit2, Trash2, FileText, X } from "lucide-react";
 import Pagination from "./Pagination";
 import DebouncedSearchBar from "../common/DebouncedSearchBar";
 import ProductTypeahead from "./ProductTypeahead";
+import SearchableSelect from "./SearchableSelect";
 
 const FORMAT_NOTES = {
   standard:   "If fulfilment becomes unavailable, the GarageKings team will contact you to discuss the resolution under the terms confirmed for this acquisition.",
@@ -255,19 +256,15 @@ export default function AdminReceiptsTab({
           <p className="text-[10px] text-zinc-400 mt-0.5">Generate, issue, and manage official customer billing receipts</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" size={14} />
-            <input
-              type="text"
-              placeholder="Search by customer, RT#, phone..."
-              value={receiptSearch}
-              onChange={e => {
-                setReceiptSearch(e.target.value);
-                setReceiptPage(1);
-              }}
-              className="w-full bg-[#141414] border border-white/10 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-[#ff5500] transition-colors"
-            />
-          </div>
+          <DebouncedSearchBar
+            className="w-full sm:w-64"
+            value={receiptSearch}
+            placeholder="Search by customer, receipt or phone"
+            onChange={value => {
+              setReceiptSearch(value);
+              setReceiptPage(1);
+            }}
+          />
           <button
             onClick={() => {
               setReceiptForm(createDefaultReceiptForm());
@@ -479,12 +476,15 @@ export default function AdminReceiptsTab({
                         className="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-2.5 text-white focus:outline-none" />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">Receipt Format</label>
-                      <select value={receiptForm.formatType} onChange={e => handleFormatChange(e.target.value)}
-                        className="w-full bg-[#111116] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none cursor-pointer">
-                        <option value="standard">Standard Sale</option>
-                        <option value="prebooking">Prebooking / Pre-Order (PO)</option>
-                      </select>
+                      <SearchableSelect
+                        label="Receipt Format"
+                        value={receiptForm.formatType}
+                        onChange={handleFormatChange}
+                        options={[
+                          { label: 'Standard Sale', value: 'standard' },
+                          { label: 'Prebooking / Pre-Order (PO)', value: 'prebooking' }
+                        ]}
+                      />
                     </div>
                     {receiptForm.formatType === "prebooking" && (
                       <div className="md:col-span-4 border-t border-white/5 pt-4 mt-2">

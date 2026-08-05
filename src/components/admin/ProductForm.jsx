@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Upload, X, Check, Layers, Eye, MessageCircle, ShoppingBag } from 'lucide-react';
 import { uploadImageToStorage } from '../../lib/db';
 import ProductCard from '../common/ProductCard';
+import SearchableSelect from './SearchableSelect';
 
 // Resolve relative image paths returned by NestJS (/uploads/...) to full URLs
 const SERVER_ORIGIN = import.meta.env.PROD
@@ -447,18 +448,13 @@ export default function ProductForm({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Brand */}
             <div>
-              <label className="block text-[10px] font-bold text-white/50 uppercase tracking-widest mb-1">
-                Brand *
-              </label>
-              <select
+              <SearchableSelect
+                label="Brand"
+                required
                 value={brand}
-                onChange={e => setBrand(e.target.value)}
-                className="w-full bg-[#111116] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#ff5500] cursor-pointer"
-              >
-                {BRANDS_LIST.map(b => (
-                  <option key={b} value={b} className="bg-[#141414] text-white">{b}</option>
-                ))}
-              </select>
+                onChange={setBrand}
+                options={BRANDS_LIST}
+              />
               {brand === 'Other' && (
                 <input
                   type="text"
@@ -472,18 +468,13 @@ export default function ProductForm({
 
             {/* Scale */}
             <div>
-              <label className="block text-[10px] font-bold text-white/50 uppercase tracking-widest mb-1">
-                Scale *
-              </label>
-              <select
+              <SearchableSelect
+                label="Scale"
+                required
                 value={scale}
-                onChange={e => setScale(e.target.value)}
-                className="w-full bg-[#111116] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#ff5500] cursor-pointer"
-              >
-                {SCALES_LIST.map(s => (
-                  <option key={s} value={s} className="bg-[#141414] text-white">{s}</option>
-                ))}
-              </select>
+                onChange={setScale}
+                options={SCALES_LIST}
+              />
             </div>
 
             {/* SKU ID */}
@@ -517,18 +508,12 @@ export default function ProductForm({
 
             {/* Main Badge / Tag */}
             <div>
-              <label className="block text-[10px] font-bold text-white/50 uppercase tracking-widest mb-1">
-                Main Badge / Tag
-              </label>
-              <select
+              <SearchableSelect
+                label="Main Badge / Tag"
                 value={tag}
-                onChange={e => setTag(e.target.value)}
-                className="w-full bg-[#111116] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#ff5500] cursor-pointer"
-              >
-                {GENERIC_TAGS.map(t => (
-                  <option key={t} value={t} className="bg-[#141414] text-white">{t}</option>
-                ))}
-              </select>
+                onChange={setTag}
+                options={GENERIC_TAGS}
+              />
             </div>
 
             {/* Subtags (Up to 5) */}
@@ -671,18 +656,13 @@ export default function ProductForm({
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   {/* Case Type */}
                   <div>
-                    <label className="block text-[10px] font-bold text-white/50 uppercase tracking-widest mb-1">
-                      Case Type *
-                    </label>
-                    <select
+                    <SearchableSelect
+                      label="Case Type"
+                      required
                       value={v.casingType}
-                      onChange={e => handleVariantChange(vIdx, 'casingType', e.target.value)}
-                      className="w-full bg-[#111116] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#ff5500] cursor-pointer"
-                    >
-                      {CASE_TYPES.map(c => (
-                        <option key={c} value={c} className="bg-[#141414] text-white">{c}</option>
-                      ))}
-                    </select>
+                      onChange={value => handleVariantChange(vIdx, 'casingType', value)}
+                      options={CASE_TYPES}
+                    />
                   </div>
 
                   {/* Price */}

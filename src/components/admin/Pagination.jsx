@@ -1,11 +1,19 @@
 import React from 'react';
 
-const Pagination = ({ currentPage, totalPages, totalItems, onPageChange }) => {
+const Pagination = ({ currentPage, totalPages, totalItems, totalCount, pageSize, onPageChange }) => {
   if (totalPages <= 1) return null;
+  const itemCount = totalItems ?? totalCount;
+  const visiblePages = Array.from(new Set([
+    1,
+    totalPages,
+    currentPage - 1,
+    currentPage,
+    currentPage + 1
+  ].filter(page => page >= 1 && page <= totalPages))).sort((a, b) => a - b);
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-6 border-t border-white/5">
+    <nav aria-label="Pagination" className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-6 border-t border-white/5">
       <span className="text-[10px] font-mono text-[#888888] uppercase tracking-wider">
-        Showing Page {currentPage} of {totalPages} {totalItems ? `(${totalItems} Total)` : ''}
+        Page {currentPage} of {totalPages} {itemCount != null ? `(${itemCount} total${pageSize ? `, ${pageSize} per page` : ''})` : ''}
       </span>
       <div className="flex items-center gap-2">
         <button
@@ -16,13 +24,15 @@ const Pagination = ({ currentPage, totalPages, totalItems, onPageChange }) => {
           Prev
         </button>
         <div className="flex items-center gap-1.5">
-          {Array.from({ length: totalPages }).map((_, idx) => {
-            const pageNum = idx + 1;
-            if (pageNum === 1 || pageNum === totalPages || Math.abs(pageNum - currentPage) <= 1) {
-              return (
+          {visiblePages.map((pageNum, index) => (
+              <React.Fragment key={pageNum}>
+                {index > 0 && pageNum - visiblePages[index - 1] > 1 && (
+                  <span className="text-[#555555] text-xs px-0.5 font-mono" aria-hidden="true">...</span>
+                )}
                 <button
-                  key={pageNum}
                   onClick={() => onPageChange(pageNum)}
+                  aria-current={currentPage === pageNum ? 'page' : undefined}
+                  aria-label={`Go to page ${pageNum}`}
                   className={`w-7 h-7 rounded-lg border text-[10px] font-mono font-bold flex items-center justify-center transition-colors cursor-pointer ${
                     currentPage === pageNum
                       ? 'bg-[#ff5500]/10 border-[#ff5500]/30 text-[#ff5500]'
@@ -31,17 +41,8 @@ const Pagination = ({ currentPage, totalPages, totalItems, onPageChange }) => {
                 >
                   {pageNum}
                 </button>
-              );
-            }
-            if (pageNum === 2 || pageNum === totalPages - 1) {
-              return (
-                <span key={pageNum} className="text-[#555555] text-xs px-0.5 font-mono">
-                  ...
-                </span>
-              );
-            }
-            return null;
-          })}
+              </React.Fragment>
+          ))}
         </div>
         <button
           onClick={() => onPageChange(currentPage + 1)}
@@ -51,7 +52,7 @@ const Pagination = ({ currentPage, totalPages, totalItems, onPageChange }) => {
           Next
         </button>
       </div>
-    </div>
+    </nav>
   );
 };
 
