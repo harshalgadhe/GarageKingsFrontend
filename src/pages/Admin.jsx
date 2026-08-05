@@ -324,7 +324,7 @@ export default function Admin() {
 
   // Dashboard Aggregates
   const [dashboardAggregates, setDashboardAggregates] = useState(null);
-  const [dashboardAggregatesLoading, setDashboardAggregatesLoading] = useState(false);
+  const [dashboardAggregatesLoading, setDashboardAggregatesLoading] = useState(true);
 
   // Variants list (operational inventory & catalog)
   const [variantsList, setVariantsList] = useState([]);
@@ -1936,7 +1936,7 @@ export default function Admin() {
               setChartTimeframe={setChartTimeframe}
               hoveredPointIndex={hoveredPointIndex}
               setHoveredPointIndex={setHoveredPointIndex}
-              isLoading={dashboardAggregatesLoading}
+              isLoading={dashboardAggregatesLoading || !dashboardAggregates}
               operations={dashboardAggregates || {}}
               onNavigate={setAdminTab}
               onNewReceiptClick={() => { setAdminTab('receipts'); setEditingReceiptId(null); setIsAddingReceipt(true); }}

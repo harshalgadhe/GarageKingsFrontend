@@ -15,21 +15,70 @@ export default function AdminDashboardTab({
 }) {
   const [chartMetric, setChartMetric] = useState('all'); // 'all', 'stock', 'po'
 
-  if (isLoading && (!dashboardStats || dashboardStats.totalReceiptsCount === 0)) {
+  if (isLoading || !dashboardStats || !operations || Object.keys(operations).length === 0) {
     return (
       <div className="space-y-8 animate-pulse">
+        {/* Top Metric Cards Skeleton (4 Cards) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-[#141414] border border-white/5 rounded-2xl p-5 space-y-3">
-              <div className="h-3 bg-white/10 rounded w-24"></div>
-              <div className="h-7 bg-white/10 rounded w-36"></div>
-              <div className="h-3 bg-white/10 rounded w-28"></div>
+            <div key={i} className="bg-[#141414] border border-white/5 rounded-2xl p-5 space-y-4 shadow-sm">
+              <div className="flex justify-between items-center">
+                <div className="h-3 bg-white/10 rounded-md w-28"></div>
+                <div className="w-8 h-8 rounded-xl bg-white/10"></div>
+              </div>
+              <div className="h-8 bg-white/10 rounded-lg w-36"></div>
+              <div className="h-3 bg-white/5 rounded-md w-24"></div>
             </div>
           ))}
         </div>
+
+        {/* Analytics & Quick Actions Skeleton */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-7 bg-[#141414] border border-white/5 rounded-2xl p-6 h-72"></div>
-          <div className="lg:col-span-5 bg-[#141414] border border-white/5 rounded-2xl p-6 h-72"></div>
+          <div className="lg:col-span-7 bg-[#141414] border border-white/5 rounded-2xl p-6 space-y-6">
+            <div className="flex justify-between items-center">
+              <div className="space-y-2">
+                <div className="h-4 bg-white/10 rounded-md w-44"></div>
+                <div className="h-3 bg-white/5 rounded-md w-60"></div>
+              </div>
+              <div className="flex gap-2">
+                <div className="h-8 w-16 bg-white/10 rounded-xl"></div>
+                <div className="h-8 w-16 bg-white/10 rounded-xl"></div>
+              </div>
+            </div>
+            <div className="h-60 bg-white/[0.02] rounded-xl flex items-end justify-between p-4 gap-3 border border-white/5">
+              {[40, 65, 35, 80, 55, 90, 70].map((h, i) => (
+                <div key={i} style={{ height: `${h}%` }} className="w-full bg-white/10 rounded-t-md"></div>
+              ))}
+            </div>
+          </div>
+
+          <div className="lg:col-span-5 bg-[#141414] border border-white/5 rounded-2xl p-6 space-y-5">
+            <div className="h-4 bg-white/10 rounded-md w-36"></div>
+            <div className="space-y-3">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="h-16 bg-white/5 rounded-xl border border-white/5 p-4 flex items-center justify-between">
+                  <div className="space-y-2 flex-1">
+                    <div className="h-3 bg-white/10 rounded w-1/3"></div>
+                    <div className="h-2 bg-white/5 rounded w-1/2"></div>
+                  </div>
+                  <div className="w-6 h-6 rounded-lg bg-white/10"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Operational Signals Rail Skeleton */}
+        <div className="bg-[#141414] border border-white/5 rounded-2xl p-6 space-y-4">
+          <div className="h-4 bg-white/10 rounded-md w-48"></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-20 bg-white/5 rounded-xl border border-white/5 p-4 space-y-2">
+                <div className="h-3 bg-white/10 rounded w-24"></div>
+                <div className="h-4 bg-white/10 rounded w-16"></div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
