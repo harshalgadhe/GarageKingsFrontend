@@ -484,6 +484,18 @@ export async function voidReceipt(id, reason) {
   return await res.json();
 }
 
+export async function deleteReceipt(id) {
+  const res = await fetch(`${API_BASE_URL}/receipts/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) {
+    const message = await res.text().catch(() => '');
+    throw new Error(message || 'Failed to delete receipt');
+  }
+  return await res.json();
+}
+
 // Customer CRM Endpoints
 export async function getCustomers() {
   try {

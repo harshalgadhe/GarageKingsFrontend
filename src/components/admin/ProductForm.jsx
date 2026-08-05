@@ -807,7 +807,7 @@ export default function ProductForm({
           <button
             type="submit"
             disabled={isSubmitting}
-            className="px-8 py-3 rounded-xl bg-[#ff5500] hover:bg-[#ff661a] text-black font-black text-xs uppercase tracking-wider transition-all shadow-[0_2px_12px_rgba(255,85,0,0.2)] cursor-pointer disabled:opacity-50 flex items-center gap-2"
+            className="flex min-w-[184px] items-center justify-center gap-2 rounded-xl border border-[#F0D889]/70 bg-[#E1BD65] px-8 py-3 text-xs font-black uppercase tracking-[0.12em] text-[#090806] shadow-[0_8px_24px_rgba(225,189,101,0.2),inset_0_1px_0_rgba(255,255,255,0.28)] transition-all hover:-translate-y-0.5 hover:bg-[#EBD07F] hover:shadow-[0_12px_30px_rgba(225,189,101,0.28)] active:translate-y-0 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/[0.05] disabled:text-white/30 disabled:shadow-none"
           >
             <Check size={16} />
             {isSubmitting ? 'Saving...' : productId ? 'Update Product' : 'Save Product'}

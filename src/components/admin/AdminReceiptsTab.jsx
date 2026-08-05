@@ -1,7 +1,7 @@
 import React from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Edit2, Ban, FileText, X } from "lucide-react";
+import { Plus, Edit2, Trash2, FileText, X } from "lucide-react";
 import Pagination from "./Pagination";
 import DebouncedSearchBar from "../common/DebouncedSearchBar";
 import ProductTypeahead from "./ProductTypeahead";
@@ -136,7 +136,7 @@ export default function AdminReceiptsTab({
   editingReceiptId, setEditingReceiptId,
   receiptForm, setReceiptForm,
   createDefaultReceiptForm,
-  handleSaveReceipt, handleEditReceipt, handleVoidReceipt, handlePrintReceipt,
+  handleSaveReceipt, handleEditReceipt, handleDeleteReceipt, handlePrintReceipt,
   activeReceiptPreview, setActiveReceiptPreview,
   cars = [],
   isReceiptsLoading = false,
@@ -144,19 +144,26 @@ export default function AdminReceiptsTab({
   const paginated = receiptsList;
   const pageSize = RECEIPTS_PER_PAGE || 10;
   const totalPages = receiptsTotalPages || 1;
-  const [voidTarget, setVoidTarget] = React.useState(null);
-  const [voidReason, setVoidReason] = React.useState("");
-  const [isVoiding, setIsVoiding] = React.useState(false);
+  const [deleteTarget, setDeleteTarget] = React.useState(null);
+  const [isDeleting, setIsDeleting] = React.useState(false);
 
-  const confirmVoid = async () => {
-    if (!voidTarget || voidReason.trim().length < 5) return;
-    setIsVoiding(true);
+  const handleFormatChange = (formatType) => {
+    setReceiptForm(previous => ({
+      ...previous,
+      formatType,
+      pendingBalance: formatType === 'prebooking' ? previous.pendingBalance : '',
+      footerNote: FORMAT_NOTES[formatType] || previous.footerNote,
+    }));
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
     try {
-      await handleVoidReceipt(voidTarget.id, voidReason.trim());
-      setVoidTarget(null);
-      setVoidReason("");
+      await handleDeleteReceipt(deleteTarget.id);
+      setDeleteTarget(null);
     } finally {
-      setIsVoiding(false);
+      setIsDeleting(false);
     }
   };
 
@@ -600,8 +607,8 @@ export default function AdminReceiptsTab({
                       className="p-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 transition-colors cursor-pointer"><FileText size={14} /></button>
                     {r.status !== 'Voided' && <button onClick={() => handleEditReceipt(r)} title="Edit"
                       className="p-1.5 rounded-lg bg-white/5 border border-white/10 text-zinc-300 hover:bg-white/10 transition-colors cursor-pointer"><Edit2 size={14} /></button>}
-                    {r.status !== 'Voided' && <button onClick={() => { setVoidTarget(r); setVoidReason(""); }} title="Void receipt"
-                      className="p-1.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-300 hover:bg-rose-500/20 transition-colors cursor-pointer"><Ban size={14} /></button>}
+                    <button onClick={() => setDeleteTarget(r)} title="Delete receipt"
+                      className="p-1.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-300 hover:bg-rose-500/20 transition-colors cursor-pointer"><Trash2 size={14} /></button>
                   </div>
                 </td>
               </tr>
@@ -657,9 +664,9 @@ export default function AdminReceiptsTab({
                 {r.status !== 'Voided' && <button onClick={() => handleEditReceipt(r)} className="p-2 rounded-lg bg-white/5 border border-white/10 text-zinc-300 cursor-pointer">
                   <Edit2 size={14} />
                 </button>}
-                {r.status !== 'Voided' && <button onClick={() => { setVoidTarget(r); setVoidReason(""); }} className="p-2 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-300 cursor-pointer">
-                  <Ban size={14} />
-                </button>}
+                <button onClick={() => setDeleteTarget(r)} aria-label={`Delete receipt ${r.receiptNumber}`} className="p-2 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-300 cursor-pointer">
+                  <Trash2 size={14} />
+                </button>
               </div>
             </div>
           </div>
@@ -671,22 +678,20 @@ export default function AdminReceiptsTab({
       )}
 
       <AnimatePresence>
-        {voidTarget && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[160] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm" onClick={() => !isVoiding && setVoidTarget(null)}>
+        {deleteTarget && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[160] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm" onClick={() => !isDeleting && setDeleteTarget(null)}>
             <motion.div initial={{ scale: 0.96, y: 12 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.96, y: 12 }} className="w-full max-w-md rounded-2xl border border-white/10 bg-[#111111] p-6 shadow-2xl" onClick={event => event.stopPropagation()}>
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#C8AE7D]">Audit-safe correction</p>
-                  <h3 className="mt-2 text-xl font-semibold text-white">Void {voidTarget.receiptNumber}</h3>
-                  <p className="mt-2 text-sm leading-6 text-zinc-400">The receipt remains in history. Its linked order is cancelled and allocated stock is restored when applicable.</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-rose-300">Permanent removal</p>
+                  <h3 className="mt-2 text-xl font-semibold text-white">Delete {deleteTarget.receiptNumber}?</h3>
+                  <p className="mt-2 text-sm leading-6 text-zinc-400">This receipt and its generated receipt files will be removed permanently. The related sale and inventory record will remain unchanged.</p>
                 </div>
-                <button type="button" onClick={() => setVoidTarget(null)} disabled={isVoiding} className="rounded-lg border border-white/10 p-2 text-zinc-400 hover:text-white"><X size={16} /></button>
+                <button type="button" onClick={() => setDeleteTarget(null)} disabled={isDeleting} className="rounded-lg border border-white/10 p-2 text-zinc-400 hover:text-white"><X size={16} /></button>
               </div>
-              <label className="mt-5 block text-[10px] font-bold uppercase tracking-wider text-zinc-400">Reason</label>
-              <textarea value={voidReason} onChange={event => setVoidReason(event.target.value)} rows={4} maxLength={500} placeholder="Explain why this receipt is being voided" className="mt-2 w-full resize-none rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-[#C8AE7D]/50" />
               <div className="mt-5 flex justify-end gap-3">
-                <button type="button" onClick={() => setVoidTarget(null)} disabled={isVoiding} className="rounded-xl border border-white/10 px-4 py-2.5 text-xs font-bold text-zinc-300">Keep receipt</button>
-                <button type="button" onClick={confirmVoid} disabled={isVoiding || voidReason.trim().length < 5} className="rounded-xl border border-rose-400/30 bg-rose-400/10 px-4 py-2.5 text-xs font-bold text-rose-200 disabled:opacity-40">{isVoiding ? 'Voiding...' : 'Void receipt'}</button>
+                <button type="button" onClick={() => setDeleteTarget(null)} disabled={isDeleting} className="rounded-xl border border-white/10 px-4 py-2.5 text-xs font-bold text-zinc-300">Keep receipt</button>
+                <button type="button" onClick={confirmDelete} disabled={isDeleting} className="rounded-xl border border-rose-400/30 bg-rose-400/10 px-4 py-2.5 text-xs font-bold text-rose-200 disabled:opacity-40">{isDeleting ? 'Deleting...' : 'Delete permanently'}</button>
               </div>
             </motion.div>
           </motion.div>

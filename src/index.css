@@ -81,6 +81,10 @@ html, body {
   scroll-behavior: auto;
 }
 
+html {
+  position: relative;
+}
+
 /* Universally force hide webkit scrollbars for a clean app-like feel */
 * {
   -ms-overflow-style: none !important; /* IE and Edge */

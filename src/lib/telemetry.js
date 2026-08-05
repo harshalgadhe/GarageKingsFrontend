@@ -104,16 +104,15 @@ export async function logError(message, stack = '', level = 'error') {
       // Ignore Sentry dispatch errors
     }
 
-    if (navigator.sendBeacon) {
-      const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
-      navigator.sendBeacon(`${API_BASE_URL}/telemetry/log`, blob);
-    } else {
-      await fetch(`${API_BASE_URL}/telemetry/log`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-    }
+    // Keep telemetry on the signed fetch path. sendBeacon bypasses the global
+    // payload-hash interceptor required by the CloudFront origin policy.
+    await fetch(`${API_BASE_URL}/telemetry/log`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      keepalive: true,
+      body: JSON.stringify(payload)
+    });
   } catch (err) {
     console.error('Failed to send error telemetry:', err);
   }
@@ -126,4 +125,3 @@ function sentryDsnConfigured() {
     return false;
   }
 }
-

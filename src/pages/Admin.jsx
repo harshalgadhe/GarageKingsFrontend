@@ -10,7 +10,7 @@ import {
 import { getCurrentUser, signOutCognito } from '../lib/auth';
 import { 
   getCars, getProduct, addCar, updateCar, deleteCar, uploadImageToStorage, getGlobalSettings, updateGlobalSettings,
-  getReceipts, addReceipt, updateReceipt, voidReceipt,
+  getReceipts, addReceipt, updateReceipt, deleteReceipt,
   getSuppliers, createSupplier, getSupplierPurchases, getSupplierPurchaseDetails, addSupplierPurchase,
   recordSupplierPayment, receiveSupplierShipment, updateSupplierPurchaseStatus, getSupplierMetrics,
   getDashboardAggregates, getAdminVariants, getInventoryVariantDetails, getCategories, createCategory,
@@ -752,6 +752,7 @@ export default function Admin() {
         customerPhone: receiptForm.customerPhone,
         customerEmail: receiptForm.customerEmail,
         customerInsta: receiptForm.customerInsta,
+        customerInstagram: receiptForm.customerInsta,
         customerAddress: receiptForm.customerAddress,
         items: itemsPayload,
         includeShipping: receiptForm.includeShipping,
@@ -760,6 +761,7 @@ export default function Admin() {
         taxAmount: taxAmt,
         totalAmount: totalAmt,
         formatType: receiptForm.formatType,
+        advancePaid: totalAmt,
         pendingBalance: receiptForm.formatType === 'prebooking' ? (Number(receiptForm.pendingBalance) || 0) : 0,
         footerNote: receiptForm.footerNote
       };
@@ -775,6 +777,7 @@ export default function Admin() {
       setEditingReceiptId(null);
       setReceiptForm(createDefaultReceiptForm());
       fetchReceiptsList();
+      fetchDashboardAggregates();
     } catch (err) {
       console.error(err);
       showToast("Failed to save receipt: " + err.message, "error");
@@ -809,14 +812,15 @@ export default function Admin() {
     setIsAddingReceipt(true);
   };
 
-  const handleVoidReceipt = async (id, reason) => {
+  const handleDeleteReceipt = async (id) => {
     try {
-      await voidReceipt(id, reason);
-      showToast("Receipt voided and retained in the audit history");
+      await deleteReceipt(id);
+      showToast("Receipt deleted");
       fetchReceiptsList();
+      fetchDashboardAggregates();
     } catch (err) {
       console.error(err);
-      showToast("Failed to void receipt: " + err.message, "error");
+      showToast("Failed to delete receipt: " + err.message, "error");
       throw err;
     }
   };
@@ -1004,7 +1008,6 @@ export default function Admin() {
   const triggerTabFetch = (tab) => {
     if (tab === 'dashboard') {
       fetchDashboardAggregates();
-      fetchReceiptsList();
     } else if (tab === 'catalog') {
       if (catalogSubTab === 'products') {
         fetchInventory(inventoryPage, inventorySearchQuery);
@@ -1927,13 +1930,13 @@ export default function Admin() {
           </div>          {/* 1. DASHBOARD TAB */}
           {adminTab === 'dashboard' && (
             <AdminDashboardTab
-              dashboardStats={dashboardStats}
-              chartData={chartData}
+              dashboardStats={dashboardAggregates?.receiptStats || dashboardStats}
+              chartData={dashboardAggregates?.receiptCharts?.[chartTimeframe] || chartData}
               chartTimeframe={chartTimeframe}
               setChartTimeframe={setChartTimeframe}
               hoveredPointIndex={hoveredPointIndex}
               setHoveredPointIndex={setHoveredPointIndex}
-              isLoading={isReceiptsLoading}
+              isLoading={dashboardAggregatesLoading}
               operations={dashboardAggregates || {}}
               onNavigate={setAdminTab}
               onNewReceiptClick={() => { setAdminTab('receipts'); setEditingReceiptId(null); setIsAddingReceipt(true); }}
@@ -2031,7 +2034,7 @@ export default function Admin() {
               createDefaultReceiptForm={createDefaultReceiptForm}
               handleSaveReceipt={handleSaveReceipt}
               handleEditReceipt={handleEditReceipt}
-              handleVoidReceipt={handleVoidReceipt}
+              handleDeleteReceipt={handleDeleteReceipt}
               handlePrintReceipt={handlePrintReceipt}
               activeReceiptPreview={activeReceiptPreview}
               setActiveReceiptPreview={setActiveReceiptPreview}
