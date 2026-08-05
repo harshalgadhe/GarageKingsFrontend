@@ -71,10 +71,10 @@ export default function VaultScrollJourney() {
   const scene = SCENES[activeScene]
 
   return (
-    <div ref={journeyRef} className="relative h-[400svh] bg-[#050505]" style={{ position: 'relative' }} id="hero">
+    <div ref={journeyRef} className="relative h-[400vh] h-[400dvh] bg-[#050505]" style={{ position: 'relative' }} id="hero">
       <span id="story" className="absolute top-[25%] scroll-mt-20" aria-hidden="true" />
 
-      <section className="sticky top-0 h-[100svh] overflow-hidden" style={{ backgroundColor: scene.tone }}>
+      <section className="sticky top-0 h-screen h-[100dvh] overflow-hidden" style={{ backgroundColor: scene.tone }}>
         <AnimatePresence initial={false}>
           <motion.div
             key={`wash-${activeScene}`}
@@ -90,22 +90,22 @@ export default function VaultScrollJourney() {
         <div className="gk-journey-grid absolute inset-0 opacity-50" />
         <motion.div style={{ x: reduceMotion ? '50%' : lightX }} className="pointer-events-none absolute -top-1/4 h-[150%] w-[22%] rotate-[14deg] bg-gradient-to-r from-transparent via-white/[0.035] to-transparent blur-2xl" />
 
-        <div className="relative mx-auto grid h-full max-w-[1440px] grid-cols-1 px-5 pb-20 pt-24 md:px-10 lg:grid-cols-12 lg:items-center lg:px-16 lg:pb-12 lg:pt-20">
-          <div className="order-2 z-20 self-end pb-4 lg:order-1 lg:col-span-5 lg:self-center lg:pb-0">
+        <div className="relative mx-auto grid h-full max-w-[1440px] grid-cols-1 grid-rows-[minmax(0,48%)_minmax(0,52%)] gap-2 px-5 pb-[calc(76px+env(safe-area-inset-bottom))] pt-20 sm:gap-3 sm:pt-24 md:px-10 lg:grid-cols-12 lg:grid-rows-1 lg:items-center lg:gap-0 lg:px-16 lg:pb-12 lg:pt-20">
+          <div className="order-2 z-20 min-h-0 self-center lg:order-1 lg:col-span-5">
             <AnimatePresence mode="wait">
               <motion.div key={activeScene} initial={reduceMotion ? false : { opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} exit={reduceMotion ? {} : { opacity: 0, y: -18 }} transition={{ duration: reduceMotion ? 0 : 0.48, ease: [0.16, 1, 0.3, 1] }}>
-                <div className="mb-4 flex items-center gap-3 font-mono text-[9px] uppercase tracking-[0.22em]" style={{ color: scene.accent }}>
+                <div className="mb-3 flex items-center gap-3 font-mono text-[8px] uppercase tracking-[0.2em] sm:text-[9px] lg:mb-4 lg:tracking-[0.22em]" style={{ color: scene.accent }}>
                   <span>{scene.number}</span><span className="h-px w-8" style={{ backgroundColor: scene.accent }} /><span>{scene.eyebrow}</span>
                 </div>
-                <h1 className="text-[clamp(2.2rem,4.6vw,5.35rem)] font-semibold leading-[0.9] tracking-[-0.045em] text-[#F4F1EC]">
+                <h1 className="text-[clamp(2rem,9.5vw,3rem)] font-semibold leading-[0.9] tracking-[-0.045em] text-[#F4F1EC] lg:text-[clamp(2.2rem,4.6vw,5.35rem)]">
                   {scene.title.map((line, index) => <span key={line} className="block" style={index === scene.title.length - 1 ? { color: scene.accent } : undefined}>{line}</span>)}
                 </h1>
-                <p className="mt-5 max-w-[40ch] text-sm leading-relaxed text-[#A9A49C] md:text-base">{scene.body}</p>
+                <p className="mt-4 max-w-[40ch] text-[13px] leading-relaxed text-[#A9A49C] sm:text-sm md:text-base lg:mt-5">{scene.body}</p>
 
                 {activeScene === 0 && (
-                  <div className="mt-7 flex flex-wrap gap-3">
-                    <button onClick={() => navigate('/marketplace')} className="flex items-center gap-2 rounded-full bg-[#F5F5F7] px-6 py-3 text-[10px] font-black uppercase tracking-[0.15em] text-black transition hover:-translate-y-0.5 hover:bg-white">View collection <ArrowUpRight size={14} /></button>
-                    <button onClick={() => document.getElementById('story')?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' })} className="flex items-center gap-2 rounded-lg border border-white/10 px-5 py-3 text-[10px] font-black uppercase tracking-[0.15em] text-[#F4F1EC] transition hover:border-white/25">Begin the story <ArrowDown size={14} /></button>
+                  <div className="mt-5 grid grid-cols-2 gap-2 sm:mt-6 sm:flex sm:flex-wrap sm:gap-3 lg:mt-7">
+                    <button onClick={() => navigate('/marketplace')} className="flex min-w-0 items-center justify-center gap-1.5 rounded-full bg-[#F5F5F7] px-3 py-3 text-[8px] font-black uppercase tracking-[0.11em] text-black transition hover:-translate-y-0.5 hover:bg-white sm:gap-2 sm:px-6 sm:text-[10px] sm:tracking-[0.15em]">View collection <ArrowUpRight size={13} /></button>
+                    <button onClick={() => document.getElementById('story')?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' })} className="flex min-w-0 items-center justify-center gap-1.5 rounded-lg border border-white/10 px-3 py-3 text-[8px] font-black uppercase tracking-[0.11em] text-[#F4F1EC] transition hover:border-white/25 sm:gap-2 sm:px-5 sm:text-[10px] sm:tracking-[0.15em]">Begin the story <ArrowDown size={13} /></button>
                   </div>
                 )}
 
@@ -113,12 +113,12 @@ export default function VaultScrollJourney() {
             </AnimatePresence>
           </div>
 
-          <div className="order-1 relative flex min-h-0 items-center justify-center lg:order-2 lg:col-span-7 lg:h-[78vh]">
+          <div className="order-1 relative flex min-h-0 items-stretch justify-center lg:order-2 lg:col-span-7 lg:h-[78vh] lg:items-center">
             <div className="pointer-events-none absolute inset-x-[5%] bottom-[8%] top-[8%] border-x border-white/[0.04]" />
             <div className="pointer-events-none absolute left-[2%] right-[14%] top-[14%] h-px bg-gradient-to-r from-white/[0.08] to-transparent" />
             <div className="pointer-events-none absolute bottom-[14%] left-[14%] right-[2%] h-px bg-gradient-to-l from-white/[0.08] to-transparent" />
             <AnimatePresence mode="wait">
-              <motion.div key={scene.image} initial={reduceMotion ? false : { opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} exit={reduceMotion ? {} : { opacity: 0, scale: 1.025 }} transition={{ duration: reduceMotion ? 0 : 0.72, ease: [0.16, 1, 0.3, 1] }} className="relative h-[38vh] w-full max-w-[680px] overflow-hidden rounded-xl sm:h-[43vh] lg:h-[62vh] 2xl:h-[66vh]">
+              <motion.div key={scene.image} initial={reduceMotion ? false : { opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} exit={reduceMotion ? {} : { opacity: 0, scale: 1.025 }} transition={{ duration: reduceMotion ? 0 : 0.72, ease: [0.16, 1, 0.3, 1] }} className="relative h-full w-full max-w-[680px] overflow-hidden rounded-xl lg:h-[62vh] 2xl:h-[66vh]">
                 <motion.img src={scene.image} alt="Curated GarageKings diecast model" fetchPriority={activeScene === 0 ? 'high' : 'auto'} loading={activeScene === 0 ? 'eager' : 'lazy'} style={{ y: reduceMotion ? 0 : objectY, objectFit: scene.objectFit }} className="h-full w-full select-none drop-shadow-[0_32px_45px_rgba(0,0,0,.7)]" />
                 {scene.objectFit === 'cover' && <div className="absolute inset-0 bg-gradient-to-t from-[#050505]/65 via-transparent to-transparent" />}
               </motion.div>
