@@ -56,7 +56,7 @@ export default function ProductForm({
   // Single Casing Type, Pricing & Stock
   const [casingType, setCasingType] = useState('Blister');
   const [price, setPrice] = useState('');
-  const [availableStock, setAvailableStock] = useState(10);
+  const [availableStock, setAvailableStock] = useState(0);
   const [poAmount, setPoAmount] = useState('');
 
   // Images
@@ -122,7 +122,7 @@ export default function ProductForm({
       setCasingType(CASE_TYPES.includes(casingCap) ? casingCap : 'Blister');
 
       setPrice(initialData.price ?? initialData.sellingPrice ?? v0?.sellingPrice ?? '');
-      setAvailableStock(initialData.availableStock ?? initialData.totalStock ?? v0?.availableStock ?? 10);
+      setAvailableStock(initialData.availableStock ?? initialData.totalStock ?? v0?.availableStock ?? 0);
       setPoAmount(initialData.prebookDepositAmount ?? initialData.poAmount ?? v0?.prebookDepositAmount ?? '');
 
       // Extract all images
@@ -153,7 +153,7 @@ export default function ProductForm({
 
       setCasingType('Blister');
       setPrice('');
-      setAvailableStock(10);
+      setAvailableStock(0);
       setPoAmount('');
       setImages([]);
 
