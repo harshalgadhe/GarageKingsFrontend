@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Upload, X, Check, Layers, Eye, MessageCircle, ShoppingBag, Star } from 'lucide-react';
+import { Upload, X, Check, Eye, Layers, Star } from 'lucide-react';
 import { uploadImageToStorage } from '../../lib/db';
 import ProductCard from '../common/ProductCard';
 import SearchableSelect from './SearchableSelect';
@@ -53,10 +53,24 @@ export default function ProductForm({
   const [subtags, setSubtags] = useState([]);
   const [subtagInput, setSubtagInput] = useState('');
 
+  // Single Casing Type, Pricing & Stock
+  const [casingType, setCasingType] = useState('Blister');
+  const [price, setPrice] = useState('');
+  const [availableStock, setAvailableStock] = useState(10);
+  const [poAmount, setPoAmount] = useState('');
+
+  // Images
+  const [images, setImages] = useState([]);
+  const [imageUrlInput, setImageUrlInput] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+
   // Pre-Booking / PO Order
   const [isPrebook, setIsPrebook] = useState(false);
   const [isFeatured, setIsFeatured] = useState(false);
   const [arrivalDate, setArrivalDate] = useState(''); // String: e.g. "Q3 2026"
+
+  const [validationError, setValidationError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleAddSubtag = () => {
     const val = subtagInput.trim();
@@ -67,23 +81,6 @@ export default function ProductForm({
     }
     setSubtagInput('');
   };
-
-  // Case Variants (Each case type has its own price, stock, PO deposit, and images)
-  const [caseVariants, setCaseVariants] = useState([
-    {
-      id: 'v-1',
-      casingType: 'Blister',
-      price: '',
-      poAmount: '',
-      availableStock: 10,
-      images: [],
-      imageUrlInput: '',
-      isUploading: false
-    }
-  ]);
-
-  const [validationError, setValidationError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Populate form or reset cleanly when initialData changes
   useEffect(() => {
@@ -110,7 +107,6 @@ export default function ProductForm({
 
       setIsPrebook(initialData.isPrebook || initialData.status === 'Pre-Order' || false);
       setIsFeatured(Boolean(initialData.isFeatured));
-      // arrivalDate can live on the product root OR on variants[0].customerEta
       setArrivalDate(
         initialData.arrivalDate ||
         initialData.releaseDate ||
@@ -119,80 +115,30 @@ export default function ProductForm({
         ''
       );
 
-      // Extract all images from initialData (both parent image string and images array)
-      const allParentImages = [];
+      // Hydrate single casing type
+      const v0 = Array.isArray(initialData.variants) && initialData.variants[0];
+      const rawCasing = (initialData.casing || initialData.casingType || v0?.casing || 'Blister');
+      const casingCap = rawCasing.charAt(0).toUpperCase() + rawCasing.slice(1).toLowerCase();
+      setCasingType(CASE_TYPES.includes(casingCap) ? casingCap : 'Blister');
+
+      setPrice(initialData.price ?? initialData.sellingPrice ?? v0?.sellingPrice ?? '');
+      setAvailableStock(initialData.availableStock ?? initialData.totalStock ?? v0?.availableStock ?? 10);
+      setPoAmount(initialData.prebookDepositAmount ?? initialData.poAmount ?? v0?.prebookDepositAmount ?? '');
+
+      // Extract all images
+      const allImgs = [];
       if (initialData.image) {
         const resolved = resolveImageUrl(initialData.image);
-        if (resolved && !allParentImages.includes(resolved)) allParentImages.push(resolved);
+        if (resolved && !allImgs.includes(resolved)) allImgs.push(resolved);
       }
       if (Array.isArray(initialData.images)) {
         initialData.images.forEach(img => {
           const raw = typeof img === 'string' ? img : (img?.fullUrl || img?.thumbnailUrl || img?.url || img?.src);
           const resolved = resolveImageUrl(raw);
-          if (resolved && !allParentImages.includes(resolved)) allParentImages.push(resolved);
+          if (resolved && !allImgs.includes(resolved)) allImgs.push(resolved);
         });
       }
-
-      // Hydrate case variants
-      let loadedVariants = [];
-      if (Array.isArray(initialData.caseVariants) && initialData.caseVariants.length > 0) {
-        loadedVariants = initialData.caseVariants.map((v, i) => {
-          const vImgs = [];
-          if (v.image) {
-            const res = resolveImageUrl(v.image);
-            if (res) vImgs.push(res);
-          }
-          if (Array.isArray(v.images)) {
-            v.images.forEach(img => {
-              const raw = typeof img === 'string' ? img : (img?.fullUrl || img?.thumbnailUrl || img?.url || img?.src);
-              const res = resolveImageUrl(raw);
-              if (res && !vImgs.includes(res)) vImgs.push(res);
-            });
-          }
-          const finalImgs = vImgs.length > 0 ? vImgs : allParentImages;
-          return {
-            id: v.id || `v-${i}`,
-            casingType: v.casingType ? (v.casingType.charAt(0).toUpperCase() + v.casingType.slice(1).toLowerCase()) : 'Blister',
-            price: v.price ?? v.sellingPrice ?? '',
-            poAmount: v.poAmount ?? v.prebookDepositAmount ?? initialData.prebookDepositAmount ?? '',
-            availableStock: v.availableStock ?? v.totalStock ?? v.stock ?? initialData.availableStock ?? 10,
-            images: finalImgs,
-            imageUrlInput: '',
-            isUploading: false
-          };
-        });
-      } else if (Array.isArray(initialData.variants) && initialData.variants.length > 0) {
-        loadedVariants = initialData.variants.map((v, i) => {
-          const rawCasing = v.casing || initialData.casingType || initialData.casing || 'Blister';
-          const casingCap = rawCasing.charAt(0).toUpperCase() + rawCasing.slice(1).toLowerCase();
-          return {
-            id: v.id || `v-${i}`,
-            casingType: CASE_TYPES.includes(casingCap) ? casingCap : 'Blister',
-            price: v.sellingPrice ?? v.price ?? initialData.sellingPrice ?? initialData.price ?? '',
-            poAmount: initialData.prebookDepositAmount ?? initialData.poAmount ?? v.prebookDepositAmount ?? '',
-            availableStock: v.availableStock ?? v.totalStock ?? v.stock ?? initialData.availableStock ?? 10,
-            images: allParentImages,
-            imageUrlInput: '',
-            isUploading: false
-          };
-        });
-      } else {
-        const v0 = Array.isArray(initialData.variants) && initialData.variants[0];
-        const rawCasing = (v0?.casing || initialData.casingType || initialData.casing || 'Blister');
-        const casingCap = rawCasing.charAt(0).toUpperCase() + rawCasing.slice(1).toLowerCase();
-
-        loadedVariants = [{
-          id: 'v-1',
-          casingType: CASE_TYPES.includes(casingCap) ? casingCap : 'Blister',
-          price: v0?.sellingPrice ?? initialData.price ?? initialData.sellingPrice ?? '',
-          poAmount: initialData.prebookDepositAmount ?? initialData.poAmount ?? v0?.prebookDepositAmount ?? '',
-          availableStock: v0?.availableStock ?? v0?.totalStock ?? initialData.availableStock ?? 10,
-          images: allParentImages,
-          imageUrlInput: '',
-          isUploading: false
-        }];
-      }
-      setCaseVariants(loadedVariants);
+      setImages(allImgs);
     } else {
       // RESET TO CLEAN DEFAULTS FOR NEW PRODUCT
       setBrand('Mini GT');
@@ -205,139 +151,64 @@ export default function ProductForm({
       setSubtags([]);
       setSubtagInput('');
 
+      setCasingType('Blister');
+      setPrice('');
+      setAvailableStock(10);
+      setPoAmount('');
+      setImages([]);
+
       setIsPrebook(false);
       setIsFeatured(false);
       setArrivalDate('');
-
-      setCaseVariants([
-        {
-          id: 'v-1',
-          casingType: 'Blister',
-          price: '',
-          poAmount: '',
-          availableStock: 10,
-          images: [],
-          imageUrlInput: '',
-          isUploading: false
-        }
-      ]);
     }
   }, [initialData]);
 
-  // Variant Helpers
-  const handleAddCaseVariant = () => {
-    const currentTypes = caseVariants.map(v => v.casingType);
-    let nextType = 'Box';
-    if (!currentTypes.includes('Box')) nextType = 'Box';
-    else if (!currentTypes.includes('Acrylic')) nextType = 'Acrylic';
-    else if (!currentTypes.includes('Blister')) nextType = 'Blister';
-    else nextType = 'Other';
-
-    setCaseVariants(prev => [
-      ...prev,
-      {
-        id: `v-${Date.now()}`,
-        casingType: nextType,
-        price: prev[0]?.price || '',
-        poAmount: prev[0]?.poAmount || '',
-        availableStock: 10,
-        images: [],
-        imageUrlInput: '',
-        isUploading: false
-      }
-    ]);
-  };
-
-  const handleRemoveCaseVariant = (index) => {
-    if (caseVariants.length <= 1) return;
-    setCaseVariants(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const handleVariantChange = (index, field, value) => {
-    setCaseVariants(prev => {
-      const copy = [...prev];
-      copy[index] = { ...copy[index], [field]: value };
-      return copy;
-    });
-  };
-
-  // Image Upload Handlers per Variant
-  const handleVariantFileUpload = async (variantIndex, e) => {
+  // Image Upload Handlers
+  const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
 
-    setCaseVariants(prev => {
-      const copy = [...prev];
-      copy[variantIndex].isUploading = true;
-      return copy;
-    });
-
+    setIsUploading(true);
     setValidationError('');
 
     try {
       const uploaded = await Promise.all(files.map(f => uploadImageToStorage(f)));
       const valid = uploaded.filter(Boolean);
       if (valid.length > 0) {
-        setCaseVariants(prev => {
+        setImages(prev => {
           const copy = [...prev];
-          const currentImages = [...(copy[variantIndex].images || [])];
-          valid.forEach(url => { if (!currentImages.includes(url)) currentImages.push(url); });
-          copy[variantIndex].images = currentImages;
-          copy[variantIndex].isUploading = false;
+          valid.forEach(url => { if (!copy.includes(url)) copy.push(url); });
           return copy;
         });
       }
     } catch (err) {
-      console.error("Variant image upload error:", err);
+      console.error("Image upload error:", err);
       setValidationError("Failed to upload image. Please check connection and try again.");
     } finally {
-      setCaseVariants(prev => {
-        const copy = [...prev];
-        if (copy[variantIndex]) copy[variantIndex].isUploading = false;
-        return copy;
-      });
+      setIsUploading(false);
     }
   };
 
-  const handleAddVariantImageUrl = (variantIndex) => {
-    const url = (caseVariants[variantIndex].imageUrlInput || '').trim();
+  const handleAddImageUrl = () => {
+    const url = imageUrlInput.trim();
     if (!url) return;
+    if (!images.includes(url)) {
+      setImages(prev => [...prev, url]);
+    }
+    setImageUrlInput('');
+  };
 
-    setCaseVariants(prev => {
+  const handleRemoveImage = (imgIndex) => {
+    setImages(prev => prev.filter((_, idx) => idx !== imgIndex));
+  };
+
+  const handleSetCoverImage = (imgIndex) => {
+    if (imgIndex <= 0 || imgIndex >= images.length) return;
+    setImages(prev => {
       const copy = [...prev];
-      const currentImages = [...(copy[variantIndex].images || [])];
-      if (!currentImages.includes(url)) currentImages.push(url);
-      copy[variantIndex].images = currentImages;
-      copy[variantIndex].imageUrlInput = '';
+      const [selected] = copy.splice(imgIndex, 1);
+      copy.unshift(selected);
       return copy;
-    });
-  };
-
-  const handleRemoveVariantImage = (variantIndex, imgIndex) => {
-    setCaseVariants(prev => {
-      return prev.map((v, i) => {
-        if (i !== variantIndex) return v;
-        return {
-          ...v,
-          images: (v.images || []).filter((_, idx) => idx !== imgIndex)
-        };
-      });
-    });
-  };
-
-  const handleSetCoverImage = (variantIndex, imgIndex) => {
-    setCaseVariants(prev => {
-      return prev.map((v, i) => {
-        if (i !== variantIndex) return v;
-        const currentImages = [...(v.images || [])];
-        if (imgIndex <= 0 || imgIndex >= currentImages.length) return v;
-        const [selected] = currentImages.splice(imgIndex, 1);
-        currentImages.unshift(selected);
-        return {
-          ...v,
-          images: currentImages
-        };
-      });
     });
   };
 
@@ -350,23 +221,15 @@ export default function ProductForm({
       return;
     }
 
-    // Validate case variants
-    for (let i = 0; i < caseVariants.length; i++) {
-      const v = caseVariants[i];
-      if (!v.price || Number(v.price) <= 0) {
-        setValidationError(`Please enter a valid price for Case Type "${v.casingType}".`);
-        return;
-      }
+    if (!price || Number(price) <= 0) {
+      setValidationError('Please enter a valid product price.');
+      return;
     }
 
     setValidationError('');
     setIsSubmitting(true);
 
     try {
-      const primaryVariant = caseVariants[0];
-      const primaryImage = primaryVariant.images[0] || '';
-
-      // Format arrivalDate safely for PostgreSQL timestamp column
       let validIsoDate = null;
       const rawArrivalDateStr = arrivalDate.trim();
       if (rawArrivalDateStr) {
@@ -376,17 +239,12 @@ export default function ProductForm({
         }
       }
 
-      // NO AUTOMATIC DESCRIPTION MODIFICATION (Description stays exact as entered by admin)
       const finalDescription = description.trim();
-
-      const firstVariant = caseVariants[0] || {};
-      const productImages = (firstVariant.images && firstVariant.images.length > 0) 
-        ? firstVariant.images 
-        : (primaryImage ? [primaryImage] : []);
-      const mainPrice = Number(firstVariant.price || 0);
-      const poAmount = isPrebook ? Number(firstVariant.poAmount || 0) : 0;
-      const mainStock = Number(firstVariant.availableStock ?? 10);
-      const selectedCasing = firstVariant.casingType || 'Blister';
+      const finalCasing = (casingType || 'Blister').charAt(0).toUpperCase() + (casingType || 'Blister').slice(1).toLowerCase();
+      const mainPrice = Number(price);
+      const poDepositAmount = isPrebook ? Number(poAmount || 0) : 0;
+      const mainStock = Number(availableStock ?? 10);
+      const primaryImage = images[0] || '';
 
       const singleProductPayload = {
         name: name.trim(),
@@ -398,24 +256,40 @@ export default function ProductForm({
         sku: userSku,
         category: 'JDM',
         series: finalBrand,
-        casing: selectedCasing,
-        casingType: selectedCasing,
+        casing: finalCasing,
+        casingType: finalCasing,
+        casingTypes: [finalCasing],
         tag: (tag && tag !== 'None') ? tag : null,
         subtags: subtags,
         tags: subtags,
         availableStock: mainStock,
         stock: mainStock,
         totalStock: mainStock,
-        image: productImages[0] || '',
-        images: productImages,
+        image: primaryImage,
+        images: images,
         isPrebook: isPrebook,
         isFeatured: isFeatured,
         status: isPrebook ? 'Pre-Order' : 'Published',
-        poAmount: poAmount,
-        prebookDepositAmount: poAmount,
+        poAmount: poDepositAmount,
+        prebookDepositAmount: poDepositAmount,
         customerEta: rawArrivalDateStr || null,
         arrivalDate: rawArrivalDateStr || null,
-        releaseDate: rawArrivalDateStr || null
+        releaseDate: rawArrivalDateStr || null,
+        variants: [
+          {
+            casing: finalCasing,
+            casingType: finalCasing,
+            sku: userSku,
+            name: `${name.trim()} (${finalCasing})`,
+            price: mainPrice,
+            sellingPrice: mainPrice,
+            poAmount: poDepositAmount,
+            availableStock: mainStock,
+            stock: mainStock,
+            totalStock: mainStock,
+            images: images
+          }
+        ]
       };
 
       await onSave(singleProductPayload);
@@ -426,12 +300,6 @@ export default function ProductForm({
       setIsSubmitting(false);
     }
   };
-
-  // Active preview data
-  const previewVariant = caseVariants[0] || {};
-  const previewImage = previewVariant.images?.[0] || '';
-  const previewPrice = previewVariant.price ? Number(previewVariant.price) : 0;
-  const previewPoAmount = isPrebook ? Number(previewVariant.poAmount || 0) : 0;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -484,7 +352,7 @@ export default function ProductForm({
             {/* SKU ID */}
             <div>
               <label className="block text-[10px] font-bold text-white/50 uppercase tracking-widest mb-1">
-                SKU ID / Code
+                SKU ID / Code *
               </label>
               <input
                 type="text"
@@ -492,6 +360,7 @@ export default function ProductForm({
                 value={sku}
                 onChange={e => setSku(e.target.value)}
                 className="w-full bg-[#111116] border border-white/10 rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-[#ff5500]"
+                required
               />
             </div>
 
@@ -583,6 +452,152 @@ export default function ProductForm({
           </div>
         </div>
 
+        {/* SINGLE CASING TYPE, PRICING & STOCK */}
+        <div className="bg-white/[0.02] border border-white/5 p-4 rounded-xl space-y-4">
+          <h4 className="text-xs font-black uppercase text-[#ff5500] tracking-wider flex items-center gap-1.5">
+            <Layers size={14} /> Casing Type &amp; Pricing
+          </h4>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* Casing Type */}
+            <div>
+              <SearchableSelect
+                label="Casing Type"
+                required
+                value={casingType}
+                onChange={setCasingType}
+                options={CASE_TYPES}
+              />
+            </div>
+
+            {/* Price */}
+            <div>
+              <label className="block text-[10px] font-bold text-white/50 uppercase tracking-widest mb-1">
+                Price (₹) *
+              </label>
+              <input
+                type="number"
+                min="0"
+                placeholder="e.g. 1499"
+                value={price}
+                onChange={e => setPrice(e.target.value)}
+                className="w-full bg-[#111116] border border-white/10 rounded-lg px-3 py-2 text-xs text-white font-mono font-bold focus:outline-none focus:border-[#ff5500]"
+                required
+              />
+            </div>
+
+            {/* Available Stock */}
+            <div>
+              <label className="block text-[10px] font-bold text-white/50 uppercase tracking-widest mb-1">
+                Stock Quantity *
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={availableStock}
+                onChange={e => setAvailableStock(Math.max(0, parseInt(e.target.value) || 0))}
+                className="w-full bg-[#111116] border border-white/10 rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-[#ff5500]"
+                required
+              />
+            </div>
+
+            {/* PO Deposit Amount if Prebook */}
+            {isPrebook && (
+              <div className="md:col-span-3">
+                <label className="block text-[10px] font-bold text-[#ff5500] uppercase tracking-widest mb-1">
+                  PO Advance Deposit (₹)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="e.g. 500"
+                  value={poAmount}
+                  onChange={e => setPoAmount(e.target.value)}
+                  className="w-full bg-[#111116] border border-white/10 rounded-lg px-3 py-2 text-xs text-white font-mono font-bold focus:outline-none focus:border-[#ff5500]"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* PRODUCT IMAGES UPLOAD & INPUT */}
+        <div className="bg-white/[0.02] border border-white/5 p-4 rounded-xl space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="text-[10px] font-bold text-white/50 uppercase tracking-widest block">
+              Product Images
+            </label>
+            <span className="text-[9px] text-white/40">Upload files or paste image URLs</span>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-2">
+            <label className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-colors shrink-0">
+              <Upload size={12} className="text-[#ff5500]" />
+              {isUploading ? 'Uploading...' : 'Upload Images'}
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleFileUpload}
+                disabled={isUploading}
+                className="hidden"
+              />
+            </label>
+
+            <div className="flex-1 flex gap-2">
+              <input
+                type="url"
+                placeholder="Paste image URL..."
+                value={imageUrlInput}
+                onChange={e => setImageUrlInput(e.target.value)}
+                className="flex-1 bg-[#111116] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#ff5500]"
+              />
+              <button
+                type="button"
+                onClick={handleAddImageUrl}
+                className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-xs cursor-pointer"
+              >
+                Add URL
+              </button>
+            </div>
+          </div>
+
+          {/* Image Thumbnails */}
+          {images && images.length > 0 ? (
+            <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 pt-1">
+              {images.map((imgUrl, imgIdx) => (
+                <div key={imgIdx} className="relative aspect-square rounded-lg overflow-hidden border border-white/10 bg-black/40 group">
+                  <img src={imgUrl} alt="" className="w-full h-full object-contain p-1" />
+                  {imgIdx === 0 ? (
+                    <span className="absolute top-1 left-1 bg-[#ff5500] text-black text-[7.5px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider shadow">
+                      Cover
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleSetCoverImage(imgIdx)}
+                      className="absolute top-1 left-1 bg-black/80 hover:bg-[#ff5500] text-white hover:text-black text-[7px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+                      title="Set as cover image"
+                    >
+                      Make Cover
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveImage(imgIdx)}
+                    className="absolute top-1 right-1 p-1 bg-black/80 hover:bg-red-500 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                  >
+                    <X size={10} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-3 border border-dashed border-white/10 rounded-lg text-white/30 text-[10px]">
+              No images added for this product yet.
+            </div>
+          )}
+        </div>
+
         {/* PRE-BOOKING / PO RELEASE SECTION */}
         <div className="rounded-xl border border-[#E1BD65]/20 bg-[#E1BD65]/[0.045] p-4">
           <div className="flex items-center justify-between gap-5">
@@ -641,188 +656,6 @@ export default function ProductForm({
           )}
         </div>
 
-        {/* CASE TYPES & PRICING & IMAGES VARIANTS */}
-        <div className="bg-white/[0.02] border border-white/5 p-4 rounded-xl space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h4 className="text-xs font-black uppercase text-[#ff5500] tracking-wider flex items-center gap-1.5">
-                <Layers size={14} /> Case Types, Pricing &amp; Images
-              </h4>
-              <span className="text-[10px] text-white/40 block">Configure prices and specific images for each Case Type (Blister, Box, Acrylic)</span>
-            </div>
-            <button
-              type="button"
-              onClick={handleAddCaseVariant}
-              className="bg-[#ff5500]/10 hover:bg-[#ff5500]/20 text-[#ff5500] border border-[#ff5500]/30 font-bold text-[10px] px-3 py-1.5 rounded-lg uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-colors"
-            >
-              <Plus size={14} /> Add Case Type
-            </button>
-          </div>
-
-          <div className="space-y-4 pt-2">
-            {caseVariants.map((v, vIdx) => (
-              <div key={v.id} className="bg-black/30 border border-white/10 rounded-xl p-4 space-y-4 relative">
-                <div className="flex items-center justify-between pb-2 border-b border-white/5">
-                  <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-[#ff5500]/20 text-[#ff5500] text-[10px] flex items-center justify-center font-mono">
-                      {vIdx + 1}
-                    </span>
-                    Case Type Option #{vIdx + 1}
-                  </span>
-                  {caseVariants.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveCaseVariant(vIdx)}
-                      className="text-white/40 hover:text-red-400 p-1 rounded hover:bg-white/5 transition-colors cursor-pointer"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  )}
-                </div>
-
-                {/* Variant Details Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  {/* Case Type */}
-                  <div>
-                    <SearchableSelect
-                      label="Case Type"
-                      required
-                      value={v.casingType}
-                      onChange={value => handleVariantChange(vIdx, 'casingType', value)}
-                      options={CASE_TYPES}
-                    />
-                  </div>
-
-                  {/* Price */}
-                  <div>
-                    <label className="block text-[10px] font-bold text-white/50 uppercase tracking-widest mb-1">
-                      Price (₹) *
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      placeholder="e.g. 1499"
-                      value={v.price}
-                      onChange={e => handleVariantChange(vIdx, 'price', e.target.value)}
-                      className="w-full bg-[#111116] border border-white/10 rounded-lg px-3 py-2 text-xs text-white font-mono font-bold focus:outline-none focus:border-[#ff5500]"
-                      required
-                    />
-                  </div>
-
-                  {/* Available Stock */}
-                  <div>
-                    <label className="block text-[10px] font-bold text-white/50 uppercase tracking-widest mb-1">
-                      Stock Quantity *
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={v.availableStock}
-                      onChange={e => handleVariantChange(vIdx, 'availableStock', Math.max(0, parseInt(e.target.value) || 0))}
-                      className="w-full bg-[#111116] border border-white/10 rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-[#ff5500]"
-                    />
-                  </div>
-
-                  {/* PO Deposit Amount if Prebook */}
-                  {isPrebook && (
-                    <div className="md:col-span-3">
-                      <label className="block text-[10px] font-bold text-[#ff5500] uppercase tracking-widest mb-1">
-                        PO Advance Deposit (₹)
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        placeholder="e.g. 500"
-                        value={v.poAmount}
-                        onChange={e => handleVariantChange(vIdx, 'poAmount', e.target.value)}
-                        className="w-full bg-[#111116] border border-white/10 rounded-lg px-3 py-2 text-xs text-white font-mono font-bold focus:outline-none focus:border-[#ff5500]"
-                      />
-                    </div>
-                  )}
-                </div>
-
-                {/* Variant Images Upload & Input */}
-                <div className="space-y-3 pt-2 border-t border-white/5">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-bold text-white/50 uppercase tracking-widest block">
-                      Images for {v.casingType} Case
-                    </label>
-                    <span className="text-[9px] text-white/40">Upload files or paste URL</span>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <label className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-colors shrink-0">
-                      <Upload size={12} className="text-[#ff5500]" />
-                      {v.isUploading ? 'Uploading...' : 'Upload Image'}
-                      <input
-                        type="file"
-                        multiple
-                        accept="image/*"
-                        onChange={e => handleVariantFileUpload(vIdx, e)}
-                        disabled={v.isUploading}
-                        className="hidden"
-                      />
-                    </label>
-
-                    <div className="flex-1 flex gap-2">
-                      <input
-                        type="url"
-                        placeholder={`Paste image URL for ${v.casingType}...`}
-                        value={v.imageUrlInput || ''}
-                        onChange={e => handleVariantChange(vIdx, 'imageUrlInput', e.target.value)}
-                        className="flex-1 bg-[#111116] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#ff5500]"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleAddVariantImageUrl(vIdx)}
-                        className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-xs cursor-pointer"
-                      >
-                        Add URL
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Variant Image Thumbnails */}
-                  {v.images && v.images.length > 0 ? (
-                    <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 pt-1">
-                      {v.images.map((imgUrl, imgIdx) => (
-                        <div key={imgIdx} className="relative aspect-square rounded-lg overflow-hidden border border-white/10 bg-black/40 group">
-                          <img src={imgUrl} alt="" className="w-full h-full object-contain p-1" />
-                          {imgIdx === 0 ? (
-                            <span className="absolute top-1 left-1 bg-[#ff5500] text-black text-[7.5px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider shadow">
-                              Cover
-                            </span>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleSetCoverImage(vIdx, imgIdx)}
-                              className="absolute top-1 left-1 bg-black/80 hover:bg-[#ff5500] text-white hover:text-black text-[7px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
-                              title="Set as cover image"
-                            >
-                              Make Cover
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveVariantImage(vIdx, imgIdx)}
-                            className="absolute top-1 right-1 p-1 bg-black/80 hover:bg-red-500 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                          >
-                            <X size={10} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-3 border border-dashed border-white/10 rounded-lg text-white/30 text-[10px]">
-                      No images added for this case type yet.
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
         {/* SUBMIT ACTIONS */}
         <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
           <button
@@ -857,11 +690,11 @@ export default function ProductForm({
               name: name.trim() || 'Product Title / Casting Name',
               brand: brand === 'Other' ? (customBrand || 'Other') : brand,
               scale: scale || '1:64',
-              casingType: previewVariant.casingType || 'Blister',
-              price: previewPrice,
-              poAmount: previewPoAmount,
+              casingType: casingType || 'Blister',
+              price: price ? Number(price) : 0,
+              poAmount: isPrebook ? Number(poAmount || 0) : 0,
               isPrebook: isPrebook,
-              image: previewImage || '/brand-mark.webp',
+              image: images[0] || '/brand-mark.webp',
               tag: (tag && tag !== 'None') ? tag : null,
               tags: subtags,
               subtags: subtags,
@@ -870,7 +703,7 @@ export default function ProductForm({
               arrivalDate: arrivalDate.trim() || null,
               releaseDate: arrivalDate.trim() || null,
               customerEta: arrivalDate.trim() || null,
-              availableStock: previewVariant.availableStock ?? 10
+              availableStock: availableStock ?? 10
             };
             return <ProductCard car={previewCar} isPreview={true} />;
           })()}
