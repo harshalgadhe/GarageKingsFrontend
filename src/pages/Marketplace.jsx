@@ -3,7 +3,7 @@ import { motion, useReducedMotion } from 'framer-motion'
 import { getCars, getBrands } from '../lib/db'
 import { logError } from '../lib/telemetry'
 import Navigation from '../components/Navigation'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import Footer from '../components/Footer'
 import { MarketplaceGridSkeleton } from '../components/Skeletons'
 import VaultModuleCard from '../components/common/VaultModuleCard'
@@ -16,8 +16,9 @@ export default function Marketplace() {
   const [isLoading, setIsLoading] = useState(true)
   const [isFirstLoad, setIsFirstLoad] = useState(true)
   const [error, setError] = useState('')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const initialSearch = new URLSearchParams(window.location.search).get('search') || ''
+  const [searchQuery, setSearchQuery] = useState(initialSearch)
+  const [debouncedSearch, setDebouncedSearch] = useState(initialSearch)
   
   // Pagination & Filtering States
   const [page, setPage] = useState(1)
@@ -39,6 +40,16 @@ export default function Marketplace() {
   const isFetchingRef = useRef(false)
 
   const navigate = useNavigate()
+  const location = useLocation()
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const nextSearch = params.get('search') || ''
+    setSearchQuery(nextSearch)
+    setDebouncedSearch(nextSearch)
+    setBrandFilter(params.get('brand') || 'All')
+    setPage(1)
+  }, [location.search])
 
   // Track mobile view
   useEffect(() => {
@@ -52,7 +63,7 @@ export default function Marketplace() {
   useEffect(() => {
     getBrands()
       .then(data => setBackendBrands(data || []))
-      .catch(err => console.error("Error loading brands from backend:", err));
+      .catch(() => setBackendBrands([]));
   }, []);
 
   // Debounce search

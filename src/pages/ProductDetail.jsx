@@ -117,7 +117,14 @@ export default function ProductDetail() {
   const condition = product.condition || product.packagingCondition || 'Ask to confirm'
 
   const enquire = () => window.open(
-    createProductEnquiryUrl({ ...product, price: total }, reference),
+    createProductEnquiryUrl({
+      ...product,
+      price: total,
+      poAmount: deposit,
+      casingType: variant.casingType || product.casing,
+      availability: soldOut ? 'Unavailable' : preOrder ? 'Pre-booking' : 'Available',
+      isSoldOut: soldOut,
+    }, reference),
     '_blank',
     'noopener,noreferrer',
   )
@@ -224,14 +231,8 @@ export default function ProductDetail() {
                 <p className="mt-1 text-[11px] leading-relaxed text-[#6E6E73]">Choose how you would like to contact GarageKings.</p>
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
-              {soldOut ? (
-                <div className="col-span-full rounded-full border border-white/[0.1] py-3.5 text-center text-xs font-semibold text-[#86868B]">Enquiries closed</div>
-              ) : (
-                <>
-                  <button onClick={enquire} className="flex items-center justify-center gap-2 rounded-full border border-white/[0.11] bg-white/[0.045] px-5 py-3 text-xs font-semibold text-[#E8E8ED] transition hover:bg-white hover:text-black"><SiWhatsapp size={18} className="text-[#25D366]" /> WhatsApp</button>
-                  <a href={CONTACT.instagramUrl} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 rounded-full border border-white/[0.11] bg-white/[0.045] px-5 py-3 text-xs font-semibold text-[#E8E8ED] transition hover:bg-white hover:text-black"><SiInstagram size={17} className="text-[#E1306C]" /> Instagram</a>
-                </>
-              )}
+                <button onClick={enquire} className="flex items-center justify-center gap-2 rounded-full border border-white/[0.11] bg-white/[0.045] px-5 py-3 text-xs font-semibold text-[#E8E8ED] transition hover:bg-white hover:text-black"><SiWhatsapp size={18} className="text-[#25D366]" /> {soldOut ? 'Ask about restock' : 'WhatsApp'}</button>
+                <a href={CONTACT.instagramUrl} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 rounded-full border border-white/[0.11] bg-white/[0.045] px-5 py-3 text-xs font-semibold text-[#E8E8ED] transition hover:bg-white hover:text-black"><SiInstagram size={17} className="text-[#E1306C]" /> Instagram</a>
               </div>
             </div>
 

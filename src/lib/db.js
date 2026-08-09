@@ -41,18 +41,35 @@ function normalizeImageEntry(image) {
   };
 }
 
+function imageIdentity(image) {
+  if (typeof image === 'string') return resolveMediaUrl(image);
+  if (!image || typeof image !== 'object') return '';
+  return resolveMediaUrl(image.fullUrl || image.url || image.src || image.mediumUrl || image.thumbnailUrl || '');
+}
+
+function normalizeUniqueImages(images) {
+  if (!Array.isArray(images)) return images;
+  const seen = new Set();
+  return images.map(normalizeImageEntry).filter((image) => {
+    const identity = imageIdentity(image);
+    if (!identity || seen.has(identity)) return false;
+    seen.add(identity);
+    return true;
+  });
+}
+
 function normalizeProductMedia(product) {
   if (!product || typeof product !== 'object') return product;
   const normalizeVariant = (variant) => ({
     ...variant,
     image: resolveMediaUrl(variant?.image),
-    images: Array.isArray(variant?.images) ? variant.images.map(normalizeImageEntry) : variant?.images,
+    images: normalizeUniqueImages(variant?.images),
   });
 
   return {
     ...product,
     image: resolveMediaUrl(product.image),
-    images: Array.isArray(product.images) ? product.images.map(normalizeImageEntry) : product.images,
+    images: normalizeUniqueImages(product.images),
     variants: Array.isArray(product.variants) ? product.variants.map(normalizeVariant) : product.variants,
     caseVariants: Array.isArray(product.caseVariants) ? product.caseVariants.map(normalizeVariant) : product.caseVariants,
   };
@@ -232,7 +249,24 @@ export async function getCars(params = {}) {
     console.error("Error fetching cars:", err);
     return queryOptions.paginated ? { products: [], total: 0 } : [];
   }
-}export async function getProduct(id) {
+}
+
+export async function getHomepageProducts() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/products/homepage`);
+    if (!res.ok) throw new Error('Failed to fetch homepage catalog');
+    const data = await res.json();
+    return {
+      featured: data.featured ? normalizeProductMedia(data.featured) : null,
+      recent: (data.recent || []).map(normalizeProductMedia),
+    };
+  } catch (err) {
+    console.error('Error fetching homepage catalog:', err);
+    return { featured: null, recent: [] };
+  }
+}
+
+export async function getProduct(id) {
   try {
     const res = await fetch(`${API_BASE_URL}/products/${id}`, {
       headers: getAuthHeaders()

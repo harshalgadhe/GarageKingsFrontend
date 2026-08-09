@@ -2,7 +2,7 @@ import { forwardRef, useEffect, useMemo, useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { ArrowRight, ImageOff } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { getCars } from '../../lib/db'
+import { getHomepageProducts } from '../../lib/db'
 
 function formatPrice(value) {
   const amount = Number(value)
@@ -21,17 +21,14 @@ const LookbookGallery = forwardRef(function LookbookGallery(props, ref) {
   useEffect(() => {
     let active = true
 
-    Promise.all([
-      getCars({ limit: 1, featured: true }),
-      getCars({ limit: 8 }),
-    ])
-      .then(([featuredCars, recentCars]) => {
+    getHomepageProducts()
+      .then(({ featured: featuredCar, recent: recentCars }) => {
         if (!active) return
         const formatModel = (car) => ({
           ...car,
           priceLabel: formatPrice(car.sellingPrice ?? car.price),
         })
-        setSelectedFeatured((featuredCars || []).map(formatModel).find((model) => Boolean(model.image)) || null)
+        setSelectedFeatured(featuredCar?.image ? formatModel(featuredCar) : null)
         setModels((recentCars || []).slice(0, 8).map(formatModel))
       })
       .finally(() => {

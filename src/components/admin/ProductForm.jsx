@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, X, Check, Eye, Layers, Star } from 'lucide-react';
-import { uploadImageToStorage } from '../../lib/db';
+import { getBrands, uploadImageToStorage } from '../../lib/db';
 import ProductCard from '../common/ProductCard';
 import SearchableSelect from './SearchableSelect';
 
@@ -15,22 +15,6 @@ function resolveImageUrl(url) {
   return `${SERVER_ORIGIN}${url.startsWith('/') ? '' : '/'}${url}`;
 }
 
-const BRANDS_LIST = [
-  'Mini GT',
-  'Kaido House',
-  'Inno64',
-  'Hot Wheels',
-  'Pop Race',
-  'Tarmac Works',
-  'Matchbox',
-  'BBR',
-  'Looksmart',
-  'Spark',
-  'Majorette',
-  'Schuco',
-  'Other'
-];
-
 const SCALES_LIST = ['1:64', '1:43', '1:18', '1:24', '1:12', 'Other'];
 const CASE_TYPES = ['Blister', 'Box', 'Acrylic', 'Other'];
 const GENERIC_TAGS = ['None', 'Limited', 'Hot', 'Rare', 'New Drop', 'Exclusive'];
@@ -44,6 +28,7 @@ export default function ProductForm({
 }) {
   // Shared Product Information
   const [brand, setBrand] = useState('Mini GT');
+  const [brandOptions, setBrandOptions] = useState(['Mini GT', 'Other']);
   const [customBrand, setCustomBrand] = useState('');
   const [sku, setSku] = useState('');
   const [name, setName] = useState('');
@@ -72,6 +57,16 @@ export default function ProductForm({
   const [validationError, setValidationError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  useEffect(() => {
+    let active = true;
+    getBrands().then((records) => {
+      if (!active) return;
+      const names = (Array.isArray(records) ? records : []).map(item => item.name).filter(Boolean);
+      setBrandOptions([...new Set([...names, 'Other'])]);
+    }).catch(() => {});
+    return () => { active = false; };
+  }, []);
+
   const handleAddSubtag = () => {
     const val = subtagInput.trim();
     if (!val) return;
@@ -86,7 +81,7 @@ export default function ProductForm({
   useEffect(() => {
     if (initialData) {
       const b = initialData.brand || initialData.carBrand || 'Mini GT';
-      if (BRANDS_LIST.includes(b)) {
+      if (brandOptions.includes(b)) {
         setBrand(b);
         setCustomBrand('');
       } else {
@@ -161,7 +156,7 @@ export default function ProductForm({
       setIsFeatured(false);
       setArrivalDate('');
     }
-  }, [initialData]);
+  }, [initialData, brandOptions]);
 
   // Image Upload Handlers
   const handleFileUpload = async (e) => {
@@ -325,7 +320,7 @@ export default function ProductForm({
                 required
                 value={brand}
                 onChange={setBrand}
-                options={BRANDS_LIST}
+                options={brandOptions}
               />
               {brand === 'Other' && (
                 <input

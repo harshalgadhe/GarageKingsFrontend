@@ -1,92 +1,28 @@
 "use client"
 
-import { forwardRef } from 'react'
+import { forwardRef, useEffect, useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-
-const BRANDS = [
-  {
-    name: 'Mini GT',
-    dbValue: 'Mini GT',
-    origin: 'TSM Model',
-    style: '1:64 Premium',
-    desc: 'Renowned for ultra-precise scaling, high-fidelity replication of modern GT racers, supercars, and premium factory road cars.',
-    color: 'from-orange-500/10 to-transparent',
-    glow: 'rgba(251,146,60,0.08)'
-  },
-  {
-    name: 'Kaido House',
-    dbValue: 'Kaido House',
-    origin: 'Designed by Jun Imai',
-    style: 'Custom JDM',
-    desc: 'Widebody JDM masterpieces, retro styling, and opening hood details designed by Hot Wheels legend Jun Imai.',
-    color: 'from-purple-500/10 to-transparent',
-    glow: 'rgba(192,132,252,0.08)'
-  },
-  {
-    name: 'Hot Wheels',
-    dbValue: 'Hotwheels',
-    origin: 'Mattel Premium',
-    style: 'Classic & Pop Culture',
-    desc: 'The gold standard of diecast. Real Riders rubber tires, premium metal-on-metal construction, and legendary street car castings.',
-    color: 'from-amber-500/10 to-transparent',
-    glow: 'rgba(251,191,36,0.08)'
-  },
-  {
-    name: 'Takara Tomy',
-    dbValue: 'Takara Tomy',
-    origin: 'Tomica Premium',
-    style: 'Japanese Craftsmanship',
-    desc: 'Precision Japanese engineering featuring functional suspensions, opening parts, and extremely accurate Japanese domestic market casting lines.',
-    color: 'from-blue-500/10 to-transparent',
-    glow: 'rgba(96,165,250,0.08)'
-  },
-  {
-    name: 'POP Race',
-    dbValue: 'POP Race',
-    origin: 'Boutique Racing',
-    style: 'Modern GT & Rally',
-    desc: 'Rising star in boutique diecast, featuring intricate engine details, opening parts, and iconic livery designs from worldwide motorsports.',
-    color: 'from-emerald-500/10 to-transparent',
-    glow: 'rgba(52,211,153,0.08)'
-  },
-  {
-    name: 'Cool Car',
-    dbValue: 'COOLCAR',
-    origin: 'Boutique Castings',
-    style: 'Limited Editions',
-    desc: 'Exclusive, limited-run boutique diecasts showcasing custom tuner culture, unique paint finishes, and high collector appeal.',
-    color: 'from-red-500/10 to-transparent',
-    glow: 'rgba(248,113,113,0.08)'
-  },
-  {
-    name: 'Solido',
-    dbValue: 'Solido',
-    origin: 'French Heritage since 1932',
-    style: '1:18 & 1:64 Classics',
-    desc: 'French model manufacturer renowned for opening doors, diecast bodies, and exceptional value-for-money classic and modern rally cars.',
-    color: 'from-cyan-500/10 to-transparent',
-    glow: 'rgba(6,182,212,0.08)'
-  },
-  {
-    name: 'Flame',
-    dbValue: 'Flame',
-    origin: 'Boutique Performance',
-    style: 'Premium Details',
-    desc: 'Rising performance diecast specialist featuring high-end wheel rolls, authentic paints, and unique display presentations.',
-    color: 'from-orange-600/10 to-transparent',
-    glow: 'rgba(234,88,12,0.08)'
-  }
-]
+import { buildBrandTheme } from '../../data/brandThemes'
+import { getBrands } from '../../lib/db'
 
 const TechnicalArchive = forwardRef(function TechnicalArchive(props, ref) {
   const reduce = useReducedMotion()
   const navigate = useNavigate()
+  const [brands, setBrands] = useState([])
+
+  useEffect(() => {
+    let active = true
+    getBrands().then((records) => {
+      if (active) setBrands((Array.isArray(records) ? records : []).map(buildBrandTheme).filter(Boolean))
+    }).catch(() => {})
+    return () => { active = false }
+  }, [])
 
   return (
     <div ref={ref} id="brands" className="w-full scroll-mt-16 bg-gk-black">
       {/* SECTION 3: THE BRANDS WE SELL */}
-      <section className="relative w-full py-24 md:py-32 px-6 md:px-12 lg:px-16 border-t border-zinc-900 overflow-hidden bg-gk-black">
+      <section className="relative w-full px-6 pb-20 pt-10 md:px-12 md:pb-28 md:pt-14 lg:px-16 border-t border-zinc-900 overflow-hidden bg-gk-black">
         {/* Decorative Grid Lines */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:4rem_4rem] pointer-events-none opacity-40" />
         
@@ -95,7 +31,7 @@ const TechnicalArchive = forwardRef(function TechnicalArchive(props, ref) {
 
         <div className="max-w-7xl mx-auto w-full relative z-10">
           {/* Header row */}
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-16 border-b border-zinc-900 pb-8 text-left w-full">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12 border-b border-zinc-900 pb-8 text-left w-full md:mb-14">
             <div>
               <span className="text-[10px] font-medium uppercase tracking-[0.25em] text-gk-orange mb-3 block font-inter">
                 OFFICIAL STOCKISTS &amp; PARTNERS
@@ -118,14 +54,14 @@ const TechnicalArchive = forwardRef(function TechnicalArchive(props, ref) {
 
           {/* Brands Grid Layout */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-            {BRANDS.map((brand, idx) => (
+            {brands.map((brand, idx) => (
               <motion.div
-                key={brand.dbValue}
+                key={brand.slug}
                 initial={reduce ? false : { opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.1 }}
                 transition={{ duration: 0.6, delay: idx * 0.05, ease: [0.22, 1, 0.36, 1] }}
-                onClick={() => navigate(`/marketplace?brand=${brand.dbValue}`)}
+                onClick={() => navigate(`/brands/${brand.slug}`)}
                 className="group relative overflow-hidden rounded-2xl border border-white/5 bg-zinc-950/40 p-8 flex flex-col justify-between min-h-[280px] cursor-pointer hover:border-white/10 hover:bg-zinc-900/40 transition-all duration-500 text-left"
               >
                 {/* Background Brand Initials for high-end aesthetic */}
@@ -136,7 +72,7 @@ const TechnicalArchive = forwardRef(function TechnicalArchive(props, ref) {
                 {/* Spot-glow backdrop */}
                 <div 
                   className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" 
-                  style={{ background: `radial-gradient(circle at top right, ${brand.glow} 0%, transparent 65%)` }}
+                  style={{ background: `radial-gradient(circle at top right, ${brand.accent}22 0%, transparent 65%)` }}
                 />
 
                 <div>
@@ -157,7 +93,7 @@ const TechnicalArchive = forwardRef(function TechnicalArchive(props, ref) {
 
                   {/* Brand Description */}
                   <p className="text-xs text-zinc-400 font-inter leading-relaxed max-w-[90%] group-hover:text-zinc-300 transition-colors duration-300">
-                    {brand.desc}
+                    {brand.description}
                   </p>
                 </div>
 

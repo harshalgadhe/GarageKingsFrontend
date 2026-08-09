@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Mail, Lock, ShieldAlert, CheckCircle2, ArrowRight, ArrowLeft, Loader2, User } from 'lucide-react'
+import { X, Mail, Lock, ShieldAlert, CheckCircle2, ArrowRight, ArrowLeft, Loader2, User, Eye, EyeOff } from 'lucide-react'
 import { signInCognito, signUpCognito, confirmSignUpCognito, signInWithGoogleProfile, autoConfirmUserBackend, parseJwt } from '../lib/auth'
 import { useLoading } from '../providers/LoadingProvider'
 
@@ -9,12 +9,30 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'champagne', o
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [fullName, setFullName] = useState('')
   const [verificationCode, setVerificationCode] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
   const { showLoader, hideLoader } = useLoading()
+
+  const readAttemptState = () => {
+    try {
+      const state = JSON.parse(localStorage.getItem('gk_auth_attempts') || '{}')
+      if (Number(state.blockedUntil) > Date.now()) return state
+    } catch (_) {}
+    return { count: 0, blockedUntil: 0 }
+  }
+
+  const recordFailedAttempt = (forceBlock = false) => {
+    const current = readAttemptState()
+    const count = forceBlock ? 5 : Number(current.count || 0) + 1
+    const blockedUntil = count >= 5 ? Date.now() + 15 * 60 * 1000 : 0
+    localStorage.setItem('gk_auth_attempts', JSON.stringify({ count, blockedUntil }))
+    return blockedUntil
+  }
 
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
   const isGoogleAvailable = clientId && !clientId.includes('dummy') && clientId !== '818913587248-1jgrq7f5d4g3d8a1c9h8t2s1p0c0o0p0.apps.googleusercontent.com';
@@ -86,10 +104,18 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'champagne', o
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
+
+    const attemptState = readAttemptState()
+    if (attemptState.blockedUntil > Date.now()) {
+      const minutes = Math.max(1, Math.ceil((attemptState.blockedUntil - Date.now()) / 60000))
+      setError(`Too many sign-in attempts. Please try again in ${minutes} minute${minutes === 1 ? '' : 's'}.`)
+      return
+    }
     setLoading(true);
 
     try {
       const user = await signInCognito(email, password);
+      localStorage.removeItem('gk_auth_attempts')
       setSuccessMessage('Successfully signed in! Accessing secure vault...');
       if (onAuthSuccess) {
         setTimeout(() => {
@@ -102,7 +128,10 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'champagne', o
         }, 1500);
       }
     } catch (err) {
-      setError(err.message || 'Failed to authenticate.');
+      const blockedUntil = recordFailedAttempt(err.status === 429)
+      setError(blockedUntil
+        ? 'Too many sign-in attempts. Please wait 15 minutes before trying again.'
+        : 'Email or password is incorrect. Please try again.');
       setLoading(false);
     }
   };
@@ -113,6 +142,10 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'champagne', o
     
     if (password !== confirmPassword) {
       setError('Passwords do not match.');
+      return;
+    }
+    if (password.length < 8 || !/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/\d/.test(password)) {
+      setError('Use at least 8 characters with an uppercase letter, lowercase letter and number.');
       return;
     }
     
@@ -244,6 +277,7 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'champagne', o
                       <input 
                         required 
                         type="email" 
+                        autoComplete="email"
                         disabled={loading}
                         value={email} 
                         onChange={e => setEmail(e.target.value)} 
@@ -255,13 +289,17 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'champagne', o
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
                       <input 
                         required 
-                        type="password" 
+                        type={showPassword ? 'text' : 'password'}
+                        autoComplete="current-password"
                         disabled={loading}
                         value={password} 
                         onChange={e => setPassword(e.target.value)} 
                         placeholder="Password"
-                        className="w-full bg-[#111111] border border-white/[0.1] rounded-xl pl-11 pr-4 py-3.5 text-[#F4F1EC] placeholder:text-[#6F6B65] focus:outline-none focus:border-[#C8AE7D]/45 transition-colors text-sm"
+                        className="w-full bg-[#111111] border border-white/[0.1] rounded-xl pl-11 pr-12 py-3.5 text-[#F4F1EC] placeholder:text-[#6F6B65] focus:outline-none focus:border-[#C8AE7D]/45 transition-colors text-sm"
                       />
+                      <button type="button" onClick={() => setShowPassword(value => !value)} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/35 transition hover:text-white" aria-label={showPassword ? 'Hide password' : 'Show password'}>
+                        {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                      </button>
                     </div>
                     
                     <button 
@@ -341,6 +379,7 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'champagne', o
                       <input 
                         required 
                         type="email" 
+                        autoComplete="email"
                         disabled={loading}
                         value={email} 
                         onChange={e => setEmail(e.target.value)} 
@@ -352,25 +391,33 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'champagne', o
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
                       <input 
                         required 
-                        type="password" 
+                        type={showPassword ? 'text' : 'password'}
+                        autoComplete="new-password"
                         disabled={loading}
                         value={password} 
                         onChange={e => setPassword(e.target.value)} 
                         placeholder="Password (Min 8 Characters)"
-                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-11 pr-4 py-3.5 text-white placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors text-sm" 
+                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-11 pr-12 py-3.5 text-white placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors text-sm" 
                       />
+                      <button type="button" onClick={() => setShowPassword(value => !value)} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/35 transition hover:text-white" aria-label={showPassword ? 'Hide password' : 'Show password'}>
+                        {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                      </button>
                     </div>
                     <div className="relative">
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
                       <input 
                         required 
-                        type="password" 
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        autoComplete="new-password"
                         disabled={loading}
                         value={confirmPassword} 
                         onChange={e => setConfirmPassword(e.target.value)} 
                         placeholder="Confirm Password"
-                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-11 pr-4 py-3.5 text-white placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors text-sm" 
+                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-11 pr-12 py-3.5 text-white placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors text-sm" 
                       />
+                      <button type="button" onClick={() => setShowConfirmPassword(value => !value)} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/35 transition hover:text-white" aria-label={showConfirmPassword ? 'Hide confirmation password' : 'Show confirmation password'}>
+                        {showConfirmPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                      </button>
                     </div>
                     
                     <button 

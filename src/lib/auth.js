@@ -13,15 +13,14 @@ const API_BASE_URL = import.meta.env.PROD
  * Initiates local email/password login
  */
 export async function signInCognito(email, password) {
-  try {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+  const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       credentials: 'include',
       body: JSON.stringify({ email: email.trim(), password })
-    });
+  });
 
     if (!response.ok) {
       let errorMsg = 'Authentication failed. Please verify credentials.';
@@ -34,8 +33,10 @@ export async function signInCognito(email, password) {
           if (text) errorMsg = text;
         } catch (_) {}
       }
-      throw new Error(errorMsg);
-    }
+    const authError = new Error(errorMsg);
+    authError.status = response.status;
+    throw authError;
+  }
 
     const data = await response.json();
 
@@ -51,11 +52,7 @@ export async function signInCognito(email, password) {
     // Notify all components that a new user is now active
     window.dispatchEvent(new Event('gk_user_updated'));
 
-    return user;
-  } catch (error) {
-    console.error("Local signIn failed:", error);
-    throw error;
-  }
+  return user;
 }
 
 /**

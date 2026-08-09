@@ -11,7 +11,7 @@ import { ImageOff } from 'lucide-react';
  * - High-contrast state markers for availability and pre-booking
  * - Complete touch & keyboard parity (composite focus ring)
  */
-export default function VaultModuleCard({ car, onClick, isPreview = false }) {
+export default function VaultModuleCard({ car, onClick, isPreview = false, theme }) {
   const [imageFailed, setImageFailed] = useState(false);
   if (!car) return null;
   const hasImage = Boolean(car.image) && !imageFailed;
@@ -57,12 +57,13 @@ export default function VaultModuleCard({ car, onClick, isPreview = false }) {
           onClick();
         }
       }}
-      className={`gk-vault-card group relative flex flex-col rounded-xl bg-[#0D0D0D] border border-white/[0.06] overflow-hidden transition-[transform,border-color,box-shadow,background-color] duration-300 gk-focus-ring ${
+      className={`gk-vault-card group relative flex flex-col rounded-xl ${theme ? '' : 'bg-[#0D0D0D]'} border border-white/[0.06] overflow-hidden transition-[transform,border-color,box-shadow,background-color] duration-300 gk-focus-ring ${
         isPreview ? 'w-full shadow-lg' : 'hover:border-white/[0.18] hover:bg-[#141414] hover:-translate-y-1.5 hover:shadow-[0_24px_60px_rgba(0,0,0,0.82)] cursor-pointer h-full min-h-[440px]'
       }`}
+      style={theme ? { backgroundColor: theme.cardSurface || theme.background, borderColor: `${theme.accent}24` } : undefined}
     >
       {/* ── 1. ARCHIVE / VAULT INDEX HEADER BAR ── */}
-      <div className="px-4 pt-3.5 pb-2 flex items-center justify-between border-b border-white/[0.04] bg-[#050505]/40 text-[10px] uppercase font-mono tracking-widest text-[#74716B]">
+      <div className="px-4 pt-3.5 pb-2 flex items-center justify-between border-b border-white/[0.04] bg-[#050505]/40 text-[10px] uppercase font-mono tracking-widest text-[#74716B]" style={theme ? { backgroundColor: `${theme.cardStage || theme.background}CC`, borderBottomColor: `${theme.accent}18` } : undefined}>
         <span className="flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-[#C8AE7D]/60" />
           <span className="text-[#A9A49C] font-semibold">{vaultIndex}</span>
@@ -89,13 +90,8 @@ export default function VaultModuleCard({ car, onClick, isPreview = false }) {
       </div>
 
       {/* ── 2. ARTIFACT STAGE (Controlled Radial Spotlight & Museum Presentation) ── */}
-      <div className="relative flex h-72 w-full items-center justify-center overflow-hidden border-b border-white/[0.04] bg-[#080808] p-3 sm:h-60 sm:p-5">
-        {hasImage && (
-          <>
-            <img src={car.image} alt="" aria-hidden="true" className="absolute -inset-6 h-[calc(100%+3rem)] w-[calc(100%+3rem)] scale-110 object-cover opacity-20 blur-2xl saturate-75" />
-            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,.18),rgba(5,5,5,.7)),radial-gradient(circle_at_50%_42%,rgba(255,255,255,.12),transparent_52%)]" />
-          </>
-        )}
+      <div className="relative flex h-72 w-full items-center justify-center overflow-hidden border-b border-white/[0.04] bg-[#080808] p-3 sm:h-60 sm:p-5" style={theme ? { backgroundColor: theme.cardStage || theme.background, borderBottomColor: `${theme.accent}18` } : undefined}>
+        {hasImage && <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,.08),rgba(5,5,5,.62)),radial-gradient(circle_at_50%_42%,rgba(255,255,255,.11),transparent_54%)]" />}
         {/* Soft Pedestal Shadow under the model */}
         <div className="absolute bottom-3 inset-x-12 h-4 rounded-full bg-black/80 blur-md pointer-events-none" />
 
@@ -132,7 +128,7 @@ export default function VaultModuleCard({ car, onClick, isPreview = false }) {
         <div>
           {/* Brand + Metadata Line */}
           <div className="flex items-center justify-between gap-2 mb-1.5">
-            <span className="text-[10px] font-black uppercase tracking-widest text-[#C8AE7D]">
+            <span className="text-[10px] font-black uppercase tracking-widest text-[#C8AE7D]" style={theme ? { color: theme.accent } : undefined}>
               {car.brand || 'Mini GT'}
             </span>
             <div className="flex items-center gap-1.5">

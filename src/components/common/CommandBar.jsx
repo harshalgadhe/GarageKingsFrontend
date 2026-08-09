@@ -79,13 +79,39 @@ export default function CommandBar({
   onResetFilters
 }) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [draftFilters, setDraftFilters] = useState({
+    brand: brandFilter,
+    scale: scaleFilter,
+    inStock: inStockOnly,
+    preBooking: preBookingOnly,
+  });
+
+  const openDrawer = () => {
+    setDraftFilters({
+      brand: brandFilter,
+      scale: scaleFilter,
+      inStock: inStockOnly,
+      preBooking: preBookingOnly,
+    });
+    setIsDrawerOpen(true);
+  };
+
+  const closeDrawer = () => setIsDrawerOpen(false);
+
+  const applyDraftFilters = () => {
+    setBrandFilter(draftFilters.brand);
+    setScaleFilter(draftFilters.scale);
+    setInStockOnly(draftFilters.inStock);
+    setPreBookingOnly(draftFilters.preBooking);
+    setIsDrawerOpen(false);
+  };
 
   useEffect(() => {
     if (!isDrawerOpen) return undefined;
 
     const previousOverflow = document.body.style.overflow;
     const closeOnEscape = (event) => {
-      if (event.key === 'Escape') setIsDrawerOpen(false);
+      if (event.key === 'Escape') closeDrawer();
     };
 
     document.body.style.overflow = 'hidden';
@@ -103,6 +129,12 @@ export default function CommandBar({
     (scaleFilter !== 'All' ? 1 : 0) +
     (inStockOnly ? 1 : 0) +
     (preBookingOnly ? 1 : 0);
+
+  const draftActiveCount =
+    (draftFilters.brand !== 'All' ? 1 : 0) +
+    (draftFilters.scale !== 'All' ? 1 : 0) +
+    (draftFilters.inStock ? 1 : 0) +
+    (draftFilters.preBooking ? 1 : 0);
 
   return (
     <div className="sticky top-16 z-30 w-full border-b border-white/[0.05] bg-black/88 px-0 backdrop-blur-xl lg:border-0 lg:bg-black/72 lg:px-6">
@@ -190,7 +222,7 @@ export default function CommandBar({
         {/* ── Mobile Filter Trigger Button ── */}
         <div className="flex lg:hidden items-center justify-between w-full">
           <button
-            onClick={() => setIsDrawerOpen(true)}
+            onClick={openDrawer}
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#050505] border border-white/[0.08] text-xs font-mono text-[#F4F1EC] cursor-pointer"
           >
             <SlidersHorizontal size={14} className="text-[#D8BC78]" />
@@ -215,7 +247,7 @@ export default function CommandBar({
 
       {/* ── Mobile Inspection Sheet / Drawer ── */}
       {isDrawerOpen && createPortal(
-        <div className="fixed inset-0 z-[200] flex h-[100dvh] flex-col justify-end bg-black/72 backdrop-blur-sm lg:hidden" onClick={() => setIsDrawerOpen(false)} role="presentation">
+        <div className="fixed inset-0 z-[200] flex h-[100dvh] flex-col justify-end bg-black/72 backdrop-blur-sm lg:hidden" onClick={closeDrawer} role="presentation">
           <div className="max-h-[calc(100dvh-72px)] overflow-y-auto rounded-t-[28px] border-t border-white/[0.14] bg-[#101010] px-5 pb-[calc(24px+env(safe-area-inset-bottom))] pt-3 shadow-[0_-24px_70px_rgba(0,0,0,.7)]" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="mobile-filter-title">
             <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-white/20" />
             <div className="space-y-6">
@@ -223,7 +255,7 @@ export default function CommandBar({
               <h3 id="mobile-filter-title" className="text-lg font-semibold tracking-tight text-[#F4F1EC]">
                 Filter models
               </h3>
-              <button onClick={() => setIsDrawerOpen(false)} className="text-[#74716B] hover:text-white cursor-pointer">
+              <button onClick={closeDrawer} className="text-[#74716B] hover:text-white cursor-pointer">
                 <X size={20} />
               </button>
             </div>
@@ -233,7 +265,7 @@ export default function CommandBar({
               <label className="text-[10px] uppercase tracking-[0.16em] text-[#8C877F] font-bold block">Brand</label>
               <div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto pr-1">
                 {['All', ...backendBrands.map((brand) => brand.name)].map((brand) => (
-                  <button key={brand} type="button" onClick={() => setBrandFilter(brand)} className={`rounded-full border px-3.5 py-2 text-xs font-semibold transition ${brandFilter === brand ? 'border-white bg-white text-black' : 'border-white/[0.1] bg-[#080808] text-[#A1A1A6] hover:border-white/25 hover:text-white'}`}>
+                  <button key={brand} type="button" onClick={() => setDraftFilters((current) => ({ ...current, brand }))} className={`rounded-full border px-3.5 py-2 text-xs font-semibold transition ${draftFilters.brand === brand ? 'border-white bg-white text-black' : 'border-white/[0.1] bg-[#080808] text-[#A1A1A6] hover:border-white/25 hover:text-white'}`}>
                     {brand === 'All' ? 'All brands' : brand}
                   </button>
                 ))}
@@ -245,7 +277,7 @@ export default function CommandBar({
               <label className="text-[10px] uppercase tracking-[0.16em] text-[#8C877F] font-bold block">Scale</label>
               <div className="grid grid-cols-4 gap-2">
                 {['All', '1:64', '1:32', '1:18'].map((scale) => (
-                  <button key={scale} type="button" onClick={() => setScaleFilter(scale)} className={`rounded-xl border py-2.5 text-xs font-semibold transition ${scaleFilter === scale ? 'border-[#E1BD65] bg-[#E1BD65] text-black' : 'border-white/[0.1] bg-[#080808] text-[#A1A1A6]'}`}>
+                  <button key={scale} type="button" onClick={() => setDraftFilters((current) => ({ ...current, scale }))} className={`rounded-xl border py-2.5 text-xs font-semibold transition ${draftFilters.scale === scale ? 'border-[#E1BD65] bg-[#E1BD65] text-black' : 'border-white/[0.1] bg-[#080808] text-[#A1A1A6]'}`}>
                     {scale === 'All' ? 'Any' : scale}
                   </button>
                 ))}
@@ -257,8 +289,8 @@ export default function CommandBar({
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={inStockOnly}
-                  onChange={(e) => setInStockOnly(e.target.checked)}
+                  checked={draftFilters.inStock}
+                  onChange={(e) => setDraftFilters((current) => ({ ...current, inStock: e.target.checked }))}
                 className="h-4 w-4 accent-[#E1BD65]"
                 />
                 <span className="text-sm font-semibold text-[#F4F1EC]">In Stock Items Only</span>
@@ -267,8 +299,8 @@ export default function CommandBar({
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={preBookingOnly}
-                  onChange={(e) => setPreBookingOnly(e.target.checked)}
+                  checked={draftFilters.preBooking}
+                  onChange={(e) => setDraftFilters((current) => ({ ...current, preBooking: e.target.checked }))}
                 className="h-4 w-4 accent-[#E1BD65]"
                 />
                 <span className="text-sm font-semibold text-[#F4F1EC]">Pre-Order / Pre-Booking Only</span>
@@ -278,16 +310,16 @@ export default function CommandBar({
             {/* Pinned Action Buttons */}
             <div className="flex gap-3 pt-4 border-t border-white/[0.06]">
               <button
-                onClick={() => { onResetFilters(); setIsDrawerOpen(false); }}
+                onClick={() => setDraftFilters({ brand: 'All', scale: 'All', inStock: false, preBooking: false })}
                 className="flex-1 py-3 border border-white/[0.1] rounded-lg text-xs font-mono uppercase font-bold text-[#A9A49C] hover:text-white"
               >
                 Reset
               </button>
               <button
-                onClick={() => setIsDrawerOpen(false)}
+                onClick={applyDraftFilters}
                 className="flex-1 py-3 bg-[#F5F5F7] rounded-full text-xs font-mono uppercase font-black text-black"
               >
-                Show results
+                Apply filters{draftActiveCount > 0 ? ` (${draftActiveCount})` : ''}
               </button>
             </div>
             </div>

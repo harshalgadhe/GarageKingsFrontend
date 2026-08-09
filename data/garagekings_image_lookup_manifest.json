@@ -1,0 +1,1130 @@
+{
+  "schemaVersion": "garagekings-image-lookup-v1",
+  "instructions": {
+    "priority": [
+      "official manufacturer",
+      "Castly fallback"
+    ],
+    "castlyDomain": "castly.co.in",
+    "outputKeyPattern": "products/<SKU>/<NN>.<ext>",
+    "afterDownload": "Populate products.image with the first S3 URL/key and products.images with all ordered S3 URLs/keys."
+  },
+  "verifiedBrandSources": {
+    "Hot Wheels": [
+      "https://shopping.mattel.com/",
+      "https://shop.mattel.com/",
+      "https://creations.mattel.com/",
+      "https://service.mattel.com/"
+    ],
+    "Mini GT": [
+      "https://minigt.tsm-models.com/"
+    ],
+    "Pop Race": [
+      "https://www.poprace.net/"
+    ],
+    "CastlyFallback": [
+      "https://www.castly.co.in/"
+    ]
+  },
+  "products": [
+    {
+      "sku": "HTHLH72",
+      "name": "Neon Speeders set of 8",
+      "brand": "Hot Wheels",
+      "series": "Neon Speeders",
+      "manufacturerSkuCandidate": null,
+      "officialDomains": [
+        "shopping.mattel.com",
+        "shop.mattel.com",
+        "creations.mattel.com",
+        "service.mattel.com"
+      ],
+      "officialSearchQuery": "Hot Wheels \"Neon Speeders set of 8\" \"HTHLH72\" \"Neon Speeders\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Hot Wheels \"Neon Speeders set of 8\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "HTHDG89",
+      "name": "Batman Silver Series set of 5",
+      "brand": "Hot Wheels",
+      "series": "Silver Series",
+      "manufacturerSkuCandidate": null,
+      "officialDomains": [
+        "shopping.mattel.com",
+        "shop.mattel.com",
+        "creations.mattel.com",
+        "service.mattel.com"
+      ],
+      "officialSearchQuery": "Hot Wheels \"Batman Silver Series set of 5\" \"HTHDG89\" \"Silver Series\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Hot Wheels \"Batman Silver Series set of 5\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "HTHDG90",
+      "name": "Batman Silver Series set of 5",
+      "brand": "Hot Wheels",
+      "series": "Silver Series",
+      "manufacturerSkuCandidate": null,
+      "officialDomains": [
+        "shopping.mattel.com",
+        "shop.mattel.com",
+        "creations.mattel.com",
+        "service.mattel.com"
+      ],
+      "officialSearchQuery": "Hot Wheels \"Batman Silver Series set of 5\" \"HTHDG90\" \"Silver Series\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Hot Wheels \"Batman Silver Series set of 5\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "HTHYT5688",
+      "name": "Hype Hauler / Camion De Transport",
+      "brand": "Hot Wheels",
+      "series": "Track Fleet",
+      "manufacturerSkuCandidate": null,
+      "officialDomains": [
+        "shopping.mattel.com",
+        "shop.mattel.com",
+        "creations.mattel.com",
+        "service.mattel.com"
+      ],
+      "officialSearchQuery": "Hot Wheels \"Hype Hauler / Camion De Transport\" \"HTHYT5688\" \"Track Fleet\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Hot Wheels \"Hype Hauler / Camion De Transport\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "HTHYT5672",
+      "name": "Bugcation",
+      "brand": "Hot Wheels",
+      "series": "Track Fleet",
+      "manufacturerSkuCandidate": null,
+      "officialDomains": [
+        "shopping.mattel.com",
+        "shop.mattel.com",
+        "creations.mattel.com",
+        "service.mattel.com"
+      ],
+      "officialSearchQuery": "Hot Wheels \"Bugcation\" \"HTHYT5672\" \"Track Fleet\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Hot Wheels \"Bugcation\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "HTHYT5630",
+      "name": "Scania Rally Truck",
+      "brand": "Hot Wheels",
+      "series": "Track Fleet",
+      "manufacturerSkuCandidate": null,
+      "officialDomains": [
+        "shopping.mattel.com",
+        "shop.mattel.com",
+        "creations.mattel.com",
+        "service.mattel.com"
+      ],
+      "officialSearchQuery": "Hot Wheels \"Scania Rally Truck\" \"HTHYT5630\" \"Track Fleet\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Hot Wheels \"Scania Rally Truck\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "HTHYT56911",
+      "name": "Porsche 911 Off Roader",
+      "brand": "Hot Wheels",
+      "series": "Track Fleet",
+      "manufacturerSkuCandidate": null,
+      "officialDomains": [
+        "shopping.mattel.com",
+        "shop.mattel.com",
+        "creations.mattel.com",
+        "service.mattel.com"
+      ],
+      "officialSearchQuery": "Hot Wheels \"Porsche 911 Off Roader\" \"HTHYT56911\" \"Track Fleet\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Hot Wheels \"Porsche 911 Off Roader\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "GT1101",
+      "name": "Mazda RX-7 LB-Super Silhouette",
+      "brand": "Mini GT",
+      "series": "Mazda",
+      "manufacturerSkuCandidate": "MGT01101",
+      "officialDomains": [
+        "minigt.tsm-models.com"
+      ],
+      "officialSearchQuery": "Mini GT \"Mazda RX-7 LB-Super Silhouette\" \"MGT01101\" \"Mazda\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Mini GT \"Mazda RX-7 LB-Super Silhouette\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "HTSS2",
+      "name": "ZAMAC set of 6",
+      "brand": "Hot Wheels",
+      "series": "Silver Series",
+      "manufacturerSkuCandidate": null,
+      "officialDomains": [
+        "shopping.mattel.com",
+        "shop.mattel.com",
+        "creations.mattel.com",
+        "service.mattel.com"
+      ],
+      "officialSearchQuery": "Hot Wheels \"ZAMAC set of 6\" \"HTSS2\" \"Silver Series\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Hot Wheels \"ZAMAC set of 6\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "GTSUPRA",
+      "name": "Supra",
+      "brand": "Mini GT",
+      "series": "Fast & Furious",
+      "manufacturerSkuCandidate": null,
+      "officialDomains": [
+        "minigt.tsm-models.com"
+      ],
+      "officialSearchQuery": "Mini GT \"Supra\" \"GTSUPRA\" \"Fast & Furious\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Mini GT \"Supra\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "HTRLC1",
+      "name": "1964 Jaguar",
+      "brand": "Hot Wheels",
+      "series": "Red Line Club",
+      "manufacturerSkuCandidate": null,
+      "officialDomains": [
+        "shopping.mattel.com",
+        "shop.mattel.com",
+        "creations.mattel.com",
+        "service.mattel.com"
+      ],
+      "officialSearchQuery": "Hot Wheels \"1964 Jaguar\" \"HTRLC1\" \"Red Line Club\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Hot Wheels \"1964 Jaguar\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "GTMUSTANG",
+      "name": "Red Mustang",
+      "brand": "Pop Race",
+      "series": "Mustang",
+      "manufacturerSkuCandidate": null,
+      "officialDomains": [
+        "poprace.net"
+      ],
+      "officialSearchQuery": "Pop Race \"Red Mustang\" \"GTMUSTANG\" \"Mustang\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Pop Race \"Red Mustang\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "GT1144",
+      "name": "Range Rover 1981 Camel Trophy",
+      "brand": "Mini GT",
+      "series": "Range Rover",
+      "manufacturerSkuCandidate": "MGT01144",
+      "officialDomains": [
+        "minigt.tsm-models.com"
+      ],
+      "officialSearchQuery": "Mini GT \"Range Rover 1981 Camel Trophy\" \"MGT01144\" \"Range Rover\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Mini GT \"Range Rover 1981 Camel Trophy\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "GT1066",
+      "name": "Nissan Skyline GT-R (R32) VeilSide Combat",
+      "brand": "Mini GT",
+      "series": "Skyline",
+      "manufacturerSkuCandidate": "MGT01066",
+      "officialDomains": [
+        "minigt.tsm-models.com"
+      ],
+      "officialSearchQuery": "Mini GT \"Nissan Skyline GT-R (R32) VeilSide Combat\" \"MGT01066\" \"Skyline\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Mini GT \"Nissan Skyline GT-R (R32) VeilSide Combat\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "GT906",
+      "name": "Mini GT BMW Z8 (007)",
+      "brand": "Mini GT",
+      "series": "James Bond",
+      "manufacturerSkuCandidate": "MGT00906",
+      "officialDomains": [
+        "minigt.tsm-models.com"
+      ],
+      "officialSearchQuery": "Mini GT \"Mini GT BMW Z8 (007)\" \"MGT00906\" \"James Bond\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Mini GT \"Mini GT BMW Z8 (007)\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "HTF1",
+      "name": "F1 pack of 5",
+      "brand": "Hot Wheels",
+      "series": "F1",
+      "manufacturerSkuCandidate": null,
+      "officialDomains": [
+        "shopping.mattel.com",
+        "shop.mattel.com",
+        "creations.mattel.com",
+        "service.mattel.com"
+      ],
+      "officialSearchQuery": "Hot Wheels \"F1 pack of 5\" \"HTF1\" \"F1\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Hot Wheels \"F1 pack of 5\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "GTMAZDA",
+      "name": "Mazda",
+      "brand": "Mini GT",
+      "series": "Fast & Furious",
+      "manufacturerSkuCandidate": null,
+      "officialDomains": [
+        "minigt.tsm-models.com"
+      ],
+      "officialSearchQuery": "Mini GT \"Mazda\" \"GTMAZDA\" \"Fast & Furious\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Mini GT \"Mazda\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "HTHRT81",
+      "name": "1968 Vintage club of 5",
+      "brand": "Hot Wheels",
+      "series": "Silver Series",
+      "manufacturerSkuCandidate": null,
+      "officialDomains": [
+        "shopping.mattel.com",
+        "shop.mattel.com",
+        "creations.mattel.com",
+        "service.mattel.com"
+      ],
+      "officialSearchQuery": "Hot Wheels \"1968 Vintage club of 5\" \"HTHRT81\" \"Silver Series\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Hot Wheels \"1968 Vintage club of 5\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "HTGDG44",
+      "name": "Performance Truck Set of 5",
+      "brand": "Hot Wheels",
+      "series": "Silver Series",
+      "manufacturerSkuCandidate": null,
+      "officialDomains": [
+        "shopping.mattel.com",
+        "shop.mattel.com",
+        "creations.mattel.com",
+        "service.mattel.com"
+      ],
+      "officialSearchQuery": "Hot Wheels \"Performance Truck Set of 5\" \"HTGDG44\" \"Silver Series\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Hot Wheels \"Performance Truck Set of 5\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "GT1143B",
+      "name": "Porsche Skeleton Box",
+      "brand": "Mini GT",
+      "series": "Porsche",
+      "manufacturerSkuCandidate": "MGT01143",
+      "officialDomains": [
+        "minigt.tsm-models.com"
+      ],
+      "officialSearchQuery": "Mini GT \"Porsche Skeleton Box\" \"MGT01143\" \"Porsche\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Mini GT \"Porsche Skeleton Box\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "GT3074",
+      "name": "Buggatii",
+      "brand": "Mini GT",
+      "series": "Buggati",
+      "manufacturerSkuCandidate": "MGT03074",
+      "officialDomains": [
+        "minigt.tsm-models.com"
+      ],
+      "officialSearchQuery": "Mini GT \"Buggatii\" \"MGT03074\" \"Buggati\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Mini GT \"Buggatii\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "HTFPY861",
+      "name": "Nissan Z GT4",
+      "brand": "Hot Wheels",
+      "series": "Car Culture",
+      "manufacturerSkuCandidate": null,
+      "officialDomains": [
+        "shopping.mattel.com",
+        "shop.mattel.com",
+        "creations.mattel.com",
+        "service.mattel.com"
+      ],
+      "officialSearchQuery": "Hot Wheels \"Nissan Z GT4\" \"HTFPY861\" \"Car Culture\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Hot Wheels \"Nissan Z GT4\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "HTFPY862",
+      "name": "Mazda RX7 FC Pandem",
+      "brand": "Hot Wheels",
+      "series": "Car Culture",
+      "manufacturerSkuCandidate": null,
+      "officialDomains": [
+        "shopping.mattel.com",
+        "shop.mattel.com",
+        "creations.mattel.com",
+        "service.mattel.com"
+      ],
+      "officialSearchQuery": "Hot Wheels \"Mazda RX7 FC Pandem\" \"HTFPY862\" \"Car Culture\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Hot Wheels \"Mazda RX7 FC Pandem\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "GT952",
+      "name": "BMW i7",
+      "brand": "Mini GT",
+      "series": "BMW",
+      "manufacturerSkuCandidate": "MGT00952",
+      "officialDomains": [
+        "minigt.tsm-models.com"
+      ],
+      "officialSearchQuery": "Mini GT \"BMW i7\" \"MGT00952\" \"BMW\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Mini GT \"BMW i7\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "GT993",
+      "name": "McLaren 720S GT3 EVO",
+      "brand": "Mini GT",
+      "series": "McLaren",
+      "manufacturerSkuCandidate": "MGT00993",
+      "officialDomains": [
+        "minigt.tsm-models.com"
+      ],
+      "officialSearchQuery": "Mini GT \"McLaren 720S GT3 EVO\" \"MGT00993\" \"McLaren\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Mini GT \"McLaren 720S GT3 EVO\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "HTHXD631",
+      "name": "MTV 84 Corvette",
+      "brand": "Hot Wheels",
+      "series": "Pop Culture",
+      "manufacturerSkuCandidate": null,
+      "officialDomains": [
+        "shopping.mattel.com",
+        "shop.mattel.com",
+        "creations.mattel.com",
+        "service.mattel.com"
+      ],
+      "officialSearchQuery": "Hot Wheels \"MTV 84 Corvette\" \"HTHXD631\" \"Pop Culture\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Hot Wheels \"MTV 84 Corvette\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "HTHXD632",
+      "name": "Deadpool Scooter",
+      "brand": "Hot Wheels",
+      "series": "Pop Culture",
+      "manufacturerSkuCandidate": null,
+      "officialDomains": [
+        "shopping.mattel.com",
+        "shop.mattel.com",
+        "creations.mattel.com",
+        "service.mattel.com"
+      ],
+      "officialSearchQuery": "Hot Wheels \"Deadpool Scooter\" \"HTHXD632\" \"Pop Culture\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Hot Wheels \"Deadpool Scooter\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "HYFPY6",
+      "name": "Aston Martin Vintage GTE",
+      "brand": "Hot Wheels",
+      "series": "Car Culture",
+      "manufacturerSkuCandidate": null,
+      "officialDomains": [
+        "shopping.mattel.com",
+        "shop.mattel.com",
+        "creations.mattel.com",
+        "service.mattel.com"
+      ],
+      "officialSearchQuery": "Hot Wheels \"Aston Martin Vintage GTE\" \"HYFPY6\" \"Car Culture\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Hot Wheels \"Aston Martin Vintage GTE\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "HTFPV86",
+      "name": "Timeless ICONS Porsche Carrera GT",
+      "brand": "Hot Wheels",
+      "series": "Car Culture",
+      "manufacturerSkuCandidate": null,
+      "officialDomains": [
+        "shopping.mattel.com",
+        "shop.mattel.com",
+        "creations.mattel.com",
+        "service.mattel.com"
+      ],
+      "officialSearchQuery": "Hot Wheels \"Timeless ICONS Porsche Carrera GT\" \"HTFPV86\" \"Car Culture\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Hot Wheels \"Timeless ICONS Porsche Carrera GT\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "GT1143",
+      "name": "Porche Skeleton Blister",
+      "brand": "Mini GT",
+      "series": "Porsche",
+      "manufacturerSkuCandidate": "MGT01143",
+      "officialDomains": [
+        "minigt.tsm-models.com"
+      ],
+      "officialSearchQuery": "Mini GT \"Porche Skeleton Blister\" \"MGT01143\" \"Porsche\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Mini GT \"Porche Skeleton Blister\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "GT714",
+      "name": "Nissan Silvia (S15) Top Secret D1GP",
+      "brand": "Mini GT",
+      "series": "Silvia",
+      "manufacturerSkuCandidate": "MGT00714",
+      "officialDomains": [
+        "minigt.tsm-models.com"
+      ],
+      "officialSearchQuery": "Mini GT \"Nissan Silvia (S15) Top Secret D1GP\" \"MGT00714\" \"Silvia\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Mini GT \"Nissan Silvia (S15) Top Secret D1GP\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "GT1022",
+      "name": "Nissan S15 SILVIA LB-Super Silhouette",
+      "brand": "Mini GT",
+      "series": "Silvia",
+      "manufacturerSkuCandidate": "MGT01022",
+      "officialDomains": [
+        "minigt.tsm-models.com"
+      ],
+      "officialSearchQuery": "Mini GT \"Nissan S15 SILVIA LB-Super Silhouette\" \"MGT01022\" \"Silvia\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Mini GT \"Nissan S15 SILVIA LB-Super Silhouette\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "GT1114",
+      "name": "Aston Martin AMR24 #18",
+      "brand": "Mini GT",
+      "series": "F1",
+      "manufacturerSkuCandidate": "MGT01114",
+      "officialDomains": [
+        "minigt.tsm-models.com"
+      ],
+      "officialSearchQuery": "Mini GT \"Aston Martin AMR24 #18\" \"MGT01114\" \"F1\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Mini GT \"Aston Martin AMR24 #18\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "GT1186",
+      "name": "Chevrolet Corvette Z06 GT3.R",
+      "brand": "Mini GT",
+      "series": "Corvette",
+      "manufacturerSkuCandidate": "MGT01186",
+      "officialDomains": [
+        "minigt.tsm-models.com"
+      ],
+      "officialSearchQuery": "Mini GT \"Chevrolet Corvette Z06 GT3.R\" \"MGT01186\" \"Corvette\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Mini GT \"Chevrolet Corvette Z06 GT3.R\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "GT1177",
+      "name": "LB★WORKS Lamborghini Huracán GT RONIN",
+      "brand": "Mini GT",
+      "series": "Lamborgini",
+      "manufacturerSkuCandidate": "MGT01177",
+      "officialDomains": [
+        "minigt.tsm-models.com"
+      ],
+      "officialSearchQuery": "Mini GT \"LB★WORKS Lamborghini Huracán GT RONIN\" \"MGT01177\" \"Lamborgini\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Mini GT \"LB★WORKS Lamborghini Huracán GT RONIN\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "GT894",
+      "name": "BMW 750IL Sorrento Blue Metallic",
+      "brand": "Mini GT",
+      "series": "BMW",
+      "manufacturerSkuCandidate": "MGT00894",
+      "officialDomains": [
+        "minigt.tsm-models.com"
+      ],
+      "officialSearchQuery": "Mini GT \"BMW 750IL Sorrento Blue Metallic\" \"MGT00894\" \"BMW\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Mini GT \"BMW 750IL Sorrento Blue Metallic\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "GT1012",
+      "name": "Ford Mustang GT3 2024 IMSA Daytona",
+      "brand": "Mini GT",
+      "series": "Mustang",
+      "manufacturerSkuCandidate": "MGT01012",
+      "officialDomains": [
+        "minigt.tsm-models.com"
+      ],
+      "officialSearchQuery": "Mini GT \"Ford Mustang GT3 2024 IMSA Daytona\" \"MGT01012\" \"Mustang\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Mini GT \"Ford Mustang GT3 2024 IMSA Daytona\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "GT1086B",
+      "name": "BMW M5 Isle of Man Green Metallic",
+      "brand": "Mini GT",
+      "series": "BMW",
+      "manufacturerSkuCandidate": "MGT01086",
+      "officialDomains": [
+        "minigt.tsm-models.com"
+      ],
+      "officialSearchQuery": "Mini GT \"BMW M5 Isle of Man Green Metallic\" \"MGT01086\" \"BMW\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Mini GT \"BMW M5 Isle of Man Green Metallic\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "GT808B",
+      "name": "Lotus 78 #6 Gunnar Nilsson 1977 Japanese GP",
+      "brand": "Mini GT",
+      "series": "F1",
+      "manufacturerSkuCandidate": "MGT00808",
+      "officialDomains": [
+        "minigt.tsm-models.com"
+      ],
+      "officialSearchQuery": "Mini GT \"Lotus 78 #6 Gunnar Nilsson 1977 Japanese GP\" \"MGT00808\" \"F1\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Mini GT \"Lotus 78 #6 Gunnar Nilsson 1977 Japanese GP\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "GT1082B",
+      "name": "BMW Z8 Alpina Alpine Blue",
+      "brand": "Mini GT",
+      "series": "BMW",
+      "manufacturerSkuCandidate": "MGT01082",
+      "officialDomains": [
+        "minigt.tsm-models.com"
+      ],
+      "officialSearchQuery": "Mini GT \"BMW Z8 Alpina Alpine Blue\" \"MGT01082\" \"BMW\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Mini GT \"BMW Z8 Alpina Alpine Blue\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "GT1097B",
+      "name": "Ford Mustang GTD Spirit of America",
+      "brand": "Mini GT",
+      "series": "Mustang",
+      "manufacturerSkuCandidate": "MGT01097",
+      "officialDomains": [
+        "minigt.tsm-models.com"
+      ],
+      "officialSearchQuery": "Mini GT \"Ford Mustang GTD Spirit of America\" \"MGT01097\" \"Mustang\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Mini GT \"Ford Mustang GTD Spirit of America\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "HGPORSCHE",
+      "name": "Porsche 911 GT3R",
+      "brand": "HG",
+      "series": "Porsche",
+      "manufacturerSkuCandidate": null,
+      "officialDomains": [],
+      "officialSearchQuery": "HG \"Porsche 911 GT3R\" \"HGPORSCHE\" \"Porsche\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in HG \"Porsche 911 GT3R\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "PR037",
+      "name": "Singer 037 Gulf Livery",
+      "brand": "Pop Race",
+      "series": "Porsche",
+      "manufacturerSkuCandidate": null,
+      "officialDomains": [
+        "poprace.net"
+      ],
+      "officialSearchQuery": "Pop Race \"Singer 037 Gulf Livery\" \"PR037\" \"Porsche\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Pop Race \"Singer 037 Gulf Livery\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "TMSUPRA",
+      "name": "Supra",
+      "brand": "Time Micro",
+      "series": "Supra",
+      "manufacturerSkuCandidate": null,
+      "officialDomains": [],
+      "officialSearchQuery": "Time Micro \"Supra\" \"TMSUPRA\" \"Supra\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Time Micro \"Supra\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "TMRB",
+      "name": "BMW Red Bull",
+      "brand": "Time Micro",
+      "series": "BMW",
+      "manufacturerSkuCandidate": null,
+      "officialDomains": [],
+      "officialSearchQuery": "Time Micro \"BMW Red Bull\" \"TMRB\" \"BMW\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Time Micro \"BMW Red Bull\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "GT1129",
+      "name": "Lamborghini DEX",
+      "brand": "Mini GT",
+      "series": "Lamborgini",
+      "manufacturerSkuCandidate": "MGT01129",
+      "officialDomains": [
+        "minigt.tsm-models.com"
+      ],
+      "officialSearchQuery": "Mini GT \"Lamborghini DEX\" \"MGT01129\" \"Lamborgini\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Mini GT \"Lamborghini DEX\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "GT1247",
+      "name": "BMW M4 GTR3 EVO #1 Paul Miller Racing 2025",
+      "brand": "Mini GT",
+      "series": "BMW",
+      "manufacturerSkuCandidate": "MGT01247",
+      "officialDomains": [
+        "minigt.tsm-models.com"
+      ],
+      "officialSearchQuery": "Mini GT \"BMW M4 GTR3 EVO #1 Paul Miller Racing 2025\" \"MGT01247\" \"BMW\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Mini GT \"BMW M4 GTR3 EVO #1 Paul Miller Racing 2025\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "GT1236",
+      "name": "Porsche Carrera GT Silver",
+      "brand": "Mini GT",
+      "series": "Porsche",
+      "manufacturerSkuCandidate": "MGT01236",
+      "officialDomains": [
+        "minigt.tsm-models.com"
+      ],
+      "officialSearchQuery": "Mini GT \"Porsche Carrera GT Silver\" \"MGT01236\" \"Porsche\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Mini GT \"Porsche Carrera GT Silver\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "GT007",
+      "name": "James Bond 007 Skyfall Aston Martin DB5",
+      "brand": "Mini GT",
+      "series": "James Bond",
+      "manufacturerSkuCandidate": "MGT00007",
+      "officialDomains": [
+        "minigt.tsm-models.com"
+      ],
+      "officialSearchQuery": "Mini GT \"James Bond 007 Skyfall Aston Martin DB5\" \"MGT00007\" \"James Bond\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Mini GT \"James Bond 007 Skyfall Aston Martin DB5\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "GT1052B",
+      "name": "Porsche 911 Roxy Box",
+      "brand": "Mini GT",
+      "series": "Porsche",
+      "manufacturerSkuCandidate": "MGT01052",
+      "officialDomains": [
+        "minigt.tsm-models.com"
+      ],
+      "officialSearchQuery": "Mini GT \"Porsche 911 Roxy Box\" \"MGT01052\" \"Porsche\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Mini GT \"Porsche 911 Roxy Box\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "GT1335",
+      "name": "Vellfire",
+      "brand": "Mini GT",
+      "series": "Toyota",
+      "manufacturerSkuCandidate": "MGT01335",
+      "officialDomains": [
+        "minigt.tsm-models.com"
+      ],
+      "officialSearchQuery": "Mini GT \"Vellfire\" \"MGT01335\" \"Toyota\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Mini GT \"Vellfire\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "HTF16",
+      "name": "F1 Pack of 10 2025",
+      "brand": "Hot Wheels",
+      "series": "F1",
+      "manufacturerSkuCandidate": null,
+      "officialDomains": [
+        "shopping.mattel.com",
+        "shop.mattel.com",
+        "creations.mattel.com",
+        "service.mattel.com"
+      ],
+      "officialSearchQuery": "Hot Wheels \"F1 Pack of 10 2025\" \"HTF16\" \"F1\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Hot Wheels \"F1 Pack of 10 2025\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "HTPFF",
+      "name": "Hotwheel Premium Fast & Furious set 5",
+      "brand": "Hot Wheels",
+      "series": "Fast & Furious",
+      "manufacturerSkuCandidate": null,
+      "officialDomains": [
+        "shopping.mattel.com",
+        "shop.mattel.com",
+        "creations.mattel.com",
+        "service.mattel.com"
+      ],
+      "officialSearchQuery": "Hot Wheels \"Hotwheel Premium Fast & Furious set 5\" \"HTPFF\" \"Fast & Furious\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Hot Wheels \"Hotwheel Premium Fast & Furious set 5\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "HTF15",
+      "name": "F1 Ferrari Pack of 5",
+      "brand": "Hot Wheels",
+      "series": "F1",
+      "manufacturerSkuCandidate": null,
+      "officialDomains": [
+        "shopping.mattel.com",
+        "shop.mattel.com",
+        "creations.mattel.com",
+        "service.mattel.com"
+      ],
+      "officialSearchQuery": "Hot Wheels \"F1 Ferrari Pack of 5\" \"HTF15\" \"F1\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Hot Wheels \"F1 Ferrari Pack of 5\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "GT611",
+      "name": "Carrera Panamericana Winner Lincoln Capri",
+      "brand": "Mini GT",
+      "series": "Carrera Panamericana",
+      "manufacturerSkuCandidate": "MGT00611",
+      "officialDomains": [
+        "minigt.tsm-models.com"
+      ],
+      "officialSearchQuery": "Mini GT \"Carrera Panamericana Winner Lincoln Capri\" \"MGT00611\" \"Carrera Panamericana\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Mini GT \"Carrera Panamericana Winner Lincoln Capri\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "GT1087",
+      "name": "LB★WORKS Lamborghini Aventador Limited Edition Matte Black",
+      "brand": "Mini GT",
+      "series": "Lamborgini",
+      "manufacturerSkuCandidate": "MGT01087",
+      "officialDomains": [
+        "minigt.tsm-models.com"
+      ],
+      "officialSearchQuery": "Mini GT \"LB★WORKS Lamborghini Aventador Limited Edition Matte Black\" \"MGT01087\" \"Lamborgini\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Mini GT \"LB★WORKS Lamborghini Aventador Limited Edition Matte Black\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "GT1081B",
+      "name": "Lamborghini Countach LB-Works",
+      "brand": "Mini GT",
+      "series": "Lamborgini",
+      "manufacturerSkuCandidate": "MGT01081",
+      "officialDomains": [
+        "minigt.tsm-models.com"
+      ],
+      "officialSearchQuery": "Mini GT \"Lamborghini Countach LB-Works\" \"MGT01081\" \"Lamborgini\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in Mini GT \"Lamborghini Countach LB-Works\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    },
+    {
+      "sku": "MQBMW",
+      "name": "BMW M4 McQueen No. 95 Livery",
+      "brand": "MoreCar",
+      "series": "BMW",
+      "manufacturerSkuCandidate": null,
+      "officialDomains": [],
+      "officialSearchQuery": "MoreCar \"BMW M4 McQueen No. 95 Livery\" \"MQBMW\" \"BMW\"",
+      "castlyFallbackSearchQuery": "site:castly.co.in MoreCar \"BMW M4 McQueen No. 95 Livery\"",
+      "rules": [
+        "Exact model/casting/livery must match; do not use a same-car different-livery image.",
+        "Prefer official manufacturer gallery images.",
+        "Use Castly only if no exact official manufacturer image/page can be found.",
+        "Download all distinct gallery images at the largest available resolution."
+      ]
+    }
+  ]
+}

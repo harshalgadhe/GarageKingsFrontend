@@ -1,5 +1,5 @@
-import { Suspense, lazy } from 'react'
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { Suspense, lazy, useEffect } from 'react'
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { SpeedInsights } from '@vercel/speed-insights/react'
 import { Analytics } from '@vercel/analytics/react'
 import { SmoothScrollProvider } from './providers/SmoothScroll'
@@ -17,6 +17,8 @@ const Account    = lazy(() => import('./pages/Account'))
 const Admin      = lazy(() => import('./pages/Admin'))
 const Help       = lazy(() => import('./pages/Help'))
 const Policies   = lazy(() => import('./pages/Policies'))
+const BrandPage  = lazy(() => import('./pages/BrandPage'))
+const BrandsIndex = lazy(() => import('./pages/BrandsIndex'))
 const NotFound   = lazy(() => import('./pages/NotFound'))
 
 /**
@@ -52,9 +54,23 @@ function PageFallback() {
   )
 }
 
+function LegacyHashRedirect() {
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (location.pathname !== '/' || !location.hash) return
+    const cleanRoute = { '#brands': '/brands', '#collections': '/marketplace', '#archive': '/marketplace', '#hero': '/' }[location.hash]
+    if (cleanRoute) navigate(cleanRoute, { replace: true })
+  }, [location.hash, location.pathname, navigate])
+
+  return null
+}
+
 export default function App() {
   return (
     <Router>
+      <LegacyHashRedirect />
       <SmoothScrollProvider>
         <LoadingProvider>
           {/* Suspense must be inside LoadingProvider so lazy pages can call useLoading() */}
@@ -64,6 +80,9 @@ export default function App() {
               <Route path="/admin"       element={<Admin />} />
               <Route path="/account"     element={<Account />} />
               <Route path="/marketplace" element={<Marketplace />} />
+              <Route path="/brands" element={<BrandsIndex />} />
+              <Route path="/brands/:slug" element={<BrandPage />} />
+              <Route path="/collections" element={<Navigate to="/marketplace" replace />} />
               <Route path="/help"        element={<Help />} />
               <Route path="/policies"    element={<Policies />} />
               <Route path="/product/:id" element={<ProductDetail />} />

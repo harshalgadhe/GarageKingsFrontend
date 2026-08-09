@@ -27,7 +27,17 @@ export default function MasterData() {
     website: '',
     displayOrder: 0,
     isVisible: true,
-    status: 'Active'
+    status: 'Active',
+    accentColor: '#C8AE7D',
+    secondaryColor: '#F4F1EC',
+    backgroundColor: '#080706',
+    themeVariant: 'archive',
+    logoTreatment: 'natural',
+    kicker: '',
+    headline: '',
+    description: '',
+    originLabel: '',
+    styleLabel: ''
   });
 
   const fetchData = async () => {
@@ -69,7 +79,9 @@ export default function MasterData() {
       website: '',
       displayOrder: 0,
       isVisible: true,
-      status: 'Active'
+      status: 'Active',
+      accentColor: '#C8AE7D', secondaryColor: '#F4F1EC', backgroundColor: '#080706',
+      themeVariant: 'archive', logoTreatment: 'natural', kicker: '', headline: '', description: '', originLabel: '', styleLabel: ''
     });
   };
 
@@ -82,7 +94,14 @@ export default function MasterData() {
       website: item.website || '',
       displayOrder: item.display_order ?? 0,
       isVisible: item.is_visible ?? true,
-      status: item.status || 'Active'
+      status: item.status || 'Active',
+      accentColor: item.accent_color || '#C8AE7D',
+      secondaryColor: item.secondary_color || '#F4F1EC',
+      backgroundColor: item.background_color || '#080706',
+      themeVariant: item.theme_variant || 'archive',
+      logoTreatment: item.logo_treatment || 'natural',
+      kicker: item.kicker || '', headline: item.headline || '', description: item.description || '',
+      originLabel: item.origin_label || '', styleLabel: item.style_label || ''
     });
   };
 
@@ -98,7 +117,17 @@ export default function MasterData() {
         website: formData.website.trim() || null,
         displayOrder: Number(formData.displayOrder),
         isVisible: formData.isVisible,
-        status: formData.status
+        status: formData.status,
+        accentColor: formData.accentColor,
+        secondaryColor: formData.secondaryColor,
+        backgroundColor: formData.backgroundColor,
+        themeVariant: formData.themeVariant,
+        logoTreatment: formData.logoTreatment,
+        kicker: formData.kicker.trim() || null,
+        headline: formData.headline.trim() || null,
+        description: formData.description.trim() || null,
+        originLabel: formData.originLabel.trim() || null,
+        styleLabel: formData.styleLabel.trim() || null
       };
 
       if (currentItem) {
@@ -246,10 +275,10 @@ export default function MasterData() {
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">Logo URL (Optional)</label>
                   <input 
-                    type="url" 
+                    type="text" 
                     value={formData.logoUrl} 
                     onChange={e => setFormData(p => ({ ...p, logoUrl: e.target.value }))} 
-                    placeholder="https://example.com/logo.png" 
+                    placeholder="/brand-logos/example.svg or https://..." 
                     className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ff5500]/40 text-xs" 
                   />
                 </div>
@@ -263,6 +292,43 @@ export default function MasterData() {
                     className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ff5500]/40 text-xs" 
                   />
                 </div>
+
+                {activeTab === 'brands' && (
+                  <div className="space-y-4 rounded-xl border border-white/5 bg-black/20 p-4">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-[#C8AE7D]">Public page presentation</div>
+                    <div className="grid grid-cols-3 gap-3">
+                      {[['accentColor', 'Accent'], ['secondaryColor', 'Secondary'], ['backgroundColor', 'Background']].map(([field, label]) => (
+                        <label key={field} className="space-y-1 text-[9px] font-bold uppercase tracking-wider text-[#888]">
+                          {label}
+                          <span className="flex items-center gap-2 rounded-lg border border-white/5 bg-[#141414] p-2">
+                            <input type="color" value={formData[field]} onChange={e => setFormData(p => ({ ...p, [field]: e.target.value }))} className="h-6 w-7 cursor-pointer border-0 bg-transparent p-0" />
+                            <span className="truncate font-mono text-[8px] text-white/55">{formData[field]}</span>
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <label className="space-y-1 text-[9px] font-bold uppercase tracking-wider text-[#888]">Theme motif
+                        <select value={formData.themeVariant} onChange={e => setFormData(p => ({ ...p, themeVariant: e.target.value }))} className="mt-1 w-full rounded-lg border border-white/5 bg-[#141414] px-3 py-2.5 text-xs normal-case text-white">
+                          {['archive', 'velocity', 'precision', 'race', 'grid', 'neon'].map(value => <option key={value} value={value}>{value}</option>)}
+                        </select>
+                      </label>
+                      <label className="space-y-1 text-[9px] font-bold uppercase tracking-wider text-[#888]">Logo treatment
+                        <select value={formData.logoTreatment} onChange={e => setFormData(p => ({ ...p, logoTreatment: e.target.value }))} className="mt-1 w-full rounded-lg border border-white/5 bg-[#141414] px-3 py-2.5 text-xs normal-case text-white">
+                          <option value="natural">Natural</option><option value="invert">Invert</option>
+                        </select>
+                      </label>
+                    </div>
+                    {[['originLabel', 'Origin / parent'], ['styleLabel', 'Collector focus'], ['kicker', 'Eyebrow'], ['headline', 'Headline']].map(([field, label]) => (
+                      <label key={field} className="block space-y-1 text-[9px] font-bold uppercase tracking-wider text-[#888]">{label}
+                        <input value={formData[field]} onChange={e => setFormData(p => ({ ...p, [field]: e.target.value }))} className="w-full rounded-lg border border-white/5 bg-[#141414] px-3 py-2.5 text-xs normal-case text-white outline-none focus:border-[#C8AE7D]/40" />
+                      </label>
+                    ))}
+                    <label className="block space-y-1 text-[9px] font-bold uppercase tracking-wider text-[#888]">Description
+                      <textarea rows={3} value={formData.description} onChange={e => setFormData(p => ({ ...p, description: e.target.value }))} className="w-full resize-none rounded-lg border border-white/5 bg-[#141414] px-3 py-2.5 text-xs normal-case leading-relaxed text-white outline-none focus:border-[#C8AE7D]/40" />
+                    </label>
+                  </div>
+                )}
                 
                 <div className="flex items-center justify-between py-2 border-t border-b border-white/5">
                   <span className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">Visibility Status</span>

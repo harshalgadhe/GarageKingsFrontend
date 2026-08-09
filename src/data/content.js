@@ -15,34 +15,41 @@ export const WHATSAPP_URL = `https://wa.me/${CONTACT.whatsappNumber}`
 export function createProductEnquiryUrl(
   product,
   archiveId,
-  pageUrl = window.location.href
+  pageUrl = `${window.location.origin}/product/${product?.id || ''}`
 ) {
-  const name = [product?.brand, product?.name]
-    .filter(Boolean)
-    .join(" ");
-
-  const rawPrice = product?.price ?? product?.sellingPrice;
-  const price = Number(rawPrice);
-
-  // Unicode escapes prevent emojis from being corrupted by file encoding.
-  const emoji = {
-    wave: "\u{1F44B}",
-    id: "\u{1F194}",
-    money: "\u{1F4B0}",
-    question: "\u{2753}",
-    link: "\u{1F517}",
-    smile: "\u{1F60A}",
-  };
+  const name = [product?.brand, product?.name].filter(Boolean).join(' ')
+  const price = Number(product?.price ?? product?.sellingPrice)
+  const deposit = Number(product?.poAmount ?? product?.prebookDepositAmount)
+  const isUnavailable = Boolean(product?.isSoldOut || product?.availability === 'Unavailable')
+  const isPreBooking = Boolean(product?.isPrebook || product?.status === 'Pre-Order')
+  const availability = isUnavailable ? 'Unavailable / sourcing enquiry' : isPreBooking ? 'Pre-booking' : 'Available'
+  const packaging = product?.casingType || product?.casing || product?.packaging
+  const productUrl = pageUrl.split('#')[0]
 
   const lines = [
-    `${emoji.wave} Hi GarageKings!`,
-    "",
-    `I'm interested in ${name || "this collectible"}.`
-  ].filter((line) => line !== null);
+    'Hello GarageKings,',
+    '',
+    'I would like to enquire about this model:',
+    `*${name || 'GarageKings collectible'}*`,
+    '',
+    archiveId ? `Reference: ${archiveId}` : null,
+    product?.sku ? `SKU: ${product.sku}` : null,
+    product?.scale ? `Scale: ${product.scale}` : null,
+    packaging ? `Packaging: ${packaging}` : null,
+    `Availability: ${availability}`,
+    Number.isFinite(price) && price > 0 ? `Displayed price: ₹${price.toLocaleString('en-IN')}` : null,
+    isPreBooking && Number.isFinite(deposit) && deposit > 0 ? `Displayed deposit: ₹${deposit.toLocaleString('en-IN')}` : null,
+    '',
+    `Product page: ${productUrl}`,
+    '',
+    isUnavailable
+      ? 'Please let me know if this model can be restocked or sourced, along with the expected price and timeline.'
+      : 'Please confirm its current availability, condition, final price and delivery or collection options.'
+  ].filter((line) => line !== null)
 
-  const message = lines.join("\n");
+  const message = lines.join('\n')
 
-  return `${WHATSAPP_URL}?text=${encodeURIComponent(message)}`;
+  return `${WHATSAPP_URL}?text=${encodeURIComponent(message)}`
 }
 
 
