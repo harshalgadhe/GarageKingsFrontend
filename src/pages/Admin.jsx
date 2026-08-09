@@ -1499,35 +1499,6 @@ export default function Admin() {
     }
   };
 
-  // Fields NestJS ignores on initial POST but respects on admin PATCH
-  const DEFERRED_PATCH_FIELDS = ['prebookDepositAmount', 'poAmount', 'arrivalDate', 'releaseDate', 'customerEta'];
-  const isUuid = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
-
-  const patchDeferredFields = async (productId, payload, createdProduct) => {
-    const patch = {};
-    DEFERRED_PATCH_FIELDS.forEach(f => {
-      const val = payload[f];
-      if (val !== undefined && val !== null) {
-        patch[f] = val;
-      }
-    });
-
-    const variantId = createdProduct?.variants?.[0]?.id;
-    if (variantId && isUuid(variantId)) {
-      patch.variants = [
-        {
-          id: variantId,
-          customerEta: payload.customerEta || payload.arrivalDate || null,
-          casing: (payload.casing || 'box').toUpperCase()
-        }
-      ];
-    }
-
-    if (Object.keys(patch).length > 0) {
-      try { await updateCar(productId, patch); } catch (e) { console.warn('Post-create deferred patch failed:', e); }
-    }
-  };
-
   const handleSaveProduct = async (payload) => {
     try {
       if (editingProductId) {
@@ -1537,9 +1508,8 @@ export default function Admin() {
         for (let i = 0; i < payload.items.length; i++) {
           const item = payload.items[i];
           const { caseVariants, items, variants, ...cleanItem } = item;
-          let created;
           try {
-            created = await addCar(cleanItem);
+            await addCar(cleanItem);
           } catch (err) {
             const errMsg = String(err?.message || '');
             if (errMsg.includes('products_sku_key') || errMsg.includes('duplicate key') || errMsg.includes('already exists') || errMsg.includes('409') || errMsg.includes('400')) {
@@ -1547,13 +1517,11 @@ export default function Admin() {
             }
             throw err;
           }
-          if (created?.id) await patchDeferredFields(created.id, item, created);
         }
       } else {
         const { caseVariants, items, variants, ...cleanPayload } = payload;
-        let created;
         try {
-          created = await addCar(cleanPayload);
+          await addCar(cleanPayload);
         } catch (err) {
           const errMsg = String(err?.message || '');
           if (errMsg.includes('products_sku_key') || errMsg.includes('duplicate key') || errMsg.includes('already exists') || errMsg.includes('409') || errMsg.includes('400')) {
@@ -1561,7 +1529,6 @@ export default function Admin() {
           }
           throw err;
         }
-        if (created?.id) await patchDeferredFields(created.id, cleanPayload, created);
       }
       setIsAddingProduct(false);
       setEditingProductId(null);
