@@ -8,7 +8,7 @@ import { ImageOff } from 'lucide-react';
  * - Internal Archive Reference (Vault Index)
  * - Controlled Artifact Stage lighting & pedestal grounded shadow
  * - Tabular figures & Collector Plaque metadata
- * - High-contrast state markers for availability and pre-booking
+ * - High-contrast state markers for exceptional availability states
  * - Complete touch & keyboard parity (composite focus ring)
  */
 export default function VaultModuleCard({ car, onClick, isPreview = false, theme }) {
@@ -82,11 +82,7 @@ export default function VaultModuleCard({ car, onClick, isPreview = false, theme
           <span className="px-2 py-0.5 rounded-md text-[9px] font-bold tracking-wider bg-[#C99652]/15 text-[#C99652] border border-[#C99652]/30">
             FEW REMAINING
           </span>
-        ) : (
-          <span className="px-2 py-0.5 rounded-md text-[9px] font-bold tracking-wider bg-[#5E9F78]/15 text-[#5E9F78] border border-[#5E9F78]/30">
-            AVAILABLE
-          </span>
-        )}
+        ) : null}
       </div>
 
       {/* ── 2. ARTIFACT STAGE (Controlled Radial Spotlight & Museum Presentation) ── */}

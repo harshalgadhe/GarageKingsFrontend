@@ -154,11 +154,13 @@ export default function ProductDetail() {
           <motion.div initial={reduceMotion ? false : { opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.65 }} className="relative lg:col-span-7">
             <div className="relative flex min-h-[500px] flex-col overflow-hidden rounded-[26px] border border-white/[0.09] bg-[#0C0C0C] p-5 sm:min-h-[600px] sm:p-10 lg:h-[calc(100svh-166px)] lg:min-h-[500px] lg:max-h-[680px] lg:pl-24">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(255,255,255,.11),transparent_34%),linear-gradient(145deg,rgba(255,255,255,.025),transparent_45%)]" />
-              <div className="relative z-20 flex w-full shrink-0 pb-4">
-                <span className={`rounded-full px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.14em] ${soldOut ? 'bg-[#FF453A]/12 text-[#FF6961]' : preOrder ? 'bg-[#E1BD65]/12 text-[#E1BD65]' : 'bg-[#30D158]/12 text-[#53D769]'}`}>
-                  {soldOut ? 'Unavailable' : preOrder ? 'Pre-booking' : 'Available'}
-                </span>
-              </div>
+              {(soldOut || preOrder) && (
+                <div className="relative z-20 flex w-full shrink-0 pb-4">
+                  <span className={`rounded-full px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.14em] ${soldOut ? 'bg-[#FF453A]/12 text-[#FF6961]' : 'bg-[#E1BD65]/12 text-[#E1BD65]'}`}>
+                    {soldOut ? 'Unavailable' : 'Pre-booking'}
+                  </span>
+                </div>
+              )}
 
               <div className="relative z-10 flex min-h-0 w-full flex-1 items-center justify-center">
                 {activeImage ? (
