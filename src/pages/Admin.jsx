@@ -30,6 +30,8 @@ import RecordPaymentForm from '../components/RecordPaymentForm';
 import MasterData from './admin/MasterData';
 import ProductForm from '../components/admin/ProductForm';
 import InventoryDetails from './admin/InventoryDetails';
+import { formatReceiptDate, parseReceiptDate, toDateTimeLocal } from '../lib/receiptDates';
+import { exportReceiptsWorkbook } from '../lib/receiptExport';
 
 import AdminSidebar from '../components/admin/AdminSidebar';
 import AdminDashboardTab from '../components/admin/AdminDashboardTab';
@@ -450,7 +452,8 @@ export default function Admin() {
 
   const createDefaultReceiptForm = () => ({
     receiptNumber: `RT-${Math.floor(10000 + Math.random() * 90000)}`,
-    dateString: new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' }) + ' - ' + new Date().toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true }),
+    receiptDate: toDateTimeLocal(),
+    dateString: formatReceiptDate(new Date()),
     companyName: 'Garage Kings India',
     companyLocation: 'Delhi',
     customerName: '',
@@ -470,8 +473,9 @@ export default function Admin() {
   const normalizeReceipt = (r) => {
     if (!r) return r;
     const createdAt = r.createdAt || r.created_at;
-    const dateObj = createdAt ? new Date(createdAt) : new Date();
-    const dateString = r.dateString || (!isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '');
+    const receiptDateObject = parseReceiptDate(r);
+    const receiptDate = r.receiptDate || r.receipt_date || receiptDateObject.toISOString();
+    const dateString = r.dateString || r.date_string || formatReceiptDate(receiptDateObject);
 
     const rawFormat = (r.formatType || r.format_type || 'standard').toLowerCase();
     const formatType = (rawFormat === 'pre_order' || rawFormat === 'prebooking') ? 'prebooking' : rawFormat;
@@ -522,6 +526,7 @@ export default function Admin() {
       voidReason: r.voidReason || r.void_reason || '',
       voidedAt: r.voidedAt || r.voided_at || null,
       createdAt: createdAt,
+      receiptDate,
       dateString: dateString,
       items: items.length > 0 ? items : [{ qty: 1, description: '', amount: 0 }]
     };
@@ -594,7 +599,7 @@ export default function Admin() {
     receiptsList.forEach(r => {
       if (r.status === 'Voided') return;
       const amt = Number(r.totalAmount) || 0;
-      const rDate = r.createdAt ? new Date(r.createdAt) : new Date();
+      const rDate = parseReceiptDate(r);
 
       const matchedBucket = buckets.find(b => rDate >= b.startDate && rDate <= b.endDate);
       if (matchedBucket) {
@@ -638,7 +643,7 @@ export default function Admin() {
       if (r.status === 'Voided') return;
       const totalPaid = Number(r.totalAmount) || 0;
       const pending = Number(r.pendingBalance) || 0;
-      const rDate = r.createdAt ? new Date(r.createdAt) : new Date();
+      const rDate = parseReceiptDate(r);
 
       if (r.formatType === 'prebooking') {
         poRevenue += totalPaid;
@@ -745,7 +750,8 @@ export default function Admin() {
 
       const receiptPayload = {
         receiptNumber: receiptForm.receiptNumber || `RT-${Math.floor(10000 + Math.random() * 90000)}`,
-        dateString: receiptForm.dateString,
+        receiptDate: new Date(receiptForm.receiptDate).toISOString(),
+        dateString: formatReceiptDate(receiptForm.receiptDate),
         companyName: receiptForm.companyName || 'Garage Kings India',
         companyLocation: receiptForm.companyLocation || 'Delhi',
         customerName: receiptForm.customerName,
@@ -788,6 +794,7 @@ export default function Admin() {
     const r = normalizeReceipt(receipt);
     setReceiptForm({
       receiptNumber: r.receiptNumber || '',
+      receiptDate: toDateTimeLocal(r.receiptDate),
       dateString: r.dateString || '',
       companyName: r.companyName || 'Garage Kings India',
       companyLocation: r.companyLocation || 'Delhi',
@@ -828,6 +835,19 @@ export default function Admin() {
   const handlePrintReceipt = (receipt) => {
     const norm = normalizeReceipt(receipt);
     setActiveReceiptPreview(norm);
+  };
+
+  const handleExportReceipts = async (options) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/receipts`, { credentials: 'include' });
+      if (!response.ok) throw new Error('Could not load receipts for export.');
+      const records = await response.json();
+      await exportReceiptsWorkbook(records.map(normalizeReceipt), options);
+      showToast('Receipt workbook exported.');
+    } catch (error) {
+      showToast(error.message || 'Receipt export failed.', 'error');
+      throw error;
+    }
   };
 
   // Local drop settings form state
@@ -2003,6 +2023,7 @@ export default function Admin() {
               handleEditReceipt={handleEditReceipt}
               handleDeleteReceipt={handleDeleteReceipt}
               handlePrintReceipt={handlePrintReceipt}
+              handleExportReceipts={handleExportReceipts}
               activeReceiptPreview={activeReceiptPreview}
               setActiveReceiptPreview={setActiveReceiptPreview}
               cars={cars}

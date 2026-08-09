@@ -215,9 +215,21 @@ export default function ProductDetail() {
             <div className="mt-5 border-y border-white/[0.09] py-4">
               {preOrder && deposit > 0 ? (
                 <div>
-                  <div className="flex items-end justify-between gap-4"><span className="text-sm text-[#A1A1A6]">Deposit shown</span><strong className="text-3xl font-semibold text-white">{money(deposit)}</strong></div>
-                  <div className="mt-3 flex justify-between text-xs text-[#86868B]"><span>Remaining amount shown</span><span>{money(balance)}</span></div>
-                  <div className="mt-2 flex justify-between text-xs text-[#86868B]"><span>Total shown</span><span>{money(total)}</span></div>
+                  <div className="flex items-end justify-between gap-4">
+                    <div><div className="text-[9px] font-bold uppercase tracking-[0.16em] text-[#D8BC78]">Pre-booking</div><span className="mt-1 block text-sm text-[#A1A1A6]">Total model price</span></div>
+                    <strong className="text-3xl font-semibold text-white">{money(total)}</strong>
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 overflow-hidden rounded-2xl border border-white/[0.09] bg-white/[0.025]">
+                    <div className="border-r border-white/[0.09] p-3.5">
+                      <div className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#8B8984]">PO amount · pay now</div>
+                      <div className="mt-1.5 text-lg font-semibold text-[#F5F5F7]">{money(deposit)}</div>
+                    </div>
+                    <div className="p-3.5">
+                      <div className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#8B8984]">Balance · pay later</div>
+                      <div className="mt-1.5 text-lg font-semibold text-[#C9C6C0]">{money(balance)}</div>
+                    </div>
+                  </div>
+                  <p className="mt-2.5 text-[10px] leading-relaxed text-[#77746E]">The PO amount reserves the model and is included in the total price. The balance is payable when the model arrives.</p>
                 </div>
               ) : (
                 <div className="flex items-end justify-between gap-4"><span className="text-sm text-[#A1A1A6]">Listed price</span><strong className="text-3xl font-semibold text-white">{money(total)}</strong></div>

@@ -1,11 +1,12 @@
 import React from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Edit2, Trash2, FileText, X } from "lucide-react";
+import { Plus, Edit2, Trash2, FileText, X, Download } from "lucide-react";
 import Pagination from "./Pagination";
 import DebouncedSearchBar from "../common/DebouncedSearchBar";
 import ProductTypeahead from "./ProductTypeahead";
 import SearchableSelect from "./SearchableSelect";
+import { formatReceiptDate } from "../../lib/receiptDates";
 
 const FORMAT_NOTES = {
   standard:   "If fulfilment becomes unavailable, the GarageKings team will contact you to discuss the resolution under the terms confirmed for this acquisition.",
@@ -137,6 +138,7 @@ export default function AdminReceiptsTab({
   receiptForm, setReceiptForm,
   createDefaultReceiptForm,
   handleSaveReceipt, handleEditReceipt, handleDeleteReceipt, handlePrintReceipt,
+  handleExportReceipts,
   activeReceiptPreview, setActiveReceiptPreview,
   cars = [],
   customersList = [],
@@ -147,6 +149,9 @@ export default function AdminReceiptsTab({
   const totalPages = receiptsTotalPages || 1;
   const [deleteTarget, setDeleteTarget] = React.useState(null);
   const [isDeleting, setIsDeleting] = React.useState(false);
+  const [exportGroup, setExportGroup] = React.useState('none');
+  const [exportFormat, setExportFormat] = React.useState('all');
+  const [isExporting, setIsExporting] = React.useState(false);
 
   const handleFormatChange = (formatType) => {
     setReceiptForm(previous => ({
@@ -351,6 +356,15 @@ export default function AdminReceiptsTab({
               setReceiptPage(1);
             }}
           />
+          <select aria-label="Receipt export format" value={exportFormat} onChange={event => setExportFormat(event.target.value)} className="hidden lg:block bg-black/50 border border-white/10 rounded-xl px-3 py-2.5 text-[10px] text-zinc-300">
+            <option value="all">All formats</option><option value="standard">Standard</option><option value="prebooking">Pre-Order</option>
+          </select>
+          <select aria-label="Group exported receipts" value={exportGroup} onChange={event => setExportGroup(event.target.value)} className="hidden lg:block bg-black/50 border border-white/10 rounded-xl px-3 py-2.5 text-[10px] text-zinc-300">
+            <option value="none">One sheet</option><option value="format">Group by format</option><option value="month">Group by month</option>
+          </select>
+          <button disabled={isExporting} onClick={async () => { setIsExporting(true); try { await handleExportReceipts({ groupBy: exportGroup, format: exportFormat }); } finally { setIsExporting(false); } }} className="border border-white/10 text-zinc-300 hover:text-white px-3 py-2.5 rounded-xl text-[10px] font-bold uppercase flex items-center gap-1.5 disabled:opacity-50">
+            <Download size={14} /> {isExporting ? 'Exporting' : 'Excel'}
+          </button>
           <button
             onClick={() => {
               setReceiptForm(createDefaultReceiptForm());
@@ -393,7 +407,7 @@ export default function AdminReceiptsTab({
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">Date &amp; Time *</label>
-                      <input type="text" value={receiptForm.dateString} onChange={e => setReceiptForm(p => ({ ...p, dateString: e.target.value }))}
+                      <input type="datetime-local" required value={receiptForm.receiptDate || ""} onChange={e => setReceiptForm(p => ({ ...p, receiptDate: e.target.value, dateString: formatReceiptDate(e.target.value) }))}
                         className="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500" />
                     </div>
                   </div>
