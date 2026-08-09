@@ -12,13 +12,39 @@ export const CONTACT = {
 
 export const WHATSAPP_URL = `https://wa.me/${CONTACT.whatsappNumber}`
 
-export function createProductEnquiryUrl(product, archiveId, pageUrl = window.location.href) {
-  const name = [product?.brand, product?.name].filter(Boolean).join(' ')
-  const price = Number(product?.price || product?.sellingPrice || 0)
-  const priceLine = price > 0 ? ` Displayed price: ₹${price.toLocaleString('en-IN')}.` : ''
-  const message = `Hi GarageKings, I'm interested in ${name || 'this collectible'} (${archiveId}).${priceLine} Is it currently available? ${pageUrl}`
-  return `${WHATSAPP_URL}?text=${encodeURIComponent(message)}`
+export function createProductEnquiryUrl(
+  product,
+  archiveId,
+  pageUrl = window.location.href
+) {
+  const name = [product?.brand, product?.name]
+    .filter(Boolean)
+    .join(" ");
+
+  const rawPrice = product?.price ?? product?.sellingPrice;
+  const price = Number(rawPrice);
+
+  // Unicode escapes prevent emojis from being corrupted by file encoding.
+  const emoji = {
+    wave: "\u{1F44B}",
+    id: "\u{1F194}",
+    money: "\u{1F4B0}",
+    question: "\u{2753}",
+    link: "\u{1F517}",
+    smile: "\u{1F60A}",
+  };
+
+  const lines = [
+    `${emoji.wave} Hi GarageKings!`,
+    "",
+    `I'm interested in ${name || "this collectible"}.`
+  ].filter((line) => line !== null);
+
+  const message = lines.join("\n");
+
+  return `${WHATSAPP_URL}?text=${encodeURIComponent(message)}`;
 }
+
 
 /** Real product shots */
 export const vaultProducts = [

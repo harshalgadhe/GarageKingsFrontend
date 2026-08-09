@@ -103,8 +103,15 @@ export default function AdminCatalogTab({
                       <td className="p-4 flex items-center gap-3">
                         <img src={car.image || '/vault-1.png'} className="w-10 h-8 object-cover rounded border border-white/5" />
                         <div>
-                          <span className="font-bold text-white block">{car.name}</span>
-                          <span className="text-[10px] text-[#888888] uppercase tracking-wider">{car.brand} • {car.category} • {Array.isArray(car.casing_types || car.casingTypes) ? (car.casing_types || car.casingTypes).join(', ') : 'box'}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-white block">{car.name}</span>
+                            {(car.isFeatured || car.is_featured) && (
+                              <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-[#E1BD65]/20 text-[#E1BD65] border border-[#E1BD65]/40 flex items-center gap-0.5" title="Featured on Homepage">
+                                ★ Featured
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-[#888888] uppercase tracking-wider">{car.brand} • {car.category} • {Array.isArray(car.casing_types || car.casingTypes) ? (car.casing_types || car.casingTypes).join(', ') : (car.casing || car.casingType || 'Blister')}</span>
                         </div>
                       </td>
                       <td className="p-4 font-mono text-[#888888]">{car.sku}</td>

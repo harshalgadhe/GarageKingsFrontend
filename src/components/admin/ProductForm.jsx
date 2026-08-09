@@ -386,7 +386,7 @@ export default function ProductForm({
       const mainPrice = Number(firstVariant.price || 0);
       const poAmount = isPrebook ? Number(firstVariant.poAmount || 0) : 0;
       const mainStock = Number(firstVariant.availableStock ?? 10);
-      const selectedCasing = firstVariant.casingType || 'Box';
+      const selectedCasing = firstVariant.casingType || 'Blister';
 
       const singleProductPayload = {
         name: name.trim(),
