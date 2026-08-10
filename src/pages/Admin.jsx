@@ -416,6 +416,7 @@ export default function Admin() {
   const [telemetryFilter, setTelemetryFilter] = useState('false'); // 'false', 'true', 'all'
   const [telemetrySummary, setTelemetrySummary] = useState({});
   const [telemetrySummaryLoading, setTelemetrySummaryLoading] = useState(false);
+  const [telemetryLoadError, setTelemetryLoadError] = useState('');
   const [diagnosticsSubTab, setDiagnosticsSubTab] = useState('health'); // 'health', 'errors', 'audit', 'settings'
 
   
@@ -1309,13 +1310,17 @@ export default function Admin() {
   const fetchTelemetryErrors = async (page, search, acknowledged) => {
     try {
       const res = await fetch(`${API_BASE_URL}/admin/telemetry/errors?page=${page}&limit=10&search=${encodeURIComponent(search)}&acknowledged=${acknowledged}`, { credentials: 'include' });
-      if (res.ok) {
-        const data = await res.json();
-        setTelemetryErrors(data.errors || []);
-        setTelemetryTotalPages(data.totalPages || 1);
-      }
+      if (!res.ok) throw new Error(`Diagnostics request failed (${res.status})`);
+      const data = await res.json();
+      setTelemetryErrors(data.errors || []);
+      setTelemetryTotalPages(data.totalPages || 1);
+      setTelemetryLoadError('');
     } catch (e) {
-      console.error("Error loading telemetry errors:", e);
+      setTelemetryLoadError(
+        e instanceof TypeError
+          ? 'Diagnostics could not reach the GarageKings API. Check your connection or DNS, then retry.'
+          : e.message || 'Diagnostics are temporarily unavailable.'
+      );
     }
   };
 
@@ -1323,11 +1328,15 @@ export default function Admin() {
     setTelemetrySummaryLoading(true);
     try {
       const res = await fetch(`${API_BASE_URL}/admin/telemetry/summary`, { credentials: 'include' });
-      if (res.ok) {
-        setTelemetrySummary(await res.json());
-      }
+      if (!res.ok) throw new Error(`Diagnostics summary failed (${res.status})`);
+      setTelemetrySummary(await res.json());
+      setTelemetryLoadError('');
     } catch (e) {
-      console.error("Error loading telemetry summary:", e);
+      setTelemetryLoadError(
+        e instanceof TypeError
+          ? 'Diagnostics could not reach the GarageKings API. Check your connection or DNS, then retry.'
+          : e.message || 'Diagnostics are temporarily unavailable.'
+      );
     } finally {
       setTelemetrySummaryLoading(false);
     }
@@ -1450,9 +1459,9 @@ export default function Admin() {
 
   useEffect(() => {
     if (!isAuthenticated || !isAdmin) return undefined;
-    const intervalId = window.setInterval(fetchTelemetrySummary, 60_000);
+    const intervalId = window.setInterval(fetchTelemetrySummary, telemetryLoadError ? 300_000 : 60_000);
     return () => window.clearInterval(intervalId);
-  }, [isAuthenticated, isAdmin]);
+  }, [isAuthenticated, isAdmin, telemetryLoadError]);
 
   const isSearchFirstRender = useRef(true);
 
@@ -2217,6 +2226,7 @@ export default function Admin() {
               auditLogs={auditLogs}
               telemetrySummary={telemetrySummary}
               telemetryLoading={telemetrySummaryLoading}
+              telemetryLoadError={telemetryLoadError}
               refreshTelemetry={() => Promise.all([
                 fetchTelemetrySummary(),
                 fetchTelemetryErrors(telemetryPage, telemetrySearch, telemetryFilter)

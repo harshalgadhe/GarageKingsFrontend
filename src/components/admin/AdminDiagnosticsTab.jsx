@@ -25,6 +25,7 @@ export default function AdminDiagnosticsTab({
   auditLogs,
   telemetrySummary = {},
   telemetryLoading = false,
+  telemetryLoadError = '',
   refreshTelemetry
 }) {
   return (
@@ -155,6 +156,17 @@ export default function AdminDiagnosticsTab({
       {/* Sub-tab Content: Telemetry Errors */}
       {diagnosticsSubTab === 'errors' && (
         <div className="space-y-6">
+          {telemetryLoadError && (
+            <div role="alert" className="flex flex-col gap-3 rounded-2xl border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-amber-300">Diagnostics temporarily unavailable</p>
+                <p className="mt-1 text-[11px] text-zinc-300">{telemetryLoadError}</p>
+              </div>
+              <button onClick={refreshTelemetry} className="shrink-0 rounded-xl border border-amber-300/20 bg-amber-300/10 px-3.5 py-2 text-[10px] font-extrabold uppercase tracking-wider text-amber-200 hover:bg-amber-300/15">
+                Retry now
+              </button>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             {[
               { label: 'Unresolved groups', value: telemetrySummary.unresolvedGroups || 0, tone: 'text-rose-300' },
