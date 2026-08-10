@@ -279,6 +279,24 @@ export async function getProduct(id) {
   }
 }
 
+async function createApiError(response, fallbackMessage) {
+  let payload = null;
+  try {
+    payload = await response.json();
+  } catch {
+    // Some infrastructure responses do not include JSON.
+  }
+
+  const message = Array.isArray(payload?.message)
+    ? payload.message.join(' ')
+    : (payload?.message || fallbackMessage || response.statusText || 'Request failed.');
+  const error = new Error(message);
+  error.status = response.status;
+  error.code = payload?.error;
+  error.correlationId = payload?.correlationId;
+  return error;
+}
+
 
 export async function addCar(car) {
   const res = await fetch(`${API_BASE_URL.replace('/api/v1', '')}/api/v1/admin/products`, {
@@ -288,9 +306,18 @@ export async function addCar(car) {
   });
 
   if (!res.ok) {
-    const errorText = await res.text().catch(() => '');
-    throw new Error(`Failed to save casting (${res.status}): ${errorText || res.statusText}`);
+    throw await createApiError(res, 'The product could not be saved.');
   }
+  return await res.json();
+}
+
+export async function checkProductSkuAvailability(sku, excludeId) {
+  const params = new URLSearchParams({ sku: String(sku || '').trim() });
+  if (excludeId) params.set('excludeId', excludeId);
+  const res = await fetch(`${API_BASE_URL}/admin/products/sku-availability/check?${params.toString()}`, {
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw await createApiError(res, 'SKU availability could not be checked.');
   return await res.json();
 }
 
@@ -302,8 +329,7 @@ export async function updateCar(id, updatedFields) {
   });
 
   if (!res.ok) {
-    const errorText = await res.text().catch(() => '');
-    throw new Error(`Failed to update casting (${res.status}): ${errorText || res.statusText}`);
+    throw await createApiError(res, 'The product could not be updated.');
   }
   return await res.json();
 }

@@ -11,7 +11,8 @@ export default function AdminDashboardTab({
   isLoading = false,
   onNewReceiptClick,
   operations = {},
-  onNavigate
+  onNavigate,
+  telemetrySummary = {}
 }) {
   const [chartMetric, setChartMetric] = useState('all'); // 'all', 'stock', 'po'
 
@@ -105,6 +106,7 @@ export default function AdminDashboardTab({
   const standardPct = totalReceipts > 0 ? Math.round((stats.standardCount / totalReceipts) * 100) : 0;
   const poPct = totalReceipts > 0 ? Math.round((stats.poCount / totalReceipts) * 100) : 0;
   const operationalItems = [
+    { label: 'Unresolved system errors', value: telemetrySummary.unresolvedGroups || 0, detail: `${telemetrySummary.occurrences24h || 0} occurrences in the last 24 hours`, icon: AlertTriangle, tab: 'diagnostics', tone: (telemetrySummary.unresolvedGroups || 0) > 0 ? 'text-rose-300 bg-rose-400/10 border-rose-400/20' : 'text-emerald-300 bg-emerald-400/10 border-emerald-400/20' },
     { label: 'Low-stock variants', value: operations.lowStockAlerts || 0, detail: 'Review inventory before accepting enquiries', icon: AlertTriangle, tab: 'catalog', tone: 'text-amber-300 bg-amber-400/10 border-amber-400/20' },
     { label: 'Catalog data missing', value: (operations.productsWithoutSKU || 0) + (operations.productsWithoutPrice || 0), detail: `${operations.productsWithoutSKU || 0} without SKU, ${operations.productsWithoutPrice || 0} without price`, icon: Tag, tab: 'catalog', tone: 'text-rose-300 bg-rose-400/10 border-rose-400/20' },
     { label: 'Pending receipt balance', value: `₹${Number(operations.pendingReceiptBalance || 0).toLocaleString('en-IN')}`, detail: `${operations.pendingReceiptCount || 0} receipts need follow-up`, icon: ReceiptText, tab: 'receipts', tone: 'text-[#E4C982] bg-[#C8AE7D]/10 border-[#C8AE7D]/25' },
@@ -232,7 +234,7 @@ export default function AdminDashboardTab({
           </div>
           <p className="text-xs text-zinc-500">Live operational exceptions, not vanity metrics</p>
         </div>
-        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
           {operationalItems.map(item => {
             const Icon = item.icon;
             return (

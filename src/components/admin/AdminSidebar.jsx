@@ -8,7 +8,8 @@ import {
 export const ADMIN_TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: TrendingUp },
   { id: 'catalog', label: 'Catalog', icon: FolderOpen },
-  { id: 'receipts', label: 'Receipts', icon: Receipt }
+  { id: 'receipts', label: 'Receipts', icon: Receipt },
+  { id: 'diagnostics', label: 'Diagnostics', icon: Activity }
 ];
 
 export default function AdminSidebar({
@@ -17,7 +18,8 @@ export default function AdminSidebar({
   triggerTabFetch,
   isSidebarCollapsed,
   setIsSidebarCollapsed,
-  handleLogout
+  handleLogout,
+  unresolvedErrorCount = 0
 }) {
 
   return (
@@ -58,7 +60,7 @@ export default function AdminSidebar({
               }
             }}
             title={isSidebarCollapsed ? tab.label : undefined}
-            className={`flex items-center ${
+            className={`relative flex items-center ${
               isSidebarCollapsed ? 'justify-center w-10 h-10 p-0 mx-auto' : 'gap-3 px-3.5 py-2'
             } rounded-xl text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap lg:w-full cursor-pointer border ${
               active 
@@ -68,6 +70,11 @@ export default function AdminSidebar({
           >
             <Icon size={15} className="flex-shrink-0" />
             {!isSidebarCollapsed && <span className="flex-1 text-left">{tab.label}</span>}
+            {tab.id === 'diagnostics' && unresolvedErrorCount > 0 && (
+              <span className={`${isSidebarCollapsed ? 'absolute -right-1 -top-1' : ''} min-w-5 rounded-full border border-rose-400/30 bg-rose-400/15 px-1.5 py-0.5 text-center text-[9px] font-black text-rose-300`}>
+                {unresolvedErrorCount > 99 ? '99+' : unresolvedErrorCount}
+              </span>
+            )}
           </button>
         );
       })}

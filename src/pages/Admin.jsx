@@ -414,6 +414,8 @@ export default function Admin() {
   const [telemetryTotalPages, setTelemetryTotalPages] = useState(1);
   const [telemetrySearch, setTelemetrySearch] = useState('');
   const [telemetryFilter, setTelemetryFilter] = useState('false'); // 'false', 'true', 'all'
+  const [telemetrySummary, setTelemetrySummary] = useState({});
+  const [telemetrySummaryLoading, setTelemetrySummaryLoading] = useState(false);
   const [diagnosticsSubTab, setDiagnosticsSubTab] = useState('health'); // 'health', 'errors', 'audit', 'settings'
 
   
@@ -1015,7 +1017,8 @@ export default function Admin() {
         fetchSplits(),
         fetchNotifications(),
         fetchCMS(),
-        fetchSettings()
+        fetchSettings(),
+        fetchTelemetrySummary()
       ]);
       setKpis(null);
       setAnalytics(null);
@@ -1028,6 +1031,7 @@ export default function Admin() {
   const triggerTabFetch = (tab) => {
     if (tab === 'dashboard') {
       fetchDashboardAggregates();
+      fetchTelemetrySummary();
     } else if (tab === 'catalog') {
       if (catalogSubTab === 'products') {
         fetchInventory(inventoryPage, inventorySearchQuery);
@@ -1040,6 +1044,8 @@ export default function Admin() {
       fetchReceiptsList(receiptsPage, receiptsSearch);
     } else if (tab === 'notifications') {
       fetchNotifications();
+    } else if (tab === 'diagnostics') {
+      fetchDiagnosticsData();
     }
   };
 
@@ -1313,6 +1319,20 @@ export default function Admin() {
     }
   };
 
+  const fetchTelemetrySummary = async () => {
+    setTelemetrySummaryLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/telemetry/summary`, { credentials: 'include' });
+      if (res.ok) {
+        setTelemetrySummary(await res.json());
+      }
+    } catch (e) {
+      console.error("Error loading telemetry summary:", e);
+    } finally {
+      setTelemetrySummaryLoading(false);
+    }
+  };
+
   const fetchAuditLogs = async (page, search, category) => {
     try {
       const res = await fetch(`${API_BASE_URL}/admin/audit-logs?page=${page}&limit=10&search=${encodeURIComponent(search)}&category=${encodeURIComponent(category)}`, { credentials: 'include' });
@@ -1399,7 +1419,10 @@ export default function Admin() {
       });
       if (res.ok) {
         showToast("Error marked as resolved", "success");
-        fetchTelemetryErrors(telemetryPage, telemetrySearch, telemetryFilter);
+        await Promise.all([
+          fetchTelemetryErrors(telemetryPage, telemetrySearch, telemetryFilter),
+          fetchTelemetrySummary()
+        ]);
       }
     } catch (e) {
       console.error("Error acknowledging error:", e);
@@ -1415,12 +1438,21 @@ export default function Admin() {
       });
       if (res.ok) {
         showToast("Errors cleared successfully", "success");
-        fetchTelemetryErrors(telemetryPage, telemetrySearch, telemetryFilter);
+        await Promise.all([
+          fetchTelemetryErrors(telemetryPage, telemetrySearch, telemetryFilter),
+          fetchTelemetrySummary()
+        ]);
       }
     } catch (e) {
       console.error("Error clearing errors:", e);
     }
   };
+
+  useEffect(() => {
+    if (!isAuthenticated || !isAdmin) return undefined;
+    const intervalId = window.setInterval(fetchTelemetrySummary, 60_000);
+    return () => window.clearInterval(intervalId);
+  }, [isAuthenticated, isAdmin]);
 
   const isSearchFirstRender = useRef(true);
 
@@ -1899,6 +1931,7 @@ export default function Admin() {
           isSidebarCollapsed={isSidebarCollapsed}
           setIsSidebarCollapsed={setIsSidebarCollapsed}
           handleLogout={handleLogout}
+          unresolvedErrorCount={telemetrySummary.unresolvedGroups || 0}
         />
 
         {/* Right Side Content Panel */}
@@ -1926,6 +1959,7 @@ export default function Admin() {
               isLoading={dashboardAggregatesLoading || !dashboardAggregates}
               operations={dashboardAggregates || {}}
               onNavigate={setAdminTab}
+              telemetrySummary={telemetrySummary}
               onNewReceiptClick={() => { setAdminTab('receipts'); setEditingReceiptId(null); setIsAddingReceipt(true); }}
             />
           )}
@@ -2181,6 +2215,12 @@ export default function Admin() {
               auditLogsCategory={auditLogsCategory}
               setAuditLogsCategory={setAuditLogsCategory}
               auditLogs={auditLogs}
+              telemetrySummary={telemetrySummary}
+              telemetryLoading={telemetrySummaryLoading}
+              refreshTelemetry={() => Promise.all([
+                fetchTelemetrySummary(),
+                fetchTelemetryErrors(telemetryPage, telemetrySearch, telemetryFilter)
+              ])}
             />
           )}
 

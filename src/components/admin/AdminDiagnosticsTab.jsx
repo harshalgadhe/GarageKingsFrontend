@@ -22,7 +22,10 @@ export default function AdminDiagnosticsTab({
   setAuditLogsSearch,
   auditLogsCategory,
   setAuditLogsCategory,
-  auditLogs
+  auditLogs,
+  telemetrySummary = {},
+  telemetryLoading = false,
+  refreshTelemetry
 }) {
   return (
     <div className="space-y-6">
@@ -152,6 +155,20 @@ export default function AdminDiagnosticsTab({
       {/* Sub-tab Content: Telemetry Errors */}
       {diagnosticsSubTab === 'errors' && (
         <div className="space-y-6">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {[
+              { label: 'Unresolved groups', value: telemetrySummary.unresolvedGroups || 0, tone: 'text-rose-300' },
+              { label: 'Occurrences (24h)', value: telemetrySummary.occurrences24h || 0, tone: 'text-amber-300' },
+              { label: 'Affected endpoints', value: telemetrySummary.affectedEndpoints || 0, tone: 'text-[#E1BD65]' },
+              { label: 'Slow requests (24h)', value: telemetrySummary.slowRequests24h || 0, tone: 'text-zinc-100' }
+            ].map(metric => (
+              <div key={metric.label} className="rounded-2xl border border-white/[0.07] bg-[#141414] p-4">
+                <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-zinc-500">{metric.label}</p>
+                <p className={`mt-2 text-2xl font-semibold tabular-nums ${metric.tone}`}>{telemetryLoading ? '...' : metric.value}</p>
+              </div>
+            ))}
+          </div>
+
           {/* Actions & Filters */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
@@ -177,12 +194,17 @@ export default function AdminDiagnosticsTab({
               </select>
             </div>
 
-            <button
-              onClick={handleClearErrors}
-              className="bg-red-950/30 border border-red-500/20 text-red-400 hover:bg-red-950/50 hover:text-red-300 font-extrabold text-[10px] px-3.5 py-2 rounded-xl uppercase tracking-wider transition-colors cursor-pointer"
-            >
-              Clear Logged Errors
-            </button>
+            <div className="flex items-center gap-2">
+              <button onClick={refreshTelemetry} className="rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2 text-[10px] font-extrabold uppercase tracking-wider text-zinc-300 transition-colors hover:bg-white/[0.08] hover:text-white">
+                Refresh
+              </button>
+              <button
+                onClick={handleClearErrors}
+                className="bg-red-950/30 border border-red-500/20 text-red-400 hover:bg-red-950/50 hover:text-red-300 font-extrabold text-[10px] px-3.5 py-2 rounded-xl uppercase tracking-wider transition-colors cursor-pointer"
+              >
+                Clear Logged Errors
+              </button>
+            </div>
           </div>
 
           {/* Telemetry Error Cards */}
@@ -199,15 +221,16 @@ export default function AdminDiagnosticsTab({
                 const lastSeen = err.lastOccurrence || err.last_seen;
                 const stack = err.stackTrace || err.stack;
                 const correlationId = err.latestCorrelationId || err.correlation_id;
-                const url = err.latestUrl || err.url || 'Internal Operation';
+                const source = err.errorType || err.source || 'Backend';
+                const url = err.endpoint || err.route || err.latestUrl || err.url || 'Internal operation';
                 return (
                   <div key={err.fingerprint} className="bg-[#141414] border border-white/5 rounded-2xl p-5 space-y-4 relative group">
                     {/* Tags row */}
                     <div className="flex flex-wrap items-center gap-2">
                       <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
-                        err.source === 'frontend' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
+                        String(source).toLowerCase() === 'frontend' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
                       }`}>
-                        {err.source}
+                        {source}
                       </span>
                       <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-red-500/10 text-red-400 border border-red-500/20">
                         {err.category}

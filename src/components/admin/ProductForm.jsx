@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, X, Check, Eye, Layers, Star } from 'lucide-react';
-import { getBrands, uploadImageToStorage } from '../../lib/db';
+import { checkProductSkuAvailability, getBrands, uploadImageToStorage } from '../../lib/db';
 import ProductCard from '../common/ProductCard';
 import SearchableSelect from './SearchableSelect';
 
@@ -167,6 +167,17 @@ export default function ProductForm({
     setValidationError('');
 
     try {
+      const currentSku = sku.trim();
+      if (!currentSku) {
+        setValidationError('Enter a unique SKU before uploading product images.');
+        return;
+      }
+      const skuCheck = await checkProductSkuAvailability(currentSku, initialData?.id);
+      if (!skuCheck.available) {
+        setValidationError(`SKU "${skuCheck.sku || currentSku}" already exists. Open that product to update it before uploading more images.`);
+        return;
+      }
+
       const uploaded = await Promise.all(files.map(f => uploadImageToStorage(f)));
       const valid = uploaded.filter(Boolean);
       if (valid.length > 0) {
@@ -225,6 +236,12 @@ export default function ProductForm({
     setIsSubmitting(true);
 
     try {
+      const skuCheck = await checkProductSkuAvailability(userSku, initialData?.id);
+      if (!skuCheck.available) {
+        setValidationError(`SKU "${skuCheck.sku || userSku}" already exists. Open that product to update it, or use a different SKU.`);
+        return;
+      }
+
       let validIsoDate = null;
       const rawArrivalDateStr = arrivalDate.trim();
       if (rawArrivalDateStr) {
