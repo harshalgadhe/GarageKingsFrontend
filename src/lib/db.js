@@ -82,16 +82,16 @@ export const isFirebaseConfigured = true;
 // Automatically inject credentials: 'include' globally to transmit HttpOnly cookies
 // and automatically refresh expired JWT sessions on 401 responses
 const originalFetch = window.fetch;
-let isRefreshing = false;
-let refreshSubscribers = [];
+let refreshPromise = null;
 
-function subscribeTokenRefresh(cb) {
-  refreshSubscribers.push(cb);
-}
-
-function onRefreshed() {
-  refreshSubscribers.forEach(cb => cb());
-  refreshSubscribers = [];
+function redirectToSignIn() {
+  localStorage.removeItem('gk_user');
+  const currentPath = window.location.pathname + window.location.search;
+  let redirectUrl = '/account';
+  if (window.location.pathname !== '/account') {
+    redirectUrl += `?returnTo=${encodeURIComponent(currentPath)}`;
+  }
+  window.location.assign(redirectUrl);
 }
 
 window.fetch = async function (url, options = {}) {
@@ -116,56 +116,29 @@ window.fetch = async function (url, options = {}) {
     if (response.status === 401) {
       const urlStr = typeof url === 'string' ? url : (url.url || '');
       if (!urlStr.includes('/auth/login') && !urlStr.includes('/auth/refresh') && !urlStr.includes('/setup/status')) {
-        if (!isRefreshing) {
-          isRefreshing = true;
-          try {
-            const refreshRes = await originalFetch(`${API_BASE_URL}/auth/refresh`, {
-              method: 'POST',
-              credentials: 'include'
-            });
-            if (refreshRes.ok) {
-              isRefreshing = false;
-              onRefreshed();
-            } else {
-              isRefreshing = false;
-              localStorage.removeItem('gk_user');
-              const currentPath = window.location.pathname + window.location.search;
-              let redirectUrl = '/account';
-              if (window.location.pathname !== '/account') {
-                redirectUrl += `?returnTo=${encodeURIComponent(currentPath)}`;
-              }
-              window.location.href = redirectUrl;
-              return response;
-            }
-          } catch (err) {
-            isRefreshing = false;
-            localStorage.removeItem('gk_user');
-            const currentPath = window.location.pathname + window.location.search;
-            let redirectUrl = '/account';
-            if (window.location.pathname !== '/account') {
-              redirectUrl += `?returnTo=${encodeURIComponent(currentPath)}`;
-            }
-            window.location.href = redirectUrl;
+        if (!refreshPromise) {
+          refreshPromise = originalFetch(`${API_BASE_URL}/auth/refresh`, {
+            method: 'POST',
+            credentials: 'include'
+          }).finally(() => {
+            refreshPromise = null;
+          });
+        }
+
+        try {
+          const refreshRes = await refreshPromise;
+          if (!refreshRes.ok) {
+            redirectToSignIn();
             return response;
           }
+
+          const repeatedRes = await originalFetch(url, options);
+          if (repeatedRes.status === 401) redirectToSignIn();
+          return repeatedRes;
+        } catch (_) {
+          redirectToSignIn();
+          return response;
         }
-        
-        // Wait for token refresh operation to complete, then repeat original request
-        return new Promise((resolve) => {
-          subscribeTokenRefresh(async () => {
-            const repeatedRes = await originalFetch(url, options);
-            if (repeatedRes.status === 401) {
-              localStorage.removeItem('gk_user');
-              const currentPath = window.location.pathname + window.location.search;
-              let redirectUrl = '/account';
-              if (window.location.pathname !== '/account') {
-                redirectUrl += `?returnTo=${encodeURIComponent(currentPath)}`;
-              }
-              window.location.href = redirectUrl;
-            }
-            resolve(repeatedRes);
-          });
-        });
       }
     }
     return response;

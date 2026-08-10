@@ -158,7 +158,9 @@ export async function signInWithGoogleProfile(googleIdToken) {
           if (text) errorMsg = text;
         } catch (_) {}
       }
-      throw new Error(errorMsg);
+      const authError = new Error(errorMsg);
+      authError.status = response.status;
+      throw authError;
     }
     const data = await response.json();
     const { user } = data;
@@ -174,7 +176,6 @@ export async function signInWithGoogleProfile(googleIdToken) {
 
     return user;
   } catch (error) {
-    console.error("Google authentication failed:", error);
     throw error;
   }
 }
@@ -206,7 +207,9 @@ export async function signUpCognito(email, password, name) {
           if (text) errorMsg = text;
         } catch (_) {}
       }
-      throw new Error(errorMsg);
+      const authError = new Error(errorMsg);
+      authError.status = response.status;
+      throw authError;
     }
 
     const data = await response.json();
@@ -223,7 +226,6 @@ export async function signUpCognito(email, password, name) {
 
     return user;
   } catch (error) {
-    console.error("Local signUp failed:", error);
     throw error;
   }
 }

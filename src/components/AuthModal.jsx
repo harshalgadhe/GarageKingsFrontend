@@ -87,7 +87,11 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'champagne', o
             }, 1500);
           }
         } catch (err) {
-          setError(err.message || 'Google Authentication failed.');
+          setError(
+            err.status >= 500
+              ? 'Google sign-in is temporarily unavailable. Please try again in a moment.'
+              : (err.message || 'Google sign-in could not be completed.')
+          );
           setLoading(false);
         }
       }
@@ -128,10 +132,21 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'champagne', o
         }, 1500);
       }
     } catch (err) {
-      const blockedUntil = recordFailedAttempt(err.status === 429)
-      setError(blockedUntil
-        ? 'Too many sign-in attempts. Please wait 15 minutes before trying again.'
-        : 'Email or password is incorrect. Please try again.');
+      const isCredentialFailure = err.status === 401
+      const blockedUntil = isCredentialFailure || err.status === 429
+        ? recordFailedAttempt(err.status === 429)
+        : 0
+      setError(
+        blockedUntil
+          ? 'Too many sign-in attempts. Please wait 15 minutes before trying again.'
+          : err.status === 401
+            ? 'Email or password is incorrect. Please try again.'
+            : err.status === 429
+              ? 'Too many sign-in attempts. Please wait before trying again.'
+              : err.status >= 500
+                ? 'Sign-in is temporarily unavailable. Please try again in a moment or continue with Google.'
+                : (err.message || 'Sign-in could not be completed. Please try again.')
+      );
       setLoading(false);
     }
   };
@@ -164,7 +179,13 @@ export default function AuthModal({ isOpen, onClose, themeColor = 'champagne', o
         }, 1500);
       }
     } catch (err) {
-      setError(err.message || 'Registration failed.');
+      setError(
+        err.status === 409 || err.status === 400
+          ? (err.message || 'This account could not be registered with those details.')
+          : err.status >= 500
+            ? 'Registration is temporarily unavailable. Please try again in a moment or continue with Google.'
+            : (err.message || 'Registration failed. Please try again.')
+      );
       setLoading(false);
     }
   };
