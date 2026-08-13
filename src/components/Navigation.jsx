@@ -58,12 +58,24 @@ export default function Navigation({ activeSection, theme }) {
         className="fixed inset-x-0 top-0 z-[80] border-b border-white/[0.07] bg-[#050505]/88 shadow-[0_10px_35px_rgba(0,0,0,.22)] backdrop-blur-2xl"
         style={theme?.navigation ? { backgroundColor: theme.navigation, borderBottomColor: `${theme.accent}24` } : undefined}
       >
-        <div className="mx-auto flex h-16 max-w-[1600px] items-center justify-between px-5 md:px-10 lg:grid lg:grid-cols-[minmax(120px,1fr)_auto_minmax(440px,1fr)] lg:gap-8 lg:px-12 xl:px-16">
+        <div className="mx-auto flex h-16 max-w-[1600px] items-center gap-2.5 px-3 sm:gap-4 sm:px-5 md:px-10 lg:grid lg:grid-cols-[minmax(120px,1fr)_auto_minmax(440px,1fr)] lg:gap-8 lg:px-12 xl:px-16">
           <button onClick={() => navigate('/')} className="group flex items-center text-left" aria-label="GarageKings home">
-            <span className="grid h-12 w-28 shrink-0 place-items-center">
+            <span className="grid h-12 w-[5.75rem] shrink-0 place-items-center sm:w-28">
               <img src="/brand-wordmark.png?v=3" alt="" className="max-h-11 w-full object-contain drop-shadow-[0_0_10px_rgba(225,189,101,.16)] transition-transform duration-500 group-hover:scale-[1.02]" />
             </span>
           </button>
+
+          <form onSubmit={submitGlobalSearch} role="search" className="group relative min-w-0 flex-1 lg:hidden">
+            <Search size={14} strokeWidth={1.8} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#817D76] transition-colors group-focus-within:text-[#D8BC78]" />
+            <input
+              type="search"
+              value={globalSearch}
+              onChange={(event) => setGlobalSearch(event.target.value)}
+              placeholder="Search collection"
+              aria-label="Search all GarageKings models"
+              className="h-10 w-full min-w-0 rounded-full border border-white/[0.09] bg-white/[0.035] pl-9 pr-3 text-[12px] text-[#F4F1EC] outline-none transition placeholder:text-[#68645E] focus:border-[#C8AE7D]/45 focus:bg-[#0A0908] focus:shadow-[0_0_0_3px_rgba(200,174,125,.07)]"
+            />
+          </form>
 
           <nav className="hidden items-center gap-1 rounded-full border border-white/[0.07] bg-white/[0.025] p-1 lg:flex" aria-label="Primary navigation">
             {sections.map((item) => {
@@ -98,7 +110,7 @@ export default function Navigation({ activeSection, theme }) {
 
           <button
             onClick={openCollectorProfile}
-            className="relative grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full border border-[#C8AE7D]/25 bg-[#C8AE7D]/[0.07] text-[#D7C59D] shadow-[inset_0_1px_0_rgba(255,255,255,.06),0_5px_18px_rgba(0,0,0,.22)] transition duration-300 active:scale-95 lg:hidden"
+            className="relative ml-auto grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full border border-[#C8AE7D]/25 bg-[#C8AE7D]/[0.07] text-[#D7C59D] shadow-[inset_0_1px_0_rgba(255,255,255,.06),0_5px_18px_rgba(0,0,0,.22)] transition duration-300 active:scale-95 lg:hidden"
             aria-label="Collector profile"
           >
             {user ? (

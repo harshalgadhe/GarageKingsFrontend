@@ -21,6 +21,23 @@ function BrandMark({ theme }) {
   )
 }
 
+function BrandPageSkeleton() {
+  return (
+    <div className="min-h-screen bg-[#050505] pt-16 text-[#F5F5F7]">
+      <Navigation activeSection="brands" />
+      <div className="mx-auto grid min-h-[calc(100dvh-4rem)] max-w-[1500px] animate-pulse gap-10 px-5 py-10 sm:px-8 lg:grid-cols-2 lg:items-center lg:px-16">
+        <div>
+          <div className="h-3 w-28 rounded-full bg-white/[0.08]" />
+          <div className="mt-8 h-14 w-3/4 rounded-2xl bg-white/[0.07] sm:h-20" />
+          <div className="mt-4 h-14 w-full max-w-xl rounded-2xl bg-white/[0.045]" />
+          <div className="mt-7 flex gap-3"><div className="h-11 w-44 rounded-full bg-white/[0.09]" /><div className="h-11 w-24 rounded-full bg-white/[0.05]" /></div>
+        </div>
+        <div className="aspect-[4/3] rounded-[2rem] border border-white/[0.06] bg-white/[0.025]" />
+      </div>
+    </div>
+  )
+}
+
 export default function BrandPage() {
   const { slug } = useParams()
   const navigate = useNavigate()
@@ -82,7 +99,7 @@ export default function BrandPage() {
     setPage(1)
   }
 
-  if (brandLoading) return <div className="grid min-h-screen place-items-center bg-black text-sm text-white/45">Loading brand...</div>
+  if (brandLoading) return <BrandPageSkeleton />
   if (!theme) return <div className="grid min-h-screen place-items-center bg-black text-white"><button onClick={() => navigate('/brands')} className="rounded-full border border-white/15 px-6 py-3">Return to brands</button></div>
 
   const velocity = theme.mode === 'velocity'
@@ -101,13 +118,13 @@ export default function BrandPage() {
 
         <div className="relative mx-auto grid max-w-[1500px] grid-cols-1 content-start gap-6 px-5 py-6 sm:px-8 sm:py-8 lg:min-h-[calc(100dvh-112px)] lg:content-center lg:px-16 xl:grid-cols-12 xl:gap-10 xl:py-7">
           <motion.div initial={reduceMotion ? false : { opacity: 0, x: -28 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: .7 }} className="z-20 max-w-3xl xl:col-span-6">
-            <button onClick={() => navigate('/brands')} className="mb-4 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.16em] text-white/45 transition hover:text-white xl:mb-5"><ArrowLeft size={14} /> GarageKings brand index</button>
+            <button onClick={() => navigate('/brands')} className="mb-4 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.16em] text-white/45 transition hover:text-white xl:mb-5"><ArrowLeft size={14} /> All brands</button>
             {theme.logo && <img src={theme.logo} alt={`${theme.name} logo`} className={`mb-5 max-h-12 w-36 object-contain object-left xl:hidden ${theme.logoClass || ''}`} />}
             <div className="mb-5 flex items-center gap-3 text-[10px] font-bold uppercase tracking-[.24em] text-[#C8AE7D]"><span className="h-px w-10 bg-[#C8AE7D]" />{theme.kicker}</div>
             {!theme.logo && <div className={`font-black uppercase leading-[.78] tracking-[-.07em] ${velocity ? '-skew-x-6 italic' : ''}`} style={{ fontSize: 'clamp(3.5rem, 8vh, 7.25rem)' }}>{theme.name}</div>}
             <h1 className={`${theme.logo ? 'mt-3 text-[clamp(2.35rem,7vh,4.8rem)]' : 'mt-4 text-[clamp(2.5rem,6.5vh,4.6rem)]'} max-w-2xl break-words font-semibold leading-[.94] tracking-[-.05em]`}>{theme.headline}</h1>
             <p className="mt-4 max-w-[38rem] break-words text-sm leading-6 text-white/60 sm:text-[15px] xl:mt-5">{theme.description}</p>
-            <div className="mt-6 flex flex-wrap gap-3 xl:mt-7"><button onClick={() => document.getElementById('brand-collection')?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' })} className="flex items-center gap-2 rounded-full bg-[#E8E2D8] px-6 py-3 text-xs font-black uppercase tracking-[.12em] text-black transition hover:-translate-y-0.5 hover:bg-white">Explore the collection <ArrowRight size={14} /></button><span className="rounded-full border border-white/15 px-5 py-3 text-xs text-white/55">{total} models</span></div>
+            <div className="mt-6 flex flex-wrap gap-3 xl:mt-7"><button onClick={() => document.getElementById('brand-collection')?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' })} className="flex items-center gap-2 rounded-full bg-[#E8E2D8] px-6 py-3 text-xs font-black uppercase tracking-[.12em] text-black transition hover:-translate-y-0.5 hover:bg-white">View models <ArrowRight size={14} /></button><span className="rounded-full border border-white/15 px-5 py-3 text-xs text-white/55">{total} {total === 1 ? 'model' : 'models'}</span></div>
           </motion.div>
 
           <motion.div initial={reduceMotion ? false : { opacity: 0, scale: .9 }} animate={{ opacity: 1, scale: 1, rotate: 0 }} transition={{ duration: .85, ease: [0.16, 1, 0.3, 1] }} className="relative hidden xl:col-span-6 xl:block">
@@ -116,28 +133,28 @@ export default function BrandPage() {
               <div className="absolute -left-20 top-1/2 h-36 w-[130%] -translate-y-1/2 -rotate-6 opacity-10" style={{ backgroundColor: theme.highlight || theme.accent }} />
               <div className="absolute inset-0 opacity-40" style={{ backgroundImage: theme.motif }} />
               <div className="relative z-10 grid h-full w-full place-items-center p-12"><BrandMark theme={theme} /></div>
-              <div className="absolute bottom-6 left-6 text-[9px] font-bold uppercase tracking-[.22em] text-white/35">Marque identity</div>
+              <div className="absolute bottom-6 left-6 text-[9px] font-bold uppercase tracking-[.22em] text-white/35">Brand logo</div>
               <div className="absolute bottom-6 right-6 font-mono text-[9px] uppercase tracking-[.18em]" style={{ color: theme.accent }}>{theme.origin}</div>
             </div>
           </motion.div>
         </div>
       </header>
 
-      <section className="min-h-24 border-b border-white/[0.08] bg-[#090909] sm:min-h-28"><div className="mx-auto grid min-h-24 max-w-7xl grid-cols-3 divide-x divide-white/[0.08] px-2 sm:min-h-28 sm:px-8">{[[Layers3, 'Models in collection', total], [Gauge, 'Collector focus', theme.style], [Gauge, 'Primary scale', '1:64']].map(([Icon, label, value]) => <div key={label} className="flex min-w-0 flex-col justify-center px-2 py-3 sm:px-8"><Icon size={15} className="text-[#C8AE7D]" /><div className="mt-2 text-[7px] uppercase leading-tight tracking-[.08em] text-white/35 sm:text-[9px] sm:tracking-[.16em]">{label}</div><strong className="mt-1 break-words text-[11px] leading-tight text-[#F4F1EC] sm:text-base">{value}</strong></div>)}</div></section>
+      <section className="min-h-24 border-b border-white/[0.08] bg-[#090909] sm:min-h-28"><div className="mx-auto grid min-h-24 max-w-7xl grid-cols-3 divide-x divide-white/[0.08] px-2 sm:min-h-28 sm:px-8">{[[Layers3, 'Models', total], [Gauge, 'Known for', theme.style], [Gauge, 'Common scale', '1:64']].map(([Icon, label, value]) => <div key={label} className="flex min-w-0 flex-col justify-center px-2 py-3 sm:px-8"><Icon size={15} className="text-[#C8AE7D]" /><div className="mt-2 text-[7px] uppercase leading-tight tracking-[.08em] text-white/35 sm:text-[9px] sm:tracking-[.16em]">{label}</div><strong className="mt-1 break-words text-[11px] leading-tight text-[#F4F1EC] sm:text-base">{value}</strong></div>)}</div></section>
       </div>
 
       <main id="brand-collection" className="mx-auto max-w-[1500px] scroll-mt-16 px-4 py-16 sm:px-8 lg:px-16 lg:py-24">
-        <div className="mb-8 grid gap-6 border-b border-white/[0.08] pb-8 md:grid-cols-2 md:items-end"><div><div className="text-[9px] font-bold uppercase tracking-[.22em] text-[#C8AE7D]">The GarageKings edit</div><h2 className="mt-3 text-4xl font-semibold tracking-[-.04em] sm:text-6xl">Selected {theme.name}</h2></div><p className="max-w-lg text-sm leading-relaxed text-white/45 md:justify-self-end">Search the complete {theme.name} collection by model name or reference number.</p></div>
+        <div className="mb-8 grid gap-6 border-b border-white/[0.08] pb-8 md:grid-cols-2 md:items-end"><div><div className="text-[9px] font-bold uppercase tracking-[.22em] text-[#C8AE7D]">GarageKings collection</div><h2 className="mt-3 text-4xl font-semibold tracking-[-.04em] sm:text-6xl">{theme.name} models</h2></div><p className="max-w-lg text-sm leading-relaxed text-white/45 md:justify-self-end">Search by model name or reference number.</p></div>
         <div className="sticky top-16 z-40 -mx-2 mb-10 rounded-2xl border border-white/[0.09] bg-[#090909]/95 p-2 shadow-[0_16px_45px_rgba(0,0,0,.48)] backdrop-blur-xl sm:mx-0 sm:flex sm:items-center sm:gap-3 sm:rounded-full">
           <div className="relative min-w-0 flex-1"><Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#C8AE7D]" /><input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder={`Search ${theme.name} models or reference number`} className="w-full rounded-xl border border-transparent bg-white/[.04] py-3 pl-10 pr-10 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-[#C8AE7D]/40 sm:rounded-full" />{searchQuery && <button onClick={() => setSearchQuery('')} aria-label="Clear search" className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 hover:text-white"><X size={15} /></button>}</div>
           <div className="mt-2 grid grid-cols-3 gap-1 sm:mt-0 sm:flex" aria-label="Collection availability filters">
             {[["all", "All"], ["stock", "In stock"], ["prebook", "Pre-booking"]].map(([value, label]) => <button key={value} onClick={() => changeAvailability(value)} aria-pressed={availability === value} className={`rounded-full px-3 py-2 text-[9px] font-bold uppercase tracking-[.1em] transition ${availability === value ? 'bg-[#E8E2D8] text-black' : 'text-white/45 hover:bg-white/[.06] hover:text-white'}`}>{label}</button>)}
           </div>
-          <span className="hidden shrink-0 pr-3 font-mono text-[9px] text-white/35 lg:block">{loading ? 'Updating' : `${total} models`}</span>
+          <span className="hidden shrink-0 pr-3 font-mono text-[9px] text-white/35 lg:block">{loading ? 'Updating' : `${total} ${total === 1 ? 'model' : 'models'}`}</span>
         </div>
         {loading ? <div aria-label="Loading brand collection"><MarketplaceGridSkeleton count={8} /></div> : products.length ? <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{products.map((product) => <VaultModuleCard key={product.id} car={product} onClick={() => navigate(`/product/${product.id}`)} />)}</div> : <div className="rounded-3xl border border-dashed border-white/[0.12] bg-white/[0.018] px-6 py-16 text-center"><div className="mx-auto grid h-12 w-12 place-items-center rounded-full border border-[#C8AE7D]/20 bg-[#C8AE7D]/[0.06]"><Search size={18} className="text-[#C8AE7D]" /></div><h3 className="mt-5 text-lg font-semibold text-[#F4F1EC]">No matching models</h3><p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-white/40">Try a different model name or reference number, or clear the availability filter.</p><button onClick={() => { setSearchQuery(''); changeAvailability('all') }} className="mt-6 rounded-full border border-white/15 px-5 py-2.5 text-[10px] font-bold uppercase tracking-[.12em] text-white/70 transition hover:border-white/35 hover:text-white">Clear filters</button></div>}
         {totalPages > 1 && <div className="mt-10 flex items-center justify-center gap-4"><button disabled={page === 1} onClick={() => setPage((value) => Math.max(1, value - 1))} className="rounded-full border border-white/10 px-5 py-2.5 text-xs disabled:opacity-30">Previous</button><span className="font-mono text-[10px] text-white/40">{page} / {totalPages}</span><button disabled={page === totalPages} onClick={() => setPage((value) => Math.min(totalPages, value + 1))} className="rounded-full border border-white/10 px-5 py-2.5 text-xs disabled:opacity-30">Next</button></div>}
-        <div className="mt-16 flex flex-col items-center border-t border-white/[0.08] pt-10 text-center"><div className="text-sm text-white/45">Want to search across every marque?</div><button onClick={() => navigate(`/marketplace?brand=${encodeURIComponent(theme.name)}`)} className="mt-5 flex items-center gap-2 rounded-full border border-white/15 px-6 py-3 text-xs font-bold uppercase tracking-[.12em] transition hover:border-white/40">Open filtered marketplace <ArrowRight size={14} /></button></div>
+        <div className="mt-16 flex flex-col items-center border-t border-white/[0.08] pt-10 text-center"><div className="text-sm text-white/45">Want to use all Garage filters for this brand?</div><button onClick={() => navigate(`/marketplace?brand=${encodeURIComponent(theme.name)}`)} className="mt-5 flex items-center gap-2 rounded-full border border-white/15 px-6 py-3 text-xs font-bold uppercase tracking-[.12em] transition hover:border-white/40">View in Garage <ArrowRight size={14} /></button></div>
       </main>
       <Footer />
     </div>

@@ -18,7 +18,7 @@ export default function Footer() {
             />
           </div>
           <p className="text-[11px] text-zinc-500 leading-relaxed max-w-xs mt-2">
-            A collector-led catalogue of scale diecast models, with availability and arrangements confirmed directly.
+            Scale diecast models with photos, current details and direct enquiries.
           </p>
         </div>
 
@@ -55,7 +55,7 @@ export default function Footer() {
 
         {/* Column 3: Legal & Account */}
         <div className="flex flex-col gap-2">
-          <span className="text-[10px] font-bold font-mono uppercase tracking-wider text-zinc-500 mb-1">Portal</span>
+          <span className="text-[10px] font-bold font-mono uppercase tracking-wider text-zinc-500 mb-1">Account</span>
           <Link to="/account" className="text-xs hover:text-white transition-colors py-0.5">My Account</Link>
           <Link to="/policies" className="text-xs hover:text-white transition-colors py-0.5">Privacy & Policies</Link>
         </div>
@@ -71,7 +71,7 @@ export default function Footer() {
           © {new Date().getFullYear()} {BRAND.name}. All rights reserved.
         </div>
         <div className="sm:text-right font-medium">
-          Curated diecast collectibles.
+          Scale models for collectors.
         </div>
       </div>
     </footer>

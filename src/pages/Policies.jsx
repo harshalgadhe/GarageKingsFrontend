@@ -88,12 +88,12 @@ export default function Policies() {
                 <section className="space-y-2">
                   <h3 className="text-white font-bold uppercase tracking-wider text-xs md:text-sm">1. Acceptance of Terms</h3>
                   <p>
-                    By accessing GarageKings, browsing the catalogue, creating an account, or contacting us through a linked channel, you agree to these terms. The website is a catalogue and enquiry service; it does not provide an online cart or checkout.
+                    By accessing GarageKings, browsing the collection, creating an account, or contacting us through a linked channel, you agree to these terms. The website displays models and supports enquiries; it does not provide an online cart or checkout.
                   </p>
                 </section>
 
                 <section className="space-y-2">
-                  <h3 className="text-white font-bold uppercase tracking-wider text-xs md:text-sm">2. Catalogue & Availability</h3>
+                  <h3 className="text-white font-bold uppercase tracking-wider text-xs md:text-sm">2. Model Details & Availability</h3>
                   <p>
                     Product pages show the information available to us at the time of publication. Availability, condition, packaging, price and delivery or collection options must be confirmed directly with GarageKings. Opening a product page or sending an enquiry does not reserve a model.
                   </p>
@@ -102,7 +102,7 @@ export default function Policies() {
                 <section className="space-y-2">
                   <h3 className="text-white font-bold uppercase tracking-wider text-xs md:text-sm">3. Pricing & Direct Arrangements</h3>
                   <p>
-                    Prices are displayed in Indian Rupees unless stated otherwise and may be corrected if catalogue information is inaccurate. Any purchase, pre-booking, payment, delivery or collection arrangement is discussed and confirmed directly through our official WhatsApp or Instagram channels. The website does not collect payments or payment screenshots from customers.
+                    Prices are displayed in Indian Rupees unless stated otherwise and may be corrected if product information is inaccurate. Any purchase, pre-booking, payment, delivery or collection arrangement is discussed and confirmed directly through our official WhatsApp or Instagram channels. The website does not collect payments or payment screenshots from customers.
                   </p>
                 </section>
 
@@ -147,7 +147,7 @@ export default function Policies() {
                   <ul className="list-disc pl-5 space-y-1.5 text-zinc-300">
                     <li>Google-authenticated account identifiers, email address and display name.</li>
                     <li>Profile details you choose to provide, such as phone number, Instagram handle and address.</li>
-                    <li>Catalogue searches, enquiry context and basic website usage information.</li>
+                    <li>Model searches, enquiry context and basic website usage information.</li>
                     <li>Security, diagnostic and performance information, including IP address, browser details and request identifiers used to investigate errors.</li>
                   </ul>
                 </section>
@@ -159,8 +159,8 @@ export default function Policies() {
                   </p>
                   <ul className="list-disc pl-5 space-y-1.5 text-zinc-300">
                     <li>Provide and secure your account and saved profile.</li>
-                    <li>Respond to catalogue, availability and support enquiries.</li>
-                    <li>Improve search, catalogue quality, reliability and performance.</li>
+                    <li>Respond to product, availability and support enquiries.</li>
+                    <li>Improve search, product information, reliability and performance.</li>
                     <li>Detect abuse, investigate errors and protect GarageKings systems.</li>
                   </ul>
                 </section>

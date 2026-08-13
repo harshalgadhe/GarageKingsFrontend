@@ -34,11 +34,11 @@ export default function Help() {
         <header className="max-w-3xl">
           <div className="text-[10px] font-bold uppercase tracking-[.24em] text-[#D8BC78]">GarageKings support</div>
           <h1 className="mt-4 text-5xl font-semibold leading-[.94] tracking-[-.05em] sm:text-7xl">Find the model.<br /><span className="text-[#E1BD65]">Ask a collector.</span></h1>
-          <p className="mt-6 max-w-2xl text-sm leading-7 text-[#99958E] md:text-base">GarageKings is a searchable collector catalogue. There is no website cart or checkout; enquiries and any later arrangements are handled directly through our official WhatsApp or Instagram channels.</p>
+          <p className="mt-6 max-w-2xl text-sm leading-7 text-[#99958E] md:text-base">GarageKings lets you search scale models and view their details. There is no website cart or checkout; enquiries and any later arrangements are handled directly through our official WhatsApp or Instagram channels.</p>
         </header>
 
         <section className="grid gap-6 rounded-[28px] border border-white/[0.09] bg-[#0B0B0A]/80 p-6 md:grid-cols-2 md:p-9">
-          <div><div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.18em] text-[#D8BC78]"><Compass size={15} /> How enquiries work</div><h2 className="mt-3 text-2xl font-semibold tracking-[-.03em]">From catalogue to conversation</h2></div>
+          <div><div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.18em] text-[#D8BC78]"><Compass size={15} /> How enquiries work</div><h2 className="mt-3 text-2xl font-semibold tracking-[-.03em]">Find a model and contact us</h2></div>
           <ol className="space-y-3">{enquirySteps.map((step, index) => <li key={step} className="flex gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-3.5 text-sm text-[#B7B2AA]"><span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[#D8BC78]/10 font-mono text-[10px] text-[#D8BC78]">{index + 1}</span>{step}</li>)}</ol>
         </section>
 
@@ -48,10 +48,10 @@ export default function Help() {
             <FAQItem question="Can I buy or reserve a model on the website?">No. The website does not currently provide a cart, checkout or online reservation. Contact us from the product page to confirm whether a model is still available and discuss the next steps.</FAQItem>
             <FAQItem question="What should I include in my enquiry?">The product enquiry link prepares the model name, reference and product-page link. You can also mention the packaging or condition details you want us to confirm.</FAQItem>
             <FAQItem question="Can I enquire about a sold-out model?">Yes. Sold-out product pages include an enquiry option so you can ask about a restock, another edition or a similar model.</FAQItem>
-            <FAQItem question="Are prices and availability final?">Catalogue information reflects the latest data available to us, but price, availability, condition and packaging should always be confirmed directly before making a decision.</FAQItem>
+            <FAQItem question="Are prices and availability final?">The website reflects the latest information available to us, but price, availability, condition and packaging should always be confirmed directly before making a decision.</FAQItem>
             <FAQItem question="How are payments, delivery and collection handled?">They are not processed through this website. If an enquiry progresses, the applicable payment, delivery or collection details and terms will be agreed directly through the official contact channel.</FAQItem>
-            <FAQItem question="Do I need an account to browse or enquire?">No. Browsing, search and product enquiries are public. Google sign-in is available for profile features but is not required to explore the catalogue.</FAQItem>
-            <FAQItem question="What if product photographs or details are missing?">Ask us for additional photographs, packaging information or condition details before deciding. “Photography pending” means the catalogue entry exists while its images are still being prepared.</FAQItem>
+            <FAQItem question="Do I need an account to browse or enquire?">No. Browsing, search and product enquiries are public. Google sign-in is available for profile features but is not required to view the collection.</FAQItem>
+            <FAQItem question="What if product photographs or details are missing?">Ask us for additional photographs, packaging information or condition details before deciding. “Photos coming soon” means the model is listed while its images are still being prepared.</FAQItem>
             <FAQItem question="How do I request a correction or deletion of my profile data?">Contact GarageKings through the official WhatsApp or Instagram links and identify the Google email associated with your profile. Never send passwords, sign-in codes or private account details.</FAQItem>
           </div>
         </section>
@@ -71,7 +71,7 @@ export default function Help() {
             <a href={CONTACT.instagramUrl} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 rounded-full border border-white/[0.12] bg-white/[0.035] px-6 py-3 text-xs font-bold text-white"><SiInstagram size={16} className="text-[#E1306C]" /> Instagram <ArrowUpRight size={13} /></a>
           </div>
         </section>
-        <div className="flex items-center justify-center gap-2 text-[10px] uppercase tracking-[.14em] text-[#5F5C57]"><Check size={12} /> Content reviewed for the current catalogue and enquiry experience · August 2026</div>
+        <div className="flex items-center justify-center gap-2 text-[10px] uppercase tracking-[.14em] text-[#5F5C57]"><Check size={12} /> Information updated August 2026</div>
       </main>
       <Footer />
     </div>

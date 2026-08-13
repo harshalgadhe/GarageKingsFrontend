@@ -34,7 +34,7 @@ const TechnicalArchive = forwardRef(function TechnicalArchive(props, ref) {
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12 border-b border-zinc-900 pb-8 text-left w-full md:mb-14">
             <div>
               <span className="text-[10px] font-medium uppercase tracking-[0.25em] text-gk-orange mb-3 block font-inter">
-                OFFICIAL STOCKISTS &amp; PARTNERS
+                BRANDS AVAILABLE
               </span>
               <h2 className="text-4xl sm:text-5xl md:text-6.5xl font-bold tracking-normal text-[#F7F7F7] uppercase leading-none font-grotesk">
                 THE BRANDS WE<br />
@@ -44,10 +44,10 @@ const TechnicalArchive = forwardRef(function TechnicalArchive(props, ref) {
             
             <div className="text-left md:text-right max-w-xs">
               <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 block mb-1">
-                CURATED SELECTIONS
+                MODEL DETAILS
               </span>
               <p className="text-xs text-zinc-500 font-inter">
-                Catalogued with available model, edition and packaging details so collectors can enquire with better context.
+                Browse available model, edition and packaging details before you enquire.
               </p>
             </div>
           </div>
@@ -100,7 +100,7 @@ const TechnicalArchive = forwardRef(function TechnicalArchive(props, ref) {
                 {/* Action button */}
                 <div className="pt-6 border-t border-zinc-900/60 mt-6 flex justify-between items-center w-full">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 group-hover:text-white transition-colors duration-300">
-                    View Catalog
+                    View models
                   </span>
                   <div className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center text-zinc-500 group-hover:border-gk-orange group-hover:text-gk-orange transition-all duration-500">
                     <svg 

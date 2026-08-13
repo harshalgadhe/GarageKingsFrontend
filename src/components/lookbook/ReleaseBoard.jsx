@@ -43,7 +43,7 @@ const ReleaseBoard = forwardRef(function ReleaseBoard(props, ref) {
   const reduce = useReducedMotion()
   const [settings, setSettings] = useState({
     dropLabel: 'Friday • 9 PM IST',
-    dropDesc: 'Next Curated Drop Countdown'
+    dropDesc: 'Next model release'
   })
   const [targetTime, setTargetTime] = useState(() => getTargetTime(null))
   const [remaining, setRemaining] = useState(() => Math.max(0, targetTime - Date.now()))
@@ -55,7 +55,7 @@ const ReleaseBoard = forwardRef(function ReleaseBoard(props, ref) {
           ...prev,
           ...data,
           dropLabel: data.dropLabel || 'Friday • 9 PM IST',
-          dropDesc: data.dropDesc || 'Next Curated Drop Countdown'
+          dropDesc: data.dropDesc || 'Next model release'
         }))
         const t = getTargetTime(data)
         setTargetTime(t)
@@ -86,7 +86,7 @@ const ReleaseBoard = forwardRef(function ReleaseBoard(props, ref) {
             
             <div className="flex flex-col items-center justify-center text-center gap-1.5 mb-8">
               <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-gk-orange font-bold">
-                NEXT DROP
+                NEXT RELEASE
               </span>
               <h3 className="text-2xl sm:text-3xl font-bold tracking-normal uppercase text-white font-grotesk leading-none mt-1">
                 {settings.dropLabel}

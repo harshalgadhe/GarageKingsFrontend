@@ -4,10 +4,10 @@ import { ArrowUpRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 const SCENES = [
-  { number: '01', eyebrow: 'The private collector archive', title: ['Some people see toys.', 'We see the stories', 'worth keeping.'], body: 'GarageKings is a collector-led selection of automotive miniatures with character, provenance and presence.', image: '/journey-entrance.webp', tone: '#050505', accent: '#E1BD65' },
-  { number: '02', eyebrow: 'The inspection ritual', title: ['Look closer.', 'Every angle tells', 'you something.'], body: 'Packaging, seals, finish and condition are presented as evidence, not buried beneath promotional copy.', image: '/journey-inspection.webp', tone: '#070A08', accent: '#76B18C' },
-  { number: '03', eyebrow: 'One collection, one point of view', title: ['Not everything', 'belongs in', 'the Vault.'], body: 'We select models we would be proud to own ourselves, from accessible icons to rare limited releases.', image: '/journey-archive.webp', tone: '#0D0807', accent: '#E06C5A' },
-  { number: '04', eyebrow: 'A human collector desk', title: ['Found your model?', 'Talk to someone', 'who understands it.'], body: 'No anonymous checkout maze. Ask about availability, condition or delivery directly on WhatsApp or Instagram.', image: '/journey-desk.webp', tone: '#090806', accent: '#E1BD65' },
+  { number: '01', eyebrow: 'Models chosen by collectors', title: ['Some people see toys.', 'We see the stories', 'worth keeping.'], body: 'GarageKings brings together scale models with strong design, history and collector appeal.', image: '/journey-entrance.webp', tone: '#050505', accent: '#E1BD65' },
+  { number: '02', eyebrow: 'See the important details', title: ['Look closer.', 'Every angle tells', 'you something.'], body: 'Photos and product details help you check the model and its packaging before you enquire.', image: '/journey-inspection.webp', tone: '#070A08', accent: '#76B18C' },
+  { number: '03', eyebrow: 'A focused collection', title: ['Not every model', 'makes it into', 'the Garage.'], body: 'We choose models we would be happy to own, from familiar favourites to limited releases.', image: '/journey-archive.webp', tone: '#0D0807', accent: '#E06C5A' },
+  { number: '04', eyebrow: 'Talk to a real person', title: ['Found your model?', 'Talk to someone', 'who understands it.'], body: 'Ask about availability, condition, delivery or collection directly on WhatsApp or Instagram.', image: '/journey-desk.webp', tone: '#090806', accent: '#E1BD65' },
 ]
 
 export default function VaultScrollJourney() {
@@ -62,7 +62,7 @@ export default function VaultScrollJourney() {
         <div className="order-1 relative min-h-0 lg:order-2 lg:col-span-7 lg:h-[calc(100dvh-8rem)]">
           <AnimatePresence mode="wait">
             <motion.div key={scene.image} initial={reduceMotion ? false : { opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={reduceMotion ? {} : { opacity: 0, scale: 1.015 }} transition={{ duration: reduceMotion ? 0 : 0.65, ease: [0.16, 1, 0.3, 1] }} className="relative h-full overflow-hidden rounded-2xl border border-white/[0.07] bg-[#080808]">
-              <img src={scene.image} alt="Curated GarageKings diecast model" fetchPriority={activeScene === 0 ? 'high' : 'auto'} loading={activeScene === 0 ? 'eager' : 'lazy'} className="h-full w-full select-none object-cover object-center" />
+              <img src={scene.image} alt="GarageKings diecast model" fetchPriority={activeScene === 0 ? 'high' : 'auto'} loading={activeScene === 0 ? 'eager' : 'lazy'} className="h-full w-full select-none object-cover object-center" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-black/10" />
             </motion.div>
           </AnimatePresence>

@@ -12,23 +12,23 @@ export default function CollectorStandardTrust() {
   const pillars = [
     {
       id: 'authenticity',
-      title: 'Collector-Led Cataloguing',
+      title: 'Clear model details',
       icon: ShieldCheck,
       summary: 'Useful model, edition and condition information presented before you enquire.',
-      details: 'We catalogue each model using the information and images available to us. If a specific detail matters to your decision, ask the Collector Desk and we will confirm what we can before you proceed.'
+      details: 'We list each model using the information and images available to us. If a specific detail matters to your decision, ask GarageKings and we will confirm what we can before you proceed.'
     },
     {
       id: 'packaging',
       title: 'Condition & Handover Clarity',
       icon: Package,
       summary: 'Ask about card, box and model condition before arranging delivery or collection.',
-      details: 'Packaging and handover arrangements can vary by model and destination. The Collector Desk can share available condition details and discuss the intended delivery or collection method before anything is confirmed.'
+      details: 'Packaging and handover arrangements can vary by model and destination. GarageKings can share available condition details and discuss delivery or collection before anything is confirmed.'
     },
     {
       id: 'preorder',
       title: 'Pre-Order Enquiry Clarity',
       icon: MessageCircle,
-      summary: 'Indicative pricing and availability are discussed directly with the Collector Desk.',
+      summary: 'Displayed pricing and availability are confirmed directly with GarageKings.',
       details: 'GarageKings does not accept checkout on this website. For a pre-booking model, contact us on WhatsApp or Instagram to confirm current availability, pricing, payment stages and the terms that apply before making any commitment.'
     }
   ];

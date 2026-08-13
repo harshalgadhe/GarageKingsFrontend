@@ -13,11 +13,11 @@ export default function NotFound() {
 
       <div className="max-w-md w-full mx-auto px-6 py-24 md:py-32 flex flex-col items-center justify-center text-center relative z-10 flex-1">
         <span className="text-[10px] font-black tracking-[0.3em] text-gk-orange uppercase mb-3 block font-mono">
-          System Alert // 404
+          Page not found
         </span>
         <h1 className="text-5xl md:text-6xl font-black tracking-tighter uppercase font-grotesk text-white leading-none mb-4">
-          VAULT<br />
-          <span className="text-gk-gold">ERROR</span>
+          WRONG<br />
+          <span className="text-gk-gold">TURN</span>
         </h1>
         <div className="h-[2px] w-12 bg-gk-orange/50 my-6 rounded-full" />
         <p className="text-xs text-white/50 leading-relaxed font-inter mb-10 max-w-[34ch]">
@@ -27,7 +27,7 @@ export default function NotFound() {
           to="/"
           className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gk-orange hover:bg-orange-600 text-white text-xs font-black uppercase tracking-wider transition-all duration-300 shadow-[0_0_30px_rgba(255,85,0,0.2)] hover:shadow-[0_0_40px_rgba(255,85,0,0.35)] hover:-translate-y-0.5 active:translate-y-0"
         >
-          ← Return to Vault
+          Return home
         </Link>
       </div>
 

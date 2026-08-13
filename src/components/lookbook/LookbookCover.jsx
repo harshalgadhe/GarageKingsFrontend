@@ -47,7 +47,7 @@ const LookbookCover = forwardRef(function LookbookCover(props, ref) {
             
             <div className="mt-8 flex flex-col gap-2 max-w-[42ch]">
               <p className="text-sm md:text-base leading-relaxed text-[#F7F7F7] font-medium font-inter">
-                A collector-led archive of exceptional automotive miniatures.
+                Scale models selected for their design, history and collector appeal.
               </p>
               <p className="text-xs md:text-sm leading-relaxed text-[#A1A1A1] font-inter">
                 Inspect every model, understand its condition, then speak directly with us on WhatsApp or Instagram.
@@ -61,7 +61,7 @@ const LookbookCover = forwardRef(function LookbookCover(props, ref) {
                 whileTap={{ scale: 0.99 }}
                 className="px-8 py-4 rounded-xl bg-gk-orange hover:bg-gk-orange/90 text-gk-black font-bold uppercase tracking-wider text-xs transition-all duration-300 shadow-lg cursor-pointer"
               >
-                Enter the Vault
+                View the Garage
               </motion.button>
               
               <motion.button
@@ -70,7 +70,7 @@ const LookbookCover = forwardRef(function LookbookCover(props, ref) {
                 whileTap={{ scale: 0.99 }}
                 className="px-8 py-4 rounded-xl bg-transparent border border-zinc-800 hover:border-zinc-500 text-[#F7F7F7] font-bold uppercase tracking-wider text-xs transition-all duration-300 hover:bg-white/[0.01] cursor-pointer"
               >
-                Explore the marques
+                Browse brands
               </motion.button>
             </div>
           </motion.div>

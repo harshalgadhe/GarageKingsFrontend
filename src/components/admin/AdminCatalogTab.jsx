@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Plus, Trash2, RefreshCw } from 'lucide-react';
+import { Search, Plus, Trash2, RefreshCw, ArrowUpRight } from 'lucide-react';
 import MasterData from '../../pages/admin/MasterData';
 import Pagination from './Pagination';
 
@@ -80,8 +80,102 @@ export default function AdminCatalogTab({
             </button>
           </div>
 
-          {/* Table list */}
-          <div className="overflow-x-auto rounded-2xl border border-white/[0.08] bg-[#080808]/70">
+          {/* Mobile card list */}
+          <div className="grid gap-3 md:hidden">
+            {filteredCars.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-white/[0.1] bg-[#0A0A09] px-5 py-10 text-center">
+                <p className="text-sm font-semibold text-[#D8D3CB]">No products found</p>
+                <p className="mt-1 text-xs text-[#706C65]">Try another name, product code, or brand.</p>
+              </div>
+            ) : filteredCars.map(car => {
+              const isPoItem = car.isPrebook || car.is_prebook || car.status === 'Pre-Order';
+              const casing = Array.isArray(car.casing_types || car.casingTypes)
+                ? (car.casing_types || car.casingTypes).join(', ')
+                : (car.casing || car.casingType || 'Blister');
+
+              return (
+                <article
+                  key={car.id}
+                  onClick={() => handleEditProduct(car)}
+                  className="group overflow-hidden rounded-2xl border border-white/[0.09] bg-[#0A0A09] transition active:scale-[0.99]"
+                >
+                  <div className="flex gap-3 p-3.5">
+                    <div className="h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-white/[0.07] bg-[#11110F]">
+                      <img src={car.image || '/vault-1.png'} alt="" className="h-full w-full object-contain p-1" />
+                    </div>
+
+                    <div className="min-w-0 flex-1 py-0.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-[#B8A77E]">{car.brand || 'Unbranded'}</p>
+                          <h4 className="mt-1 line-clamp-2 text-sm font-semibold leading-5 text-[#F4F1EC]">{car.name}</h4>
+                        </div>
+                        <ArrowUpRight size={16} className="mt-0.5 shrink-0 text-[#827D74]" />
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        <span className={`rounded-full border px-2 py-1 text-[8px] font-bold uppercase tracking-[0.12em] ${
+                          isPoItem
+                            ? 'border-[#C8AE7D]/25 bg-[#C8AE7D]/10 text-[#D7BD85]'
+                            : 'border-emerald-500/20 bg-emerald-500/[0.08] text-emerald-300'
+                        }`}>
+                          {isPoItem ? 'Pre-booking' : 'In stock'}
+                        </span>
+                        {(car.isFeatured || car.is_featured) && (
+                          <span className="rounded-full border border-[#E1BD65]/25 bg-[#E1BD65]/10 px-2 py-1 text-[8px] font-bold uppercase tracking-[0.12em] text-[#E1BD65]">Featured</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 border-t border-white/[0.07] bg-white/[0.015]">
+                    <div className="min-w-0 px-3 py-2.5">
+                      <span className="block text-[8px] uppercase tracking-[0.14em] text-[#625F59]">Product code</span>
+                      <strong className="mt-1 block truncate font-mono text-[11px] font-medium text-[#C8C3BB]">{car.sku || 'Not set'}</strong>
+                    </div>
+                    <div className="min-w-0 border-x border-white/[0.07] px-3 py-2.5">
+                      <span className="block text-[8px] uppercase tracking-[0.14em] text-[#625F59]">Packaging</span>
+                      <strong className="mt-1 block truncate text-[11px] font-medium text-[#C8C3BB]">{casing}</strong>
+                    </div>
+                    <div className="min-w-0 px-3 py-2.5 text-right">
+                      <span className="block text-[8px] uppercase tracking-[0.14em] text-[#625F59]">Price</span>
+                      <strong className="mt-1 block truncate text-sm font-semibold text-[#F4F1EC]">₹{Number(car.price || 0).toLocaleString('en-IN')}</strong>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 border-t border-white/[0.07] p-2.5">
+                    <button
+                      type="button"
+                      onClick={(event) => { event.stopPropagation(); handleEditProduct(car); }}
+                      className="flex min-h-10 flex-1 items-center justify-center rounded-xl bg-[#EEEAE2] px-4 text-[10px] font-bold uppercase tracking-[0.13em] text-[#11100E]"
+                    >
+                      Edit product
+                    </button>
+                    {isPoItem && (
+                      <button
+                        type="button"
+                        onClick={(event) => { event.stopPropagation(); handleConvertPoToStock(car.id); }}
+                        className="min-h-10 rounded-xl border border-emerald-500/25 bg-emerald-500/[0.08] px-3 text-[9px] font-bold uppercase tracking-[0.1em] text-emerald-300"
+                      >
+                        Move to stock
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={(event) => { event.stopPropagation(); handleDeleteProduct(car.id); }}
+                      disabled={loadingProductId !== null || isArchivingProductId !== null}
+                      aria-label={`Delete ${car.name}`}
+                      className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-red-500/15 bg-red-500/[0.06] text-red-300 disabled:opacity-40"
+                    >
+                      {isArchivingProductId === car.id ? <RefreshCw className="animate-spin" size={14} /> : <Trash2 size={14} />}
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+
+          {/* Desktop table list */}
+          <div className="hidden overflow-x-auto rounded-2xl border border-white/[0.08] bg-[#080808]/70 md:block">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="border-b border-white/[0.07] bg-[#11110F] text-[9px] uppercase tracking-widest text-[#77736D]">
@@ -142,7 +236,7 @@ export default function AdminCatalogTab({
                         <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
                           {isPoItem && (
                             <button
-                              onClick={() => handleConvertPoToStock(car.id)}
+                              onClick={(event) => { event.stopPropagation(); handleConvertPoToStock(car.id); }}
                               title="Convert PO to In-Stock"
                               className="px-2 py-1 rounded bg-green-500/10 hover:bg-green-500/20 text-green-400 font-bold text-[9px] uppercase tracking-wider border border-green-500/30 transition-all cursor-pointer inline-flex items-center gap-1 active:scale-95 whitespace-nowrap"
                             >

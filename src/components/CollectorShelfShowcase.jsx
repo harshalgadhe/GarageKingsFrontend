@@ -84,7 +84,7 @@ const CollectorShelfShowcase = forwardRef(function CollectorShelfShowcase(props,
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-400 to-white/30">Shelves</span>
               </h2>
               <p className="text-[#A1A1AA] text-sm md:text-base leading-relaxed mb-8 max-w-md font-inter">
-                Scroll to slide our rarest verified acquisitions onto the telemetry shelf. Grade-verified acrylic condition checking.
+                Scroll through a closer view of selected models and their available condition details.
               </p>
             </div>
 

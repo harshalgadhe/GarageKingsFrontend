@@ -94,10 +94,6 @@ export default function Account() {
     e.preventDefault();
     const instagram = profile.instagram.trim().replace(/^@/, '');
     const address = profile.address.trim();
-    if (!instagram || !address) {
-      setProfileError('Instagram handle and shipping address are required.');
-      return;
-    }
     setProfileLoading(true);
     setProfileSuccess('');
     setProfileError('');
@@ -391,7 +387,7 @@ export default function Account() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-1">
-                        <label className="flex items-center gap-2 text-[10px] font-semibold text-[#817D76] uppercase tracking-[0.17em]"><SiInstagram size={13} className="text-[#E1306C]" /> Instagram handle</label>
+                        <label className="flex items-center gap-2 text-[10px] font-semibold text-[#817D76] uppercase tracking-[0.17em]"><SiInstagram size={13} className="text-[#E1306C]" /> Instagram handle <span className="normal-case tracking-normal text-[#57534D]">Optional</span></label>
                         <div className="relative">
                           <span className="absolute left-4 top-3.5 text-[#444444] text-xs">@</span>
                           <input 
@@ -400,7 +396,6 @@ export default function Account() {
                             onChange={(e) => setProfile(prev => ({ ...prev, instagram: e.target.value }))}
                             placeholder="instagram_handle"
                             className="w-full bg-[#0D0D0D] border border-white/[0.08] rounded-xl pl-8 pr-4 py-3.5 text-sm text-[#F4F1EC] placeholder-[#57534D] focus:outline-none focus:border-[#C8AE7D]/55 focus:shadow-[0_0_0_3px_rgba(200,174,125,.07)] transition"
-                            required
                           />
                         </div>
                       </div>
@@ -417,14 +412,13 @@ export default function Account() {
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-[10px] font-semibold text-[#817D76] uppercase tracking-[0.17em] block">Delivery or collection address</label>
+                      <label className="text-[10px] font-semibold text-[#817D76] uppercase tracking-[0.17em] block">Delivery or collection address <span className="normal-case tracking-normal text-[#57534D]">Optional</span></label>
                       <textarea 
                         value={profile.address} 
                         onChange={(e) => setProfile(prev => ({ ...prev, address: e.target.value }))}
                         placeholder="Street address, building, city, state, pincode"
                         rows="3"
                         className="w-full bg-[#0D0D0D] border border-white/[0.08] rounded-xl px-4 py-3.5 text-sm text-[#F4F1EC] placeholder-[#57534D] focus:outline-none focus:border-[#C8AE7D]/55 focus:shadow-[0_0_0_3px_rgba(200,174,125,.07)] transition resize-none"
-                        required
                       />
                     </div>
 

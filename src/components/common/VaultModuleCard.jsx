@@ -50,7 +50,7 @@ export default function VaultModuleCard({ car, onClick, isPreview = false, theme
       }}
       tabIndex={0}
       role="button"
-      aria-label={`Vault entry: ${car.name || 'Collectible'}`}
+      aria-label={`View model: ${car.name || 'Collectible'}`}
       onKeyDown={(e) => {
         if ((e.key === 'Enter' || e.key === ' ') && onClick) {
           e.preventDefault();
@@ -107,7 +107,7 @@ export default function VaultModuleCard({ car, onClick, isPreview = false, theme
               <ImageOff size={20} strokeWidth={1.35} />
               <span className="absolute inset-2 rounded-full border border-[#C8AE7D]/[0.08]" />
             </div>
-            <span className="mt-4 text-[9px] font-bold uppercase tracking-[0.2em] text-[#8B867E]">Photography pending</span>
+            <span className="mt-4 text-[9px] font-bold uppercase tracking-[0.2em] text-[#8B867E]">Photos coming soon</span>
             <span className="mt-1 max-w-[22ch] text-[10px] leading-relaxed text-[#55514C]">Model details are available while images are being prepared.</span>
           </div>
         )}

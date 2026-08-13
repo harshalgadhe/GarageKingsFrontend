@@ -41,11 +41,11 @@ export default function BrandsIndex() {
       <Navigation activeSection="brands" />
       <header className="border-b border-white/[0.08] px-5 py-14 sm:px-8 lg:py-20">
         <div className="mx-auto max-w-[1440px]">
-          <div className="text-[10px] font-bold uppercase tracking-[.22em] text-[#C8AE7D]">Distinct worlds, one collection</div>
+          <div className="text-[10px] font-bold uppercase tracking-[.22em] text-[#C8AE7D]">Browse by brand</div>
           <div className="mt-5 grid gap-8 lg:grid-cols-12 lg:items-end">
-            <h1 className="max-w-4xl text-5xl font-semibold leading-[.9] tracking-[-.055em] sm:text-7xl lg:col-span-8 lg:text-8xl">Choose the marque.<br /><span className="text-[#C8AE7D]">Enter its world.</span></h1>
+            <h1 className="max-w-4xl text-5xl font-semibold leading-[.9] tracking-[-.055em] sm:text-7xl lg:col-span-8 lg:text-8xl">Choose a brand.<br /><span className="text-[#C8AE7D]">See its models.</span></h1>
             <div className="lg:col-span-4">
-              <p className="max-w-md text-sm leading-relaxed text-white/50">Each collection keeps its own visual character while sharing the same searchable GarageKings catalog.</p>
+              <p className="max-w-md text-sm leading-relaxed text-white/50">Browse every brand available in the GarageKings collection, then search by model or reference number.</p>
               <form onSubmit={searchCollection} className="relative mt-6">
                 <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/35" />
                 <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search brands, models or reference number" className="w-full rounded-full border border-white/10 bg-white/[.035] py-3.5 pl-11 pr-28 text-sm outline-none transition placeholder:text-white/30 focus:border-[#C8AE7D]/55" />

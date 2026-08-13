@@ -9,6 +9,14 @@ const MOTIFS = {
 
 const COLOR_PATTERN = /^#[0-9a-f]{6}$/i
 const safeColor = (value, fallback) => COLOR_PATTERN.test(String(value || '')) ? value : fallback
+const plainBrandCopy = (value) => String(value || '')
+  .replace(/\bmarques?\b/gi, 'brands')
+  .replace(/\bcurated\b/gi, 'selected')
+  .replace(/\bcatalogued\b/gi, 'listed')
+  .replace(/\bcollector-led\b/gi, 'chosen by collectors')
+  .replace(/\bprovenance\b/gi, 'history')
+  .replace(/\barchive\b/gi, 'collection')
+  .replace(/\bselected with intent\b/gi, 'models available through GarageKings')
 
 export function buildBrandTheme(brand) {
   if (!brand) return null
@@ -23,10 +31,10 @@ export function buildBrandTheme(brand) {
     logo: brand.logo_url || null,
     logoClass: brand.logo_treatment === 'invert' ? 'invert' : '',
     origin: brand.origin_label || 'GarageKings collection',
-    style: brand.style_label || 'Curated models',
-    kicker: brand.kicker || 'Collector marque',
-    headline: brand.headline || `${brand.name}, selected with intent.`,
-    description: brand.description || `Explore the GarageKings selection of ${brand.name} models, catalogued with current availability and collection details.`,
+    style: plainBrandCopy(brand.style_label) || 'Scale models',
+    kicker: plainBrandCopy(brand.kicker) || 'Featured brand',
+    headline: plainBrandCopy(brand.headline) || `${brand.name} at GarageKings.`,
+    description: plainBrandCopy(brand.description) || `Browse ${brand.name} models available through GarageKings, with current photos and product details.`,
     mode,
     accent,
     secondary,

@@ -1,6 +1,6 @@
 export const BRAND = {
   name: 'Garage Kings',
-  tagline: "India's Curated Die-cast Vault",
+  tagline: "Scale diecast models for collectors",
   pillars: 'Authenticated. Graded (by Condition). Delivered.',
 }
 

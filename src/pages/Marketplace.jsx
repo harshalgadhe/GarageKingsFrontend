@@ -151,7 +151,7 @@ export default function Marketplace() {
         setTotalItems(carData.total || 0)
       } catch (err) {
         if (err?.name === 'AbortError') return
-        setError("Unable to retrieve vault listings. Please verify connection.")
+        setError("We could not load the models. Please check your connection and try again.")
         logError(err.message || 'Catalog Load Failed', err.stack);
       } finally {
         if (!controller.signal.aborted) {
@@ -215,7 +215,7 @@ export default function Marketplace() {
               Every model has<br /><span className="text-[#E1BD65]">a reason to be here.</span>
             </h1>
             <p className="mt-5 max-w-xl text-sm leading-relaxed text-[#A9A49C]">
-              A considered selection of automotive miniatures, photographed, listed and presented by one collector-led team.
+              Scale models with clear photos, current details and direct enquiry options.
             </p>
           </motion.div>
 
@@ -249,10 +249,10 @@ export default function Marketplace() {
         {error ? (
           <div className="text-center py-20">
             <div className="inline-block bg-[#B85C5C]/10 border border-[#B85C5C]/30 text-[#F4F1EC] p-6 rounded-xl max-w-lg font-mono">
-              <h3 className="font-bold mb-1 text-[#B85C5C]">The Vault Could Not Be Opened</h3>
+              <h3 className="font-bold mb-1 text-[#B85C5C]">The models could not be loaded</h3>
               <p className="text-xs text-[#A9A49C]">{error}</p>
               <button onClick={() => window.location.reload()} className="mt-4 px-4 py-2 rounded bg-[#B85C5C] text-black font-bold text-xs">
-                Retry Connection
+                Try again
               </button>
             </div>
           </div>
@@ -260,7 +260,7 @@ export default function Marketplace() {
           <MarketplaceGridSkeleton count={isMobile ? 6 : 12} />
         ) : cars.length === 0 ? (
           <div className="text-center py-20 border border-dashed border-white/[0.08] rounded-xl bg-[#0D0D0D] p-8 max-w-xl mx-auto space-y-4">
-            <div className="text-xs font-mono uppercase tracking-widest text-[#E86A2F]">No Vault Entries Found</div>
+            <div className="text-xs font-mono uppercase tracking-widest text-[#E86A2F]">No models found</div>
             <p className="text-sm text-[#A9A49C]">
               No models match the filters you selected.
             </p>
@@ -275,7 +275,7 @@ export default function Marketplace() {
           <>
             <div className="mb-8 flex items-end justify-between border-b border-white/[0.06] pb-5">
               <div><span className="text-[9px] uppercase tracking-[0.2em] text-[#D8BC78]">Browse models</span><h2 className="mt-1 text-2xl font-semibold tracking-tight">Available and pre-booking</h2></div>
-              <span className="hidden font-mono text-[10px] uppercase tracking-widest text-[#74716B] md:block">No checkout / direct collector enquiry</span>
+              <span className="hidden font-mono text-[10px] uppercase tracking-widest text-[#74716B] md:block">Enquire directly on WhatsApp or Instagram</span>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
               {cars.map((car, index) => (
