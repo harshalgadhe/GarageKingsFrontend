@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Plus, Trash2, RefreshCw, ArrowUpRight } from 'lucide-react';
+import { Search, Plus, Trash2, RefreshCw, ArrowUpRight, MoreHorizontal, PackageCheck, Pencil } from 'lucide-react';
 import MasterData from '../../pages/admin/MasterData';
 import Pagination from './Pagination';
 
@@ -80,8 +80,8 @@ export default function AdminCatalogTab({
             </button>
           </div>
 
-          {/* Mobile card list */}
-          <div className="grid gap-3 md:hidden">
+          {/* Marketplace-style catalog grid */}
+          <div className="grid gap-3 md:grid-cols-2 md:gap-4 2xl:grid-cols-3">
             {filteredCars.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-white/[0.1] bg-[#0A0A09] px-5 py-10 text-center">
                 <p className="text-sm font-semibold text-[#D8D3CB]">No products found</p>
@@ -97,14 +97,14 @@ export default function AdminCatalogTab({
                 <article
                   key={car.id}
                   onClick={() => handleEditProduct(car)}
-                  className="group overflow-hidden rounded-2xl border border-white/[0.09] bg-[#0A0A09] transition active:scale-[0.99]"
+                  className="group relative rounded-2xl border border-white/[0.09] bg-[#0A0A09] shadow-[0_14px_40px_rgba(0,0,0,.16)] transition duration-300 hover:-translate-y-0.5 hover:border-[#C8AE7D]/25 hover:shadow-[0_20px_55px_rgba(0,0,0,.3)] active:scale-[0.99]"
                 >
-                  <div className="flex gap-3 p-3.5">
-                    <div className="h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-white/[0.07] bg-[#11110F]">
-                      <img src={car.image || '/vault-1.png'} alt="" className="h-full w-full object-contain p-1" />
+                  <div className="flex gap-3 p-3.5 md:block md:p-0">
+                    <div className="h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-white/[0.07] bg-[#11110F] md:h-52 md:w-full md:rounded-b-none md:rounded-t-2xl md:border-0 md:border-b">
+                      <img src={car.image || '/vault-1.png'} alt="" className="h-full w-full object-contain p-1 md:p-4" />
                     </div>
 
-                    <div className="min-w-0 flex-1 py-0.5">
+                    <div className="min-w-0 flex-1 py-0.5 md:p-4">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <p className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-[#B8A77E]">{car.brand || 'Unbranded'}</p>
@@ -142,40 +142,53 @@ export default function AdminCatalogTab({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 border-t border-white/[0.07] p-2.5">
-                    <button
-                      type="button"
-                      onClick={(event) => { event.stopPropagation(); handleEditProduct(car); }}
-                      className="flex min-h-10 flex-1 items-center justify-center rounded-xl bg-[#EEEAE2] px-4 text-[10px] font-bold uppercase tracking-[0.13em] text-[#11100E]"
+                  <div className="flex items-center justify-between gap-3 border-t border-white/[0.07] p-2.5">
+                    <p className="pl-1 text-[9px] uppercase tracking-[0.12em] text-[#625F59]">Select card to edit</p>
+                    <details
+                      className="group/actions relative"
+                      onClick={(event) => event.stopPropagation()}
                     >
-                      Edit product
-                    </button>
-                    {isPoItem && (
-                      <button
-                        type="button"
-                        onClick={(event) => { event.stopPropagation(); handleConvertPoToStock(car.id); }}
-                        className="min-h-10 rounded-xl border border-emerald-500/25 bg-emerald-500/[0.08] px-3 text-[9px] font-bold uppercase tracking-[0.1em] text-emerald-300"
-                      >
-                        Move to stock
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={(event) => { event.stopPropagation(); handleDeleteProduct(car.id); }}
-                      disabled={loadingProductId !== null || isArchivingProductId !== null}
-                      aria-label={`Delete ${car.name}`}
-                      className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-red-500/15 bg-red-500/[0.06] text-red-300 disabled:opacity-40"
-                    >
-                      {isArchivingProductId === car.id ? <RefreshCw className="animate-spin" size={14} /> : <Trash2 size={14} />}
-                    </button>
+                      <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.045] px-4 text-[10px] font-bold uppercase tracking-[0.12em] text-[#E7E2DA] transition active:bg-white/[0.08] [&::-webkit-details-marker]:hidden">
+                        <MoreHorizontal size={15} />
+                        Actions
+                      </summary>
+                      <div className="absolute bottom-[calc(100%+0.5rem)] right-0 z-20 w-48 overflow-hidden rounded-xl border border-white/[0.11] bg-[#151412] p-1.5 shadow-[0_18px_45px_rgba(0,0,0,.65)]">
+                        <button
+                          type="button"
+                          onClick={(event) => { event.stopPropagation(); handleEditProduct(car); }}
+                          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-xs font-medium text-[#EEEAE2] transition hover:bg-white/[0.06]"
+                        >
+                          <Pencil size={14} className="text-[#C8AE7D]" /> Edit product
+                        </button>
+                        {isPoItem && (
+                          <button
+                            type="button"
+                            onClick={(event) => { event.stopPropagation(); handleConvertPoToStock(car.id); }}
+                            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-xs font-medium text-emerald-300 transition hover:bg-emerald-500/[0.08]"
+                          >
+                            <PackageCheck size={14} /> Move to stock
+                          </button>
+                        )}
+                        <div className="my-1 h-px bg-white/[0.07]" />
+                        <button
+                          type="button"
+                          onClick={(event) => { event.stopPropagation(); handleDeleteProduct(car.id); }}
+                          disabled={loadingProductId !== null || isArchivingProductId !== null}
+                          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-xs font-medium text-red-300 transition hover:bg-red-500/[0.08] disabled:opacity-40"
+                        >
+                          {isArchivingProductId === car.id ? <RefreshCw className="animate-spin" size={14} /> : <Trash2 size={14} />}
+                          Delete product
+                        </button>
+                      </div>
+                    </details>
                   </div>
                 </article>
               );
             })}
           </div>
 
-          {/* Desktop table list */}
-          <div className="hidden overflow-x-auto rounded-2xl border border-white/[0.08] bg-[#080808]/70 md:block">
+          {/* Legacy table retained in source for reference; card grid is the active catalog UI. */}
+          <div className="hidden">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="border-b border-white/[0.07] bg-[#11110F] text-[9px] uppercase tracking-widest text-[#77736D]">

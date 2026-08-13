@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Archive, RefreshCw, Eye, EyeOff, Globe, Sparkles } from 'lucide-react';
+import { Plus, Edit2, Archive, RefreshCw, Eye, EyeOff, Globe, Sparkles, MoreHorizontal, Search } from 'lucide-react';
 import { 
   getBrands, createBrand, updateBrand, deleteBrand,
   getManufacturers, createManufacturer, updateManufacturer, deleteManufacturer,
@@ -20,6 +20,7 @@ export default function MasterData() {
 
   // Form State
   const [isEditing, setIsEditing] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const [currentItem, setCurrentItem] = useState(null); // null when creating
   const [formData, setFormData] = useState({
     name: '',
@@ -72,6 +73,7 @@ export default function MasterData() {
 
   const resetForm = () => {
     setIsEditing(false);
+    setIsFormOpen(false);
     setCurrentItem(null);
     setFormData({
       name: '',
@@ -87,6 +89,7 @@ export default function MasterData() {
 
   const handleEditClick = (item) => {
     setIsEditing(true);
+    setIsFormOpen(true);
     setCurrentItem(item);
     setFormData({
       name: item.name || '',
@@ -212,7 +215,7 @@ export default function MasterData() {
               onClick={() => setActiveTab(tab.id)}
               className={`px-4 py-2.5 rounded-lg text-xs font-black uppercase tracking-wider transition-colors cursor-pointer ${
                 activeTab === tab.id 
-                  ? 'bg-[#ff5500] text-black' 
+                  ? 'border border-[#C8AE7D]/25 bg-[#C8AE7D]/[0.12] text-[#F1D99F]'
                   : 'text-[#888888] hover:text-white hover:bg-white/5'
               }`}
             >
@@ -220,13 +223,21 @@ export default function MasterData() {
             </button>
           ))}
         </div>
-        <button
-          onClick={fetchData}
-          className="p-2.5 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider"
-        >
-          <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
-          Reload
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => { resetForm(); setIsFormOpen(true); }}
+            className="flex min-h-10 items-center gap-1.5 rounded-full border border-[#C8AE7D]/30 bg-[#C8AE7D]/[0.12] px-4 text-[10px] font-bold uppercase tracking-wider text-[#F1D99F] transition hover:bg-[#C8AE7D]/[0.2]"
+          >
+            <Plus size={14} /> Add {activeTab.slice(0, -1)}
+          </button>
+          <button
+            onClick={fetchData}
+            aria-label="Reload settings"
+            className="grid h-10 w-10 place-items-center rounded-full border border-white/[0.09] bg-white/[0.04] text-zinc-400 transition hover:bg-white/[0.08] hover:text-white"
+          >
+            <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -236,22 +247,21 @@ export default function MasterData() {
         </div>
       )}
 
-      {/* Grid: Left Form, Right List Table */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+      <div className="space-y-6">
         
         {/* Left Side: Form */}
-        <div className="bg-[#111111] border border-white/5 rounded-2xl p-6 h-fit space-y-4">
+        {isFormOpen && <div className="mx-auto w-full max-w-3xl bg-[#111111] border border-white/[0.08] rounded-2xl p-5 sm:p-6 h-fit space-y-4">
           <div className="flex items-center justify-between">
             <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
               <Sparkles size={14} className="text-[#ff5500]" />
               {isEditing ? `Edit ${activeTab.slice(0, -1)}` : `Create ${activeTab.slice(0, -1)}`}
             </h4>
-            {isEditing && (
+            {isFormOpen && (
               <button 
                 onClick={resetForm} 
-                className="text-[10px] font-bold text-[#ff5500] hover:underline uppercase tracking-wider"
+                className="text-[10px] font-bold text-[#C8AE7D] hover:text-[#EAD39D] uppercase tracking-wider"
               >
-                Reset
+                Close
               </button>
             )}
           </div>
@@ -374,17 +384,16 @@ export default function MasterData() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-[#ff5500] hover:bg-[#ff6611] text-black font-extrabold text-[10px] py-3.5 rounded-xl uppercase tracking-wider transition-colors cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full border border-[#C8AE7D]/30 bg-[#C8AE7D]/[0.14] hover:bg-[#C8AE7D]/[0.22] text-[#F4E3B8] font-extrabold text-[10px] py-3.5 rounded-xl uppercase tracking-wider transition-colors cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isEditing ? 'Save Changes' : `Add ${activeTab.slice(0, -1)}`}
             </button>
           </form>
-        </div>
+        </div>}
 
-        {/* Right Side: List Table */}
-        <div className="xl:col-span-2 space-y-4">
-          <div className="flex items-center gap-2 bg-[#141414] border border-white/5 rounded-xl px-3.5 py-2.5 w-full max-w-md">
-            <Plus size={14} className="text-zinc-500" />
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 bg-[#141414] border border-white/[0.08] rounded-xl px-3.5 py-2.5 w-full max-w-md">
+            <Search size={14} className="text-zinc-500" />
             <input
               type="text"
               placeholder={`Search ${activeTab}...`}
@@ -394,7 +403,53 @@ export default function MasterData() {
             />
           </div>
 
-          <div className="overflow-x-auto border border-white/5 rounded-2xl">
+          <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+            {paginatedItems.length === 0 ? (
+              <div className="col-span-full rounded-2xl border border-dashed border-white/[0.1] bg-[#0A0A09] px-6 py-12 text-center">
+                <p className="text-sm font-semibold text-[#D8D3CB]">{isLoading ? 'Loading settings...' : `No ${activeTab} found`}</p>
+                {!isLoading && <p className="mt-1 text-xs text-[#706C65]">Add the first entry or try another search.</p>}
+              </div>
+            ) : paginatedItems.map(item => (
+              <article
+                key={item.id}
+                onClick={() => handleEditClick(item)}
+                className="group relative rounded-2xl border border-white/[0.09] bg-[#0A0A09] shadow-[0_14px_40px_rgba(0,0,0,.16)] transition duration-300 hover:-translate-y-0.5 hover:border-[#C8AE7D]/25 hover:shadow-[0_20px_55px_rgba(0,0,0,.3)]"
+              >
+                <div className="flex min-h-28 items-start gap-4 p-4">
+                  <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.035]">
+                    {item.logo_url ? <img src={item.logo_url} alt="" className="h-full w-full object-contain p-2" /> : <span className="font-mono text-sm font-semibold uppercase text-[#A7A198]">{item.name?.slice(0, 2) || 'NA'}</span>}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#B8A77E]">{activeTab.slice(0, -1)}</p>
+                    <h4 className="mt-1 truncate text-base font-semibold text-[#F4F1EC]">{item.name}</h4>
+                    <p className="mt-1 truncate font-mono text-[10px] text-[#6F6B65]">{item.slug || 'No public identifier'}</p>
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      <span className={`rounded-full border px-2 py-1 text-[8px] font-bold uppercase tracking-[0.12em] ${item.status === 'Active' ? 'border-emerald-500/20 bg-emerald-500/[0.08] text-emerald-300' : 'border-white/[0.08] bg-white/[0.035] text-[#77736D]'}`}>{item.status}</span>
+                      {(activeTab === 'brands' || activeTab === 'manufacturers') && <span className={`rounded-full border px-2 py-1 text-[8px] font-bold uppercase tracking-[0.12em] ${item.is_visible ? 'border-[#C8AE7D]/20 bg-[#C8AE7D]/[0.08] text-[#D8BC78]' : 'border-white/[0.08] bg-white/[0.035] text-[#77736D]'}`}>{item.is_visible ? 'Visible' : 'Hidden'}</span>}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between border-t border-white/[0.07] bg-white/[0.015] px-4 py-3">
+                  <div>
+                    <span className="block text-[8px] uppercase tracking-[0.14em] text-[#625F59]">Display order</span>
+                    <strong className="mt-0.5 block font-mono text-xs font-medium text-[#C8C3BB]">{item.display_order ?? 0}</strong>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {item.website && <a href={item.website} target="_blank" rel="noreferrer" onClick={event => event.stopPropagation()} aria-label={`${item.name} website`} className="grid h-10 w-10 place-items-center rounded-xl border border-white/[0.09] bg-white/[0.04] text-[#969189] hover:text-white"><Globe size={14} /></a>}
+                    <details className="relative" onClick={event => event.stopPropagation()}>
+                      <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.045] px-4 text-[10px] font-bold uppercase tracking-[0.12em] text-[#E7E2DA] [&::-webkit-details-marker]:hidden"><MoreHorizontal size={15} /> Actions</summary>
+                      <div className="absolute bottom-[calc(100%+0.5rem)] right-0 z-20 w-44 overflow-hidden rounded-xl border border-white/[0.11] bg-[#151412] p-1.5 shadow-[0_18px_45px_rgba(0,0,0,.65)]">
+                        <button onClick={() => handleEditClick(item)} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-xs text-[#EEEAE2] hover:bg-white/[0.06]"><Edit2 size={14} className="text-[#C8AE7D]" /> Edit</button>
+                        {item.status !== 'Archived' && <button onClick={() => handleArchive(item.id)} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-xs text-red-300 hover:bg-red-500/[0.08]"><Archive size={14} /> Archive</button>}
+                      </div>
+                    </details>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="hidden">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="bg-[#141414] border-b border-white/5 text-[#888888] uppercase tracking-widest text-[9px]">

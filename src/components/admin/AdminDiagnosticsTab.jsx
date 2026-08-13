@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Server, AlertTriangle, Shield, Settings } from 'lucide-react';
+import { Search, Server, AlertTriangle } from 'lucide-react';
 import Pagination from './Pagination';
 
 export default function AdminDiagnosticsTab({
@@ -18,11 +18,6 @@ export default function AdminDiagnosticsTab({
   telemetryPage,
   telemetryTotalPages,
   setTelemetryPage,
-  auditLogsSearch,
-  setAuditLogsSearch,
-  auditLogsCategory,
-  setAuditLogsCategory,
-  auditLogs,
   telemetrySummary = {},
   telemetryLoading = false,
   telemetryLoadError = '',
@@ -34,16 +29,14 @@ export default function AdminDiagnosticsTab({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/5">
         <div>
           <h3 className="text-base font-black uppercase tracking-wider text-white">Observability & Diagnostics</h3>
-          <p className="text-[10px] text-[#888888] mt-0.5">Monitor system telemetry, audit operations, and health alerts.</p>
+          <p className="text-[10px] text-[#888888] mt-0.5">Monitor system health, performance, and application errors.</p>
         </div>
         
         {/* Sub-tabs menu */}
         <div className="flex flex-wrap gap-1 bg-[#141414] border border-white/5 p-1 rounded-xl">
           {[
             { id: 'health', label: 'System Health', icon: Server },
-            { id: 'errors', label: 'Telemetry Errors', icon: AlertTriangle },
-            { id: 'audit', label: 'Audit Logs', icon: Shield },
-            { id: 'settings', label: 'Alert Settings', icon: Settings }
+            { id: 'errors', label: 'Telemetry Errors', icon: AlertTriangle }
           ].map(sub => {
             const active = diagnosticsSubTab === sub.id;
             const SubIcon = sub.icon;
@@ -305,102 +298,6 @@ export default function AdminDiagnosticsTab({
         </div>
       )}
 
-      {/* Sub-tab Content: Audit Logs */}
-      {diagnosticsSubTab === 'audit' && (
-        <div className="space-y-6">
-          {/* Filters */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-            <div className="flex items-center gap-2 bg-[#141414] border border-white/5 rounded-xl px-3.5 py-2 w-full max-w-xs">
-              <Search size={12} className="text-zinc-500" />
-              <input
-                type="text"
-                placeholder="Search logs by user, IP, action..."
-                value={auditLogsSearch}
-                onChange={(e) => setAuditLogsSearch(e.target.value)}
-                className="bg-transparent border-none text-[11px] text-white placeholder-zinc-600 focus:outline-none w-full"
-              />
-            </div>
-            
-            <select
-              value={auditLogsCategory}
-              onChange={(e) => setAuditLogsCategory(e.target.value)}
-              className="bg-[#141414] border border-white/5 rounded-xl px-3 py-2 text-[11px] text-white focus:outline-none focus:border-[#ff5500]/50"
-            >
-              <option value="All">All Categories</option>
-              <option value="Products">Products</option>
-              <option value="Orders">Orders</option>
-              <option value="Expenses">Expenses</option>
-              <option value="Invoices">Invoices</option>
-            </select>
-          </div>
-
-          {/* Audit Logs Table */}
-          <div className="overflow-x-auto border border-white/5 rounded-2xl">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-[#141414] border-b border-white/5 text-[#888888] uppercase tracking-widest text-[9px]">
-                  <th className="p-4 font-bold">Timestamp</th>
-                  <th className="p-4 font-bold">Action & Entity</th>
-                  <th className="p-4 font-bold">Operator Details</th>
-                  <th className="p-4 font-bold">State Changes</th>
-                  <th className="p-4 font-bold">Correlation ID</th>
-                </tr>
-              </thead>
-              <tbody>
-                {auditLogs.length === 0 ? (
-                  <tr>
-                    <td colSpan="5" className="p-8 text-center text-[#888888] uppercase text-[10px] tracking-wider font-bold font-mono">
-                      No audit logs matching your filters.
-                    </td>
-                  </tr>
-                ) : (
-                  auditLogs.map((log) => (
-                    <tr key={log.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
-                      <td className="p-4 font-mono text-[#888888]">
-                        {new Date(log.created_at).toLocaleString('en-IN')}
-                      </td>
-                      <td className="p-4">
-                        <span className="font-bold text-white block">{log.action}</span>
-                        <span className="text-[10px] text-zinc-500 uppercase font-mono">{log.entity} #{log.entity_id?.slice(0, 8)}</span>
-                      </td>
-                      <td className="p-4">
-                        <span className="font-bold text-white block">{log.user_email || 'System Auto'}</span>
-                        <span className="text-[10px] text-zinc-500 font-mono block mt-0.5">{log.ip_address || '127.0.0.1'}</span>
-                      </td>
-                      <td className="p-4 max-w-[280px]">
-                        {log.before_state || log.after_state ? (
-                          <details className="group/audit-details font-mono">
-                            <summary className="text-[9px] font-bold text-[#ff5500] uppercase tracking-wider cursor-pointer list-none select-none">
-                              View Payload JSON
-                            </summary>
-                            <pre className="mt-2 p-2 bg-[#09090a] border border-white/5 rounded-lg text-[9px] font-mono text-zinc-400 overflow-x-auto leading-relaxed select-text" data-lenis-prevent="true">
-                              {JSON.stringify({
-                                before: log.before_state ? JSON.parse(log.before_state) : null,
-                                after: log.after_state ? JSON.parse(log.after_state) : null
-                              }, null, 2)}
-                            </pre>
-                          </details>
-                        ) : (
-                          <span className="text-[10px] text-[#555555] font-mono">No state changes</span>
-                        )}
-                      </td>
-                      <td className="p-4 font-mono">
-                        {log.correlation_id ? (
-                          <span className="bg-zinc-900 border border-white/5 px-2 py-0.5 rounded text-[9px] text-[#888888] select-all cursor-copy">
-                            {log.correlation_id}
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-[#555555]">Not available</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

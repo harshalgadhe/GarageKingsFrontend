@@ -417,27 +417,13 @@ export default function Admin() {
   const [telemetrySummary, setTelemetrySummary] = useState({});
   const [telemetrySummaryLoading, setTelemetrySummaryLoading] = useState(false);
   const [telemetryLoadError, setTelemetryLoadError] = useState('');
-  const [diagnosticsSubTab, setDiagnosticsSubTab] = useState('health'); // 'health', 'errors', 'audit', 'settings'
-
-  
-  const [auditLogs, setAuditLogs] = useState([]);
-  const [auditLogsPage, setAuditLogsPage] = useState(1);
-  const [auditLogsTotalPages, setAuditLogsTotalPages] = useState(1);
-  const [auditLogsSearch, setAuditLogsSearch] = useState('');
-  const [auditLogsCategory, setAuditLogsCategory] = useState('All');
+  const [diagnosticsSubTab, setDiagnosticsSubTab] = useState('health');
 
   const [healthStatus, setHealthStatus] = useState(null);
   const [healthLoading, setHealthLoading] = useState(false);
 
   const [perfStats, setPerfStats] = useState([]);
   const [perfLoading, setPerfLoading] = useState(false);
-
-  const [obsSettings, setObsSettings] = useState({
-    alertThresholds: { errorRatePerMin: 10, slowRequestRate: 5, authFailureCount: 5 },
-    retentionPeriodDays: 14
-  });
-  const [obsSettingsLoading, setObsSettingsLoading] = useState(false);
-  const [isSavingObsSettings, setIsSavingObsSettings] = useState(false);
 
   const [collectRemainingOrder, setCollectRemainingOrder] = useState(null); // { id, remainingAmount }
   const [collectRemainingFile, setCollectRemainingFile] = useState(null);
@@ -1301,10 +1287,8 @@ export default function Admin() {
 
   const fetchDiagnosticsData = async () => {
     fetchTelemetryErrors(telemetryPage, telemetrySearch, telemetryFilter);
-    fetchAuditLogs(auditLogsPage, auditLogsSearch, auditLogsCategory);
     fetchHealth();
     fetchPerformanceMetrics();
-    fetchObsSettings();
   };
 
   const fetchTelemetryErrors = async (page, search, acknowledged) => {
@@ -1342,19 +1326,6 @@ export default function Admin() {
     }
   };
 
-  const fetchAuditLogs = async (page, search, category) => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/admin/audit-logs?page=${page}&limit=10&search=${encodeURIComponent(search)}&category=${encodeURIComponent(category)}`, { credentials: 'include' });
-      if (res.ok) {
-        const data = await res.json();
-        setAuditLogs(data.logs || []);
-        setAuditLogsTotalPages(data.totalPages || 1);
-      }
-    } catch (e) {
-      console.error("Error loading audit logs:", e);
-    }
-  };
-
   const fetchHealth = async () => {
     setHealthLoading(true);
     try {
@@ -1380,43 +1351,6 @@ export default function Admin() {
       console.error("Error loading performance stats:", e);
     } finally {
       setPerfLoading(false);
-    }
-  };
-
-  const fetchObsSettings = async () => {
-    setObsSettingsLoading(true);
-    try {
-      const res = await fetch(`${API_BASE_URL}/admin/observability/settings`, { credentials: 'include' });
-      if (res.ok) {
-        setObsSettings(await res.json());
-      }
-    } catch (e) {
-      console.error("Error loading observability settings:", e);
-    } finally {
-      setObsSettingsLoading(false);
-    }
-  };
-
-  const handleSaveObsSettings = async (settings) => {
-    setIsSavingObsSettings(true);
-    try {
-      const res = await fetch(`${API_BASE_URL}/admin/observability/settings`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings),
-        credentials: 'include'
-      });
-      if (res.ok) {
-        showToast("Settings updated successfully", "success");
-        setObsSettings(settings);
-      } else {
-        showToast("Failed to update settings", "error");
-      }
-    } catch (e) {
-      console.error("Error saving observability settings:", e);
-      showToast("Error updating settings", "error");
-    } finally {
-      setIsSavingObsSettings(false);
     }
   };
 
@@ -2219,11 +2153,6 @@ export default function Admin() {
               telemetryPage={telemetryPage}
               telemetryTotalPages={telemetryTotalPages}
               setTelemetryPage={setTelemetryPage}
-              auditLogsSearch={auditLogsSearch}
-              setAuditLogsSearch={setAuditLogsSearch}
-              auditLogsCategory={auditLogsCategory}
-              setAuditLogsCategory={setAuditLogsCategory}
-              auditLogs={auditLogs}
               telemetrySummary={telemetrySummary}
               telemetryLoading={telemetrySummaryLoading}
               telemetryLoadError={telemetryLoadError}
