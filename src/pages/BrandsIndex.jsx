@@ -48,7 +48,7 @@ export default function BrandsIndex() {
               <p className="max-w-md text-sm leading-relaxed text-white/50">Each collection keeps its own visual character while sharing the same searchable GarageKings catalog.</p>
               <form onSubmit={searchCollection} className="relative mt-6">
                 <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/35" />
-                <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search brands, models or SKU" className="w-full rounded-full border border-white/10 bg-white/[.035] py-3.5 pl-11 pr-28 text-sm outline-none transition placeholder:text-white/30 focus:border-[#C8AE7D]/55" />
+                <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search brands, models or reference number" className="w-full rounded-full border border-white/10 bg-white/[.035] py-3.5 pl-11 pr-28 text-sm outline-none transition placeholder:text-white/30 focus:border-[#C8AE7D]/55" />
                 <button className="absolute bottom-1.5 right-1.5 top-1.5 rounded-full bg-[#F4F1EC] px-4 text-[10px] font-black uppercase tracking-[.12em] text-black">Search all</button>
               </form>
             </div>

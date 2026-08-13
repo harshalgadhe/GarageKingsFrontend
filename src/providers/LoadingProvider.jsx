@@ -1,17 +1,12 @@
 import { createContext, useContext, useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useLocation } from 'react-router-dom'
 
 const LoadingContext = createContext(null)
 
 export function LoadingProvider({ children }) {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
-  const location = useLocation()
-  // Track whether this is a programmatic loader (showLoader call) vs route transition
   const programmaticRef = useRef(false)
-  // Prevent re-entrance: track if a route-transition overlay is already active
-  const routeTimerRef = useRef(null)
 
   // Disable body scroll when loading is active
   useEffect(() => {
@@ -25,42 +20,8 @@ export function LoadingProvider({ children }) {
     }
   }, [loading])
 
-  // Route transition bridge: show the overlay briefly on every navigation
-  // This masks the unmount/mount seam between pages
-  useEffect(() => {
-    // Don't interrupt programmatic loaders (Checkout, Auth, etc.)
-    if (programmaticRef.current) return
-
-    // Clear any pending route timer
-    if (routeTimerRef.current) {
-      clearTimeout(routeTimerRef.current)
-    }
-
-    // Show overlay immediately on route change
-    setMessage('')
-    setLoading(true)
-
-    // Hide after a short bridge delay, long enough for new page to render its shell
-    routeTimerRef.current = setTimeout(() => {
-      if (!programmaticRef.current) {
-        setLoading(false)
-      }
-    }, 120)
-
-    return () => {
-      if (routeTimerRef.current) {
-        clearTimeout(routeTimerRef.current)
-      }
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname])
-
   const showLoader = (msg = '') => {
     programmaticRef.current = true
-    // Cancel any pending route transition timer
-    if (routeTimerRef.current) {
-      clearTimeout(routeTimerRef.current)
-    }
     setMessage(msg)
     setLoading(true)
   }

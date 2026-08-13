@@ -135,7 +135,7 @@ export default function ProductDetail() {
     ['Scale', product.scale || 'Not specified'],
     ['Packaging', variant.casingType || product.casing || 'Not specified'],
     ['Condition', condition],
-    ['SKU', product.sku || reference],
+    ['Reference number', product.sku || reference],
     ['Availability', soldOut ? 'Sold out' : preOrder ? 'Pre-booking' : 'Available'],
   ]
 

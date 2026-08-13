@@ -4,13 +4,14 @@ import { SpeedInsights } from '@vercel/speed-insights/react'
 import { Analytics } from '@vercel/analytics/react'
 import { SmoothScrollProvider } from './providers/SmoothScroll'
 import { LoadingProvider } from './providers/LoadingProvider'
+import Home from './pages/Home'
+import Marketplace from './pages/Marketplace'
+import BrandsIndex from './pages/BrandsIndex'
 
 // Lazy-loaded page routes keep the initial JS bundle smaller
 // and defers parsing of heavy admin/account/product pages until needed.
-// Frequently-visited routes (Home, Marketplace) are imported first so
-// the bundler places them in higher-priority chunks.
-const Home       = lazy(() => import('./pages/Home'))
-const Marketplace = lazy(() => import('./pages/Marketplace'))
+// Primary navigation destinations ship with the app shell so moving between
+// Home, Brands and Garage never blanks the page while a route chunk downloads.
 const ProductDetail = lazy(() => import('./pages/ProductDetail'))
 const Cart       = lazy(() => import('./pages/Cart'))
 const Account    = lazy(() => import('./pages/Account'))
@@ -18,7 +19,6 @@ const Admin      = lazy(() => import('./pages/Admin'))
 const Help       = lazy(() => import('./pages/Help'))
 const Policies   = lazy(() => import('./pages/Policies'))
 const BrandPage  = lazy(() => import('./pages/BrandPage'))
-const BrandsIndex = lazy(() => import('./pages/BrandsIndex'))
 const NotFound   = lazy(() => import('./pages/NotFound'))
 
 /**

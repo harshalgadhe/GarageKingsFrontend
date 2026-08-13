@@ -148,7 +148,7 @@ export default function CommandBar({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search models, brands or SKU"
+            placeholder="Search models, brands or reference number"
             className="w-full rounded-full border border-white/[0.08] bg-[#050505] py-3 pl-10 pr-9 text-sm text-[#F4F1EC] outline-none transition focus:border-[#C8AE7D]/45 focus:shadow-[0_0_0_3px_rgba(200,174,125,.06)] placeholder:text-[#69655F]"
           />
           {searchQuery && (

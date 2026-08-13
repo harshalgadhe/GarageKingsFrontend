@@ -18,7 +18,7 @@ export default function Footer() {
             />
           </div>
           <p className="text-[11px] text-zinc-500 leading-relaxed max-w-xs mt-2">
-            Providing high-quality scale diecast cars for collectors. Verified condition, direct sourcing, and secure packaging.
+            A collector-led catalogue of scale diecast models, with availability and arrangements confirmed directly.
           </p>
         </div>
 
@@ -26,7 +26,7 @@ export default function Footer() {
         <div className="flex flex-col gap-2">
           <span className="text-[10px] font-bold font-mono uppercase tracking-wider text-zinc-500 mb-1">Explore</span>
           <Link to="/" className="text-xs hover:text-white transition-colors py-0.5">Home</Link>
-          <Link to="/marketplace" className="text-xs hover:text-white transition-colors py-0.5">Marketplace</Link>
+          <Link to="/marketplace" className="text-xs hover:text-white transition-colors py-0.5">Garage</Link>
           <Link to="/help" className="text-xs hover:text-white transition-colors py-0.5">Help & FAQ</Link>
         </div>
 

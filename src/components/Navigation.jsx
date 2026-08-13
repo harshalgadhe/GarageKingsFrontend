@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { motion, useReducedMotion } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Home, Search, Share2, Tags, User } from 'lucide-react'
 import { SiInstagram, SiWhatsapp } from 'react-icons/si'
@@ -16,7 +16,6 @@ const sections = [
 export default function Navigation({ activeSection, theme }) {
   const navigate = useNavigate()
   const location = useLocation()
-  const reduce = useReducedMotion()
   const [authOpen, setAuthOpen] = useState(false)
   const [socialOpen, setSocialOpen] = useState(false)
   const [globalSearch, setGlobalSearch] = useState(() => new URLSearchParams(location.search).get('search') || '')
@@ -55,32 +54,30 @@ export default function Navigation({ activeSection, theme }) {
   return (
     <>
       <motion.header
-        initial={reduce ? false : { y: -70, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
-        className="fixed inset-x-0 top-0 z-[80] border-b border-white/[0.06] bg-[#050505]/78 backdrop-blur-xl"
+        initial={false}
+        className="fixed inset-x-0 top-0 z-[80] border-b border-white/[0.07] bg-[#050505]/88 shadow-[0_10px_35px_rgba(0,0,0,.22)] backdrop-blur-2xl"
         style={theme?.navigation ? { backgroundColor: theme.navigation, borderBottomColor: `${theme.accent}24` } : undefined}
       >
-        <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between px-5 md:px-10 lg:px-16">
+        <div className="mx-auto flex h-16 max-w-[1600px] items-center justify-between px-5 md:px-10 lg:grid lg:grid-cols-[minmax(120px,1fr)_auto_minmax(440px,1fr)] lg:gap-8 lg:px-12 xl:px-16">
           <button onClick={() => navigate('/')} className="group flex items-center text-left" aria-label="GarageKings home">
-            <span className="grid h-11 w-24 shrink-0 place-items-center">
+            <span className="grid h-12 w-28 shrink-0 place-items-center">
               <img src="/brand-wordmark.png?v=3" alt="" className="max-h-11 w-full object-contain drop-shadow-[0_0_10px_rgba(225,189,101,.16)] transition-transform duration-500 group-hover:scale-[1.02]" />
             </span>
           </button>
 
-          <nav className="hidden items-center gap-8 lg:flex" aria-label="Primary navigation">
+          <nav className="hidden items-center gap-1 rounded-full border border-white/[0.07] bg-white/[0.025] p-1 lg:flex" aria-label="Primary navigation">
             {sections.map((item) => {
               const selected = item.to === '/' ? location.pathname === '/' : item.to === '/brands' ? location.pathname.startsWith('/brands') : isVault
-              return <Link key={item.to + item.label} to={item.to} className={`relative py-5 text-[13px] font-semibold tracking-[0.015em] transition-colors ${selected ? 'text-[#F4F1EC]' : 'text-[#8A867F] hover:text-[#F4F1EC]'}`}>
+              return <Link key={item.to + item.label} to={item.to} className={`relative rounded-full px-5 py-2.5 text-[12px] font-semibold tracking-[0.02em] transition-all ${selected ? 'bg-[#D8BC78]/[0.11] text-[#F4E5BD] shadow-[inset_0_0_0_1px_rgba(216,188,120,.12)]' : 'text-[#8F8B84] hover:bg-white/[0.045] hover:text-[#F4F1EC]'}`}>
                 {item.label}
-                {selected && <span className="absolute inset-x-0 bottom-0 h-px bg-[#E1BD65]" />}
+                {selected && <span className="absolute inset-x-5 -bottom-[5px] h-px bg-[#E1BD65]/80" />}
               </Link>
             })}
           </nav>
 
-          <div className="hidden items-center gap-3 lg:flex">
-            <form onSubmit={submitGlobalSearch} role="search" className="relative w-[clamp(180px,18vw,250px)]">
-              <Search size={14} strokeWidth={1.8} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[#817D76]" />
+          <div className="hidden min-w-0 items-center justify-end gap-3 lg:flex">
+            <form onSubmit={submitGlobalSearch} role="search" className="group relative w-[clamp(300px,28vw,430px)]">
+              <Search size={15} strokeWidth={1.7} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#817D76] transition-colors group-focus-within:text-[#D8BC78]" />
               <input
                 type="search"
                 value={globalSearch}
@@ -88,15 +85,15 @@ export default function Navigation({ activeSection, theme }) {
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') submitGlobalSearch(event)
                 }}
-                placeholder="Search models or SKU"
+                placeholder="Search models or reference number"
                 aria-label="Search all GarageKings models"
-                className="h-9 w-full rounded-full border border-white/[0.09] bg-white/[0.025] pl-9 pr-10 text-[12px] text-[#F4F1EC] outline-none transition placeholder:text-[#6F6B65] hover:border-white/[0.15] focus:border-[#C8AE7D]/40 focus:bg-black/20"
+                className="h-11 w-full rounded-full border border-white/[0.09] bg-white/[0.035] pl-11 pr-12 text-[13px] text-[#F4F1EC] shadow-[inset_0_1px_0_rgba(255,255,255,.025)] outline-none transition-all placeholder:text-[#6F6B65] hover:border-white/[0.16] hover:bg-white/[0.045] focus:border-[#C8AE7D]/45 focus:bg-[#0A0908] focus:shadow-[0_0_0_3px_rgba(200,174,125,.07)]"
               />
-              <button type="submit" aria-label="Submit global search" className="absolute right-1.5 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-full text-[#8A867F] transition hover:bg-white/[0.08] hover:text-white">
-                <Search size={12} strokeWidth={2} />
+              <button type="submit" aria-label="Submit global search" className="absolute right-1.5 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full border border-transparent text-[#8A867F] transition hover:border-white/[0.08] hover:bg-white/[0.06] hover:text-white">
+                <Search size={13} strokeWidth={2} />
               </button>
             </form>
-            <button onClick={openCollectorProfile} className="flex items-center gap-2 rounded-full border border-white/[0.09] bg-white/[0.025] px-4 py-2 text-[12px] font-medium text-[#B0ACA4] transition hover:border-[#C8AE7D]/30 hover:bg-[#C8AE7D]/[0.05] hover:text-[#F4F1EC]" aria-label="Collector profile"><User size={15} strokeWidth={1.7} /><span>Account</span></button>
+            <button onClick={openCollectorProfile} className="flex h-11 shrink-0 items-center gap-2 rounded-full border border-white/[0.09] bg-white/[0.025] px-4 text-[12px] font-medium text-[#B0ACA4] transition hover:border-[#C8AE7D]/30 hover:bg-[#C8AE7D]/[0.06] hover:text-[#F4F1EC]" aria-label="Collector profile"><User size={15} strokeWidth={1.7} /><span>Account</span></button>
           </div>
 
           <button

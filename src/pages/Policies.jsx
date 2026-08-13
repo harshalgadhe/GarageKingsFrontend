@@ -88,42 +88,42 @@ export default function Policies() {
                 <section className="space-y-2">
                   <h3 className="text-white font-bold uppercase tracking-wider text-xs md:text-sm">1. Acceptance of Terms</h3>
                   <p>
-                    By accessing and purchasing from GarageKings, you agree to comply with and be bound by these Terms of Service. If you do not agree, please do not use the website.
+                    By accessing GarageKings, browsing the catalogue, creating an account, or contacting us through a linked channel, you agree to these terms. The website is a catalogue and enquiry service; it does not provide an online cart or checkout.
                   </p>
                 </section>
 
                 <section className="space-y-2">
-                  <h3 className="text-white font-bold uppercase tracking-wider text-xs md:text-sm">2. Order Placement & Availability</h3>
+                  <h3 className="text-white font-bold uppercase tracking-wider text-xs md:text-sm">2. Catalogue & Availability</h3>
                   <p>
-                    Adding items to your cart does not reserve the models. Orders are processed on a first-come, first-served basis. You must complete checkout, process the payment, and upload the payment receipt promptly. Stock is only secured and deducted once your payment screenshot is approved by the administrators.
+                    Product pages show the information available to us at the time of publication. Availability, condition, packaging, price and delivery or collection options must be confirmed directly with GarageKings. Opening a product page or sending an enquiry does not reserve a model.
                   </p>
                 </section>
 
                 <section className="space-y-2">
-                  <h3 className="text-white font-bold uppercase tracking-wider text-xs md:text-sm">3. Pricing & Payments</h3>
+                  <h3 className="text-white font-bold uppercase tracking-wider text-xs md:text-sm">3. Pricing & Direct Arrangements</h3>
                   <p>
-                    All prices are in Indian Rupees (INR) unless specified otherwise. We accept payments exclusively via UPI. We reserve the right to correct pricing errors, cancel orders, or refuse service. Orders are only verified and scheduled for dispatch once the payment screenshot is approved by the system administrators.
+                    Prices are displayed in Indian Rupees unless stated otherwise and may be corrected if catalogue information is inaccurate. Any purchase, pre-booking, payment, delivery or collection arrangement is discussed and confirmed directly through our official WhatsApp or Instagram channels. The website does not collect payments or payment screenshots from customers.
                   </p>
                 </section>
 
                 <section className="space-y-2">
                   <h3 className="text-white font-bold uppercase tracking-wider text-xs md:text-sm">4. Shipping & Packaging</h3>
                   <p>
-                    Delivery or collection availability, packing method, charges and timing are confirmed directly with the Collector Desk before an arrangement is finalized. Please ask about card, blister or box condition if packaging condition is important to you.
+                    Shipping, collection, packing method, charges and estimated timing are confirmed for each arrangement through the chosen contact channel. Packaging condition matters to collectors, so customers should request any additional card, blister, sleeve or box details before deciding.
                   </p>
                 </section>
 
                 <section className="space-y-2">
                   <h3 className="text-white font-bold uppercase tracking-wider text-xs md:text-sm">5. Cancellations, Returns & Refunds</h3>
                   <p>
-                    Due to the highly collectible and limited nature of our scale models, all sales are final once payment is verified and packaging has commenced. Cancellations are only permitted prior to payment verification. Refer to our Help Center for reporting goods damaged in transit (requires an uninterrupted unboxing video).
+                    Because transactions are agreed directly rather than completed on this website, the cancellation, return, refund and transit-damage terms applicable to a purchase will be communicated before that arrangement is finalized. Ask for those terms if they are important to your decision and retain the written conversation relating to the arrangement.
                   </p>
                 </section>
 
                 <section className="space-y-2">
                   <h3 className="text-white font-bold uppercase tracking-wider text-xs md:text-sm">6. User Accounts</h3>
                   <p>
-                  You are responsible for maintaining the confidentiality of your account credentials. Any actions taken under your account are your sole responsibility.
+                  Customer sign-in uses Google authentication. You are responsible for the security of your Google account and for keeping profile information accurate. Contact GarageKings if you believe your GarageKings session or profile has been used without permission.
                 </p>
                 </section>
               </div>
@@ -142,47 +142,47 @@ export default function Policies() {
                 <section className="space-y-2">
                   <h3 className="text-white font-bold uppercase tracking-wider text-xs md:text-sm">1. Data We Collect</h3>
                   <p>
-                    We collect essential information to verify and ship your orders:
+                    Depending on how you use GarageKings, we may collect:
                   </p>
                   <ul className="list-disc pl-5 space-y-1.5 text-zinc-300">
-                    <li>Account credentials and profiles (email, full name, username).</li>
-                    <li>Shipping and billing addresses.</li>
-                    <li>UPI transaction screenshots uploaded during payment verification.</li>
-                    <li>Order history and logs of your active vault queue.</li>
+                    <li>Google-authenticated account identifiers, email address and display name.</li>
+                    <li>Profile details you choose to provide, such as phone number, Instagram handle and address.</li>
+                    <li>Catalogue searches, enquiry context and basic website usage information.</li>
+                    <li>Security, diagnostic and performance information, including IP address, browser details and request identifiers used to investigate errors.</li>
                   </ul>
                 </section>
 
                 <section className="space-y-2">
                   <h3 className="text-white font-bold uppercase tracking-wider text-xs md:text-sm">2. How We Use Your Data</h3>
                   <p>
-                    Your data is used strictly for processing operations:
+                    We use this information to:
                   </p>
                   <ul className="list-disc pl-5 space-y-1.5 text-zinc-300">
-                    <li>Verifying UPI payments against screenshots.</li>
-                    <li>Addressing order fulfillments and tracking coordinate shipments.</li>
-                    <li>Handling support requests via Instagram and WhatsApp.</li>
-                    <li>Securing and maintaining your active account sessions.</li>
+                    <li>Provide and secure your account and saved profile.</li>
+                    <li>Respond to catalogue, availability and support enquiries.</li>
+                    <li>Improve search, catalogue quality, reliability and performance.</li>
+                    <li>Detect abuse, investigate errors and protect GarageKings systems.</li>
                   </ul>
                 </section>
 
                 <section className="space-y-2">
                   <h3 className="text-white font-bold uppercase tracking-wider text-xs md:text-sm">3. Data Sharing & Hosting</h3>
                   <p>
-                    We value your privacy. We do not sell or lease your database files to any advertising networks. Your data is stored securely using industry-standard encrypted cloud servers and databases.
+                    We do not sell personal information. Data may be processed by service providers needed to operate the website, including cloud hosting, authentication, monitoring and database providers. WhatsApp, Instagram and Google process information under their own terms when you use those services.
                   </p>
                 </section>
 
                 <section className="space-y-2">
                   <h3 className="text-white font-bold uppercase tracking-wider text-xs md:text-sm">4. Cookies</h3>
                   <p>
-                    We use cookies to maintain user authentication sessions. These cookies do not track cross-site behaviors or build external marketing profiles.
+                    We use necessary cookies to maintain secure authentication sessions. We do not use those session cookies to build cross-site advertising profiles.
                   </p>
                 </section>
 
                 <section className="space-y-2">
                   <h3 className="text-white font-bold uppercase tracking-wider text-xs md:text-sm">5. Contact Information</h3>
                   <p>
-                    If you have questions regarding your data privacy or wish to request data erasure, connect with the administrative team via our official Instagram handle or support community.
+                    For privacy questions, profile corrections or account-data deletion requests, contact GarageKings through the official WhatsApp or Instagram links shown on this website.
                   </p>
                 </section>
               </div>

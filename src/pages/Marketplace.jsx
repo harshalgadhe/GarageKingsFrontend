@@ -215,7 +215,7 @@ export default function Marketplace() {
               Every model has<br /><span className="text-[#E1BD65]">a reason to be here.</span>
             </h1>
             <p className="mt-5 max-w-xl text-sm leading-relaxed text-[#A9A49C]">
-              A considered selection of automotive miniatures, photographed, catalogued and presented by one collector-led team.
+              A considered selection of automotive miniatures, photographed, listed and presented by one collector-led team.
             </p>
           </motion.div>
 

@@ -21,7 +21,7 @@ export default function NotFound() {
         </h1>
         <div className="h-[2px] w-12 bg-gk-orange/50 my-6 rounded-full" />
         <p className="text-xs text-white/50 leading-relaxed font-inter mb-10 max-w-[34ch]">
-          The catalog page you are looking for has been archived, de-listed, or does not exist in our central database.
+          The page you are looking for may have moved, been removed, or is no longer part of the GarageKings collection.
         </p>
         <Link 
           to="/"
