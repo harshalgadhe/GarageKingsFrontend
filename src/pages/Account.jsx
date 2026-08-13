@@ -92,11 +92,17 @@ export default function Account() {
 
   const handleProfileSave = async (e) => {
     e.preventDefault();
+    const instagram = profile.instagram.trim().replace(/^@/, '');
+    const address = profile.address.trim();
+    if (!instagram || !address) {
+      setProfileError('Instagram handle and shipping address are required.');
+      return;
+    }
     setProfileLoading(true);
     setProfileSuccess('');
     setProfileError('');
     try {
-      const updated = await updateCustomerProfile(profile);
+      const updated = await updateCustomerProfile({ ...profile, instagram, address });
       if (updated) {
         const displayPhone = (updated.phone && updated.phone.startsWith('unknown_')) ? '' : (updated.phone || '');
         setProfile({

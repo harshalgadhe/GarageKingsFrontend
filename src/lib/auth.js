@@ -10,52 +10,6 @@ const API_BASE_URL = import.meta.env.PROD
   : (import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1');
 
 /**
- * Initiates local email/password login
- */
-export async function signInCognito(email, password) {
-  const response = await fetch(`${API_BASE_URL}/auth/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      credentials: 'include',
-      body: JSON.stringify({ email: email.trim(), password })
-  });
-
-    if (!response.ok) {
-      let errorMsg = 'Authentication failed. Please verify credentials.';
-      try {
-        const data = await response.json();
-        errorMsg = data.message || errorMsg;
-      } catch (e) {
-        try {
-          const text = await response.text();
-          if (text) errorMsg = text;
-        } catch (_) {}
-      }
-    const authError = new Error(errorMsg);
-    authError.status = response.status;
-    throw authError;
-  }
-
-    const data = await response.json();
-
-    const { user } = data;
-    localStorage.setItem('gk_user', JSON.stringify({
-      email: user.email,
-      userId: user.id,
-      username: user.email,
-      displayName: user.email.split('@')[0],
-      role: user.role,
-      roles: [user.role.toLowerCase()]
-    }));
-    // Notify all components that a new user is now active
-    window.dispatchEvent(new Event('gk_user_updated'));
-
-  return user;
-}
-
-/**
  * Clears local cookies and logs out the user
  */
 export async function signOutCognito() {
@@ -178,60 +132,6 @@ export async function signInWithGoogleProfile(googleIdToken) {
   } catch (error) {
     throw error;
   }
-}
-
-// Auto confirm backward compatibility stub
-export async function autoConfirmUserBackend(email) {
-  return { success: true };
-}
-
-export async function signUpCognito(email, password, name) {
-  try {
-    const response = await fetch(`${API_BASE_URL}/auth/signup`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      credentials: 'include',
-      body: JSON.stringify({ email: email.trim(), password, fullName: name })
-    });
-
-    if (!response.ok) {
-      let errorMsg = 'Registration failed. Please try again.';
-      try {
-        const data = await response.json();
-        errorMsg = data.message || errorMsg;
-      } catch (e) {
-        try {
-          const text = await response.text();
-          if (text) errorMsg = text;
-        } catch (_) {}
-      }
-      const authError = new Error(errorMsg);
-      authError.status = response.status;
-      throw authError;
-    }
-
-    const data = await response.json();
-    const { user } = data;
-    localStorage.setItem('gk_user', JSON.stringify({
-      email: user.email,
-      userId: user.id,
-      username: user.email,
-      displayName: user.email.split('@')[0],
-      role: user.role,
-      roles: [user.role.toLowerCase()]
-    }));
-    window.dispatchEvent(new Event('gk_user_updated'));
-
-    return user;
-  } catch (error) {
-    throw error;
-  }
-}
-
-export async function confirmSignUpCognito(email, code) {
-  return { success: true };
 }
 
 export function parseJwt(token) {

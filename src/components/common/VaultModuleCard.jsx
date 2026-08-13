@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ImageOff } from 'lucide-react';
+import { ArrowUpRight, ImageOff } from 'lucide-react';
 
 /**
  * VaultModuleCard: Signature GarageKings collector display card
@@ -49,7 +49,7 @@ export default function VaultModuleCard({ car, onClick, isPreview = false, theme
         event.currentTarget.style.setProperty('--pointer-y', `${event.clientY - bounds.top}px`);
       }}
       tabIndex={0}
-      role="region"
+      role="button"
       aria-label={`Vault entry: ${car.name || 'Collectible'}`}
       onKeyDown={(e) => {
         if ((e.key === 'Enter' || e.key === ' ') && onClick) {
@@ -57,11 +57,12 @@ export default function VaultModuleCard({ car, onClick, isPreview = false, theme
           onClick();
         }
       }}
-      className={`gk-vault-card group relative flex flex-col rounded-xl ${theme ? '' : 'bg-[#0D0D0D]'} border border-white/[0.06] overflow-hidden transition-[transform,border-color,box-shadow,background-color] duration-300 gk-focus-ring ${
-        isPreview ? 'w-full shadow-lg' : 'hover:border-white/[0.18] hover:bg-[#141414] hover:-translate-y-1.5 hover:shadow-[0_24px_60px_rgba(0,0,0,0.82)] cursor-pointer h-full min-h-[440px]'
+      className={`gk-vault-card group relative flex flex-col rounded-xl ${theme ? '' : 'bg-[#0D0D0D]'} border border-white/[0.08] overflow-hidden outline-none transition-[transform,border-color,box-shadow,background-color] duration-300 ${
+        isPreview ? 'w-full shadow-lg' : 'cursor-pointer h-full min-h-[440px] hover:-translate-y-1 hover:border-[#D8BC78]/35 hover:bg-[#12110F] hover:shadow-[0_24px_60px_rgba(0,0,0,0.76),0_0_0_1px_rgba(216,188,120,.08)] focus-visible:-translate-y-1 focus-visible:border-[#E1BD65]/70 focus-visible:shadow-[0_0_0_3px_rgba(225,189,101,.18),0_24px_60px_rgba(0,0,0,.76)]'
       }`}
       style={theme ? { backgroundColor: theme.cardSurface || theme.background, borderColor: `${theme.accent}24` } : undefined}
     >
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-30 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100" style={{ background: 'radial-gradient(360px circle at var(--pointer-x, 50%) var(--pointer-y, 24%), rgba(216,188,120,.08), transparent 55%)' }} />
       {/* ── 1. ARCHIVE / VAULT INDEX HEADER BAR ── */}
       <div className="px-4 pt-3.5 pb-2 flex items-center justify-between border-b border-white/[0.04] bg-[#050505]/40 text-[10px] uppercase font-mono tracking-widest text-[#74716B]" style={theme ? { backgroundColor: `${theme.cardStage || theme.background}CC`, borderBottomColor: `${theme.accent}18` } : undefined}>
         <span className="flex items-center gap-1.5">
@@ -72,7 +73,7 @@ export default function VaultModuleCard({ car, onClick, isPreview = false, theme
         {/* State Badge */}
         {isSoldOut ? (
           <span className="px-2 py-0.5 rounded-md text-[9px] font-bold tracking-wider bg-[#B85C5C]/15 text-[#B85C5C] border border-[#B85C5C]/30">
-            ARCHIVED
+            SOLD OUT
           </span>
         ) : isPrebook ? (
           <span className="px-2 py-0.5 rounded-md text-[9px] font-bold tracking-wider bg-[#C99652]/15 text-[#C99652] border border-[#C99652]/30">
@@ -173,7 +174,7 @@ export default function VaultModuleCard({ car, onClick, isPreview = false, theme
         </div>
 
         {/* ── 4. FINANCIAL FOOTER & ACTION ── */}
-        <div className="pt-3 border-t border-white/[0.06] flex items-end justify-between gap-2">
+        <div className="grid gap-3 border-t border-white/[0.06] pt-3">
           <div>
             <div className="text-[8px] font-bold uppercase tracking-widest text-[#74716B] mb-0.5">
               {isPrebook ? (poDeposit ? 'Pre-order reference' : 'Pre-booking') : 'Listed at'}
@@ -193,9 +194,9 @@ export default function VaultModuleCard({ car, onClick, isPreview = false, theme
             )}
           </div>
 
-          <div className="px-3 py-1.5 rounded-full bg-white/[0.04] group-hover:bg-white border border-white/[0.08] group-hover:border-white text-[#F4F1EC] group-hover:text-black text-[10px] font-extrabold tracking-wider uppercase transition-all duration-200 shrink-0 flex items-center gap-1">
-            <span>View details</span>
-            <span className="text-xs">→</span>
+          <div className="flex min-h-11 w-full items-center justify-between rounded-xl border border-[#D8BC78]/35 bg-[#D8BC78] px-4 py-2.5 text-[#11100E] shadow-[0_10px_28px_rgba(216,188,120,.16)] transition-all duration-200 group-hover:border-[#F2D98E] group-hover:bg-[#F2D98E] group-hover:shadow-[0_14px_34px_rgba(216,188,120,.28)] group-active:scale-[.985]">
+            <span className="text-[10px] font-black uppercase tracking-[.14em]">View details</span>
+            <span className="grid h-6 w-6 place-items-center rounded-full bg-black/10 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"><ArrowUpRight size={14} strokeWidth={2.2} /></span>
           </div>
         </div>
       </div>

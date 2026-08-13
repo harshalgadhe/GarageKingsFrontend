@@ -106,9 +106,10 @@ export default function ProductDetail() {
     )
   }
 
+  const selectedAvailableStock = variant.availableStock ?? variant.stock ?? product.availableStock ?? product.stock ?? product.totalStock
   const soldOut = product.isSoldOut !== undefined
-    ? product.isSoldOut
-    : (product.availableStock !== undefined ? Number(product.availableStock) <= 0 : false)
+    ? Boolean(product.isSoldOut)
+    : (selectedAvailableStock !== undefined ? Number(selectedAvailableStock) <= 0 : false)
   const preOrder = Boolean(product.isPrebook || product.status === 'Pre-Order')
   const total = Number(variant.price || product.price || product.sellingPrice || 0)
   const deposit = Number(variant.poAmount || product.poAmount || product.prebookDepositAmount || 0)
@@ -122,7 +123,7 @@ export default function ProductDetail() {
       price: total,
       poAmount: deposit,
       casingType: variant.casingType || product.casing,
-      availability: soldOut ? 'Unavailable' : preOrder ? 'Pre-booking' : 'Available',
+      availability: soldOut ? 'Sold out' : preOrder ? 'Pre-booking' : 'Available',
       isSoldOut: soldOut,
     }, reference),
     '_blank',
@@ -135,7 +136,7 @@ export default function ProductDetail() {
     ['Packaging', variant.casingType || product.casing || 'Not specified'],
     ['Condition', condition],
     ['SKU', product.sku || reference],
-    ['Availability', soldOut ? 'Unavailable' : preOrder ? 'Pre-booking' : 'Available'],
+    ['Availability', soldOut ? 'Sold out' : preOrder ? 'Pre-booking' : 'Available'],
   ]
 
   return (
@@ -157,7 +158,7 @@ export default function ProductDetail() {
               {(soldOut || preOrder) && (
                 <div className="relative z-20 flex w-full shrink-0 pb-4">
                   <span className={`rounded-full px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.14em] ${soldOut ? 'bg-[#FF453A]/12 text-[#FF6961]' : 'bg-[#E1BD65]/12 text-[#E1BD65]'}`}>
-                    {soldOut ? 'Unavailable' : 'Pre-booking'}
+                    {soldOut ? 'Sold out' : 'Pre-booking'}
                   </span>
                 </div>
               )}
@@ -241,8 +242,8 @@ export default function ProductDetail() {
 
             <div className="mt-4">
               <div className="mb-3">
-                <div className="text-sm font-semibold text-[#F5F5F7]">Interested in this model?</div>
-                <p className="mt-1 text-[11px] leading-relaxed text-[#6E6E73]">Choose how you would like to contact GarageKings.</p>
+                <div className="text-sm font-semibold text-[#F5F5F7]">{soldOut ? 'Ask about this model' : 'Interested in this model?'}</div>
+                <p className="mt-1 text-[11px] leading-relaxed text-[#6E6E73]">{soldOut ? 'Ask about a restock, another edition, or a similar model from the collection.' : 'Choose how you would like to contact GarageKings.'}</p>
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 <button onClick={enquire} className="flex items-center justify-center gap-2 rounded-full border border-white/[0.11] bg-white/[0.045] px-5 py-3 text-xs font-semibold text-[#E8E8ED] transition hover:bg-white hover:text-black"><SiWhatsapp size={18} className="text-[#25D366]" /> {soldOut ? 'Ask about restock' : 'WhatsApp'}</button>

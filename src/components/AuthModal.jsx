@@ -1,498 +1,127 @@
-import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { X, Mail, Lock, ShieldAlert, CheckCircle2, ArrowRight, ArrowLeft, Loader2, User, Eye, EyeOff } from 'lucide-react'
-import { signInCognito, signUpCognito, confirmSignUpCognito, signInWithGoogleProfile, autoConfirmUserBackend, parseJwt } from '../lib/auth'
-import { useLoading } from '../providers/LoadingProvider'
+import { useEffect, useState } from 'react'
+import { motion } from 'framer-motion'
+import { CheckCircle2, Loader2, ShieldAlert, X } from 'lucide-react'
+import { signInWithGoogleProfile } from '../lib/auth'
 
-export default function AuthModal({ isOpen, onClose, themeColor = 'champagne', onAuthSuccess }) {
-  const [mode, setMode] = useState('login') // 'login' | 'signup' | 'verify'
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [fullName, setFullName] = useState('')
-  const [verificationCode, setVerificationCode] = useState('')
+export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
-  const { showLoader, hideLoader } = useLoading()
-
-  const readAttemptState = () => {
-    try {
-      const state = JSON.parse(localStorage.getItem('gk_auth_attempts') || '{}')
-      if (Number(state.blockedUntil) > Date.now()) return state
-    } catch (_) {}
-    return { count: 0, blockedUntil: 0 }
-  }
-
-  const recordFailedAttempt = (forceBlock = false) => {
-    const current = readAttemptState()
-    const count = forceBlock ? 5 : Number(current.count || 0) + 1
-    const blockedUntil = count >= 5 ? Date.now() + 15 * 60 * 1000 : 0
-    localStorage.setItem('gk_auth_attempts', JSON.stringify({ count, blockedUntil }))
-    return blockedUntil
-  }
-
-  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-  const isGoogleAvailable = clientId && !clientId.includes('dummy') && clientId !== '818913587248-1jgrq7f5d4g3d8a1c9h8t2s1p0c0o0p0.apps.googleusercontent.com';
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+  const isGoogleAvailable = Boolean(clientId && !clientId.includes('dummy'))
 
   useEffect(() => {
-    if (!isOpen || mode !== 'login') return;
-    if (!isGoogleAvailable) return;
+    if (!isOpen) return
+    setError('')
+    setLoading(false)
+    setSuccessMessage('')
+    if (!isGoogleAvailable) return
 
-    // Pre-initialize the token client so it's ready when the button is clicked.
-    // We intentionally do NOT call prompt() here. The user must click the button.
-    // Using initCodeClient with select_account ensures the account picker always appears.
-    const waitForGIS = () => {
-      if (window.google && window.google.accounts) {
-        // Disable One Tap auto-prompt entirely so it never silently signs in
-        window.google.accounts.id.disableAutoSelect();
-      } else {
-        setTimeout(waitForGIS, 150);
+    const waitForGoogle = () => {
+      if (window.google?.accounts) {
+        window.google.accounts.id.disableAutoSelect()
+        return
       }
-    };
-    waitForGIS();
-  }, [isOpen, mode]);
+      window.setTimeout(waitForGoogle, 150)
+    }
+    waitForGoogle()
+  }, [isGoogleAvailable, isOpen])
 
-  // Trigger Google account picker popup when user clicks our custom button
+  if (!isOpen) return null
+
   const triggerGoogleAccountPicker = () => {
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    if (!clientId || !window.google?.accounts?.oauth2) return;
+    if (!isGoogleAvailable) {
+      setError('Google sign-in is not configured for this environment.')
+      return
+    }
+    if (!window.google?.accounts?.oauth2) {
+      setError('Google sign-in is still loading. Please try again in a moment.')
+      return
+    }
 
+    setError('')
     const tokenClient = window.google.accounts.oauth2.initTokenClient({
       client_id: clientId,
       scope: 'openid email profile',
-      prompt: 'select_account', // Always show account picker, never auto-pick
+      prompt: 'select_account',
       callback: async (tokenResponse) => {
         if (tokenResponse.error) {
-          setError('Google sign-in was cancelled or failed.');
-          return;
+          setError('Google sign-in was cancelled or could not be completed.')
+          return
         }
         try {
-          setLoading(true);
-          setError('');
-
-          // Complete Google authentication on backend by passing access token directly
-          const user = await signInWithGoogleProfile(tokenResponse.access_token);
-          setSuccessMessage(`Signed in as Google User: ${user.email || 'Verified user'}!`);
-          if (onAuthSuccess) {
-            setTimeout(() => {
-              onAuthSuccess(user);
-              onClose();
-            }, 1500);
-          } else {
-            setTimeout(() => {
-              window.location.reload();
-            }, 1500);
-          }
+          setLoading(true)
+          const user = await signInWithGoogleProfile(tokenResponse.access_token)
+          setSuccessMessage(`Signed in as ${user.email || 'Google user'}`)
+          window.setTimeout(() => {
+            if (onAuthSuccess) onAuthSuccess(user)
+            else window.location.reload()
+            onClose()
+          }, 900)
         } catch (err) {
-          setError(
-            err.status >= 500
-              ? 'Google sign-in is temporarily unavailable. Please try again in a moment.'
-              : (err.message || 'Google sign-in could not be completed.')
-          );
-          setLoading(false);
+          setError(err.status >= 500
+            ? 'Google sign-in is temporarily unavailable. Please try again shortly.'
+            : (err.message || 'Google sign-in could not be completed.'))
+          setLoading(false)
         }
-      }
-    });
-    tokenClient.requestAccessToken();
-  };
-
-
-  if (!isOpen) return null;
-
-  const accentClass = 'text-[#C8AE7D] border-[#C8AE7D]/20 bg-[#C8AE7D]/[0.07]';
-  const buttonClass = 'bg-[#F2EEE7] hover:bg-white !text-[#11100E] font-bold';
-
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setError('');
-
-    const attemptState = readAttemptState()
-    if (attemptState.blockedUntil > Date.now()) {
-      const minutes = Math.max(1, Math.ceil((attemptState.blockedUntil - Date.now()) / 60000))
-      setError(`Too many sign-in attempts. Please try again in ${minutes} minute${minutes === 1 ? '' : 's'}.`)
-      return
-    }
-    setLoading(true);
-
-    try {
-      const user = await signInCognito(email, password);
-      localStorage.removeItem('gk_auth_attempts')
-      setSuccessMessage('Successfully signed in! Accessing secure vault...');
-      if (onAuthSuccess) {
-        setTimeout(() => {
-          onAuthSuccess(user);
-          onClose();
-        }, 1500);
-      } else {
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
-      }
-    } catch (err) {
-      const isCredentialFailure = err.status === 401
-      const blockedUntil = isCredentialFailure || err.status === 429
-        ? recordFailedAttempt(err.status === 429)
-        : 0
-      setError(
-        blockedUntil
-          ? 'Too many sign-in attempts. Please wait 15 minutes before trying again.'
-          : err.status === 401
-            ? 'Email or password is incorrect. Please try again.'
-            : err.status === 429
-              ? 'Too many sign-in attempts. Please wait before trying again.'
-              : err.status >= 500
-                ? 'Sign-in is temporarily unavailable. Please try again in a moment or continue with Google.'
-                : (err.message || 'Sign-in could not be completed. Please try again.')
-      );
-      setLoading(false);
-    }
-  };
-
-  const handleSignUp = async (e) => {
-    e.preventDefault();
-    setError('');
-    
-    if (password !== confirmPassword) {
-      setError('Passwords do not match.');
-      return;
-    }
-    if (password.length < 8 || !/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/\d/.test(password)) {
-      setError('Use at least 8 characters with an uppercase letter, lowercase letter and number.');
-      return;
-    }
-    
-    setLoading(true);
-    try {
-      const user = await signUpCognito(email, password, fullName);
-      setSuccessMessage('Successfully registered! Welcome to the vault...');
-      if (onAuthSuccess) {
-        setTimeout(() => {
-          onAuthSuccess(user);
-          onClose();
-        }, 1500);
-      } else {
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
-      }
-    } catch (err) {
-      setError(
-        err.status === 409 || err.status === 400
-          ? (err.message || 'This account could not be registered with those details.')
-          : err.status >= 500
-            ? 'Registration is temporarily unavailable. Please try again in a moment or continue with Google.'
-            : (err.message || 'Registration failed. Please try again.')
-      );
-      setLoading(false);
-    }
-  };
-
-  const handleVerify = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-
-    try {
-      await confirmSignUpCognito(email, verificationCode);
-      setSuccessMessage('Email verified! Auto-signing you in...');
-      
-      // Auto login after email verification
-      const user = await signInCognito(email, password);
-      if (onAuthSuccess) {
-        setTimeout(() => {
-          onAuthSuccess(user);
-          onClose();
-        }, 1500);
-      } else {
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
-      }
-    } catch (err) {
-      setError(err.message || 'Invalid validation code.');
-      setLoading(false);
-    }
-  };
+      },
+    })
+    tokenClient.requestAccessToken()
+  }
 
   return (
-    <motion.div 
-      initial={{ opacity: 0 }} 
-      animate={{ opacity: 1 }} 
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md"
-      onClick={onClose}
-    >
-      <motion.div 
-        initial={{ scale: 0.95, y: 15 }} 
-        animate={{ scale: 1, y: 0 }} 
-        exit={{ scale: 0.95, y: 15 }}
-        transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-        className="w-full max-w-md bg-[#0B0B0B] border border-white/[0.08] rounded-[28px] p-6 sm:p-8 shadow-[0_28px_80px_rgba(0,0,0,0.75)] relative overflow-hidden"
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Top brand lightbar */}
-        <div className="absolute top-0 inset-x-12 h-px bg-gradient-to-r from-transparent via-[#C8AE7D]/80 to-transparent" />
-
-        <button 
-          onClick={onClose} 
-          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/5 text-white/40 hover:text-white transition-colors cursor-pointer"
-        >
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[110] flex items-center justify-center bg-black/85 p-4 backdrop-blur-md" onClick={onClose}>
+      <motion.div initial={{ scale: 0.96, y: 12 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.96, y: 12 }}
+        transition={{ type: 'spring', damping: 26, stiffness: 350 }}
+        className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-white/[0.08] bg-[#0B0B0B] p-7 shadow-[0_28px_80px_rgba(0,0,0,0.75)] sm:p-9"
+        onClick={(event) => event.stopPropagation()}>
+        <div className="absolute inset-x-12 top-0 h-px bg-gradient-to-r from-transparent via-[#C8AE7D]/80 to-transparent" />
+        <button type="button" onClick={onClose} aria-label="Close sign-in"
+          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-white/5 text-white/40 transition-colors hover:text-white">
           <X size={16} />
         </button>
 
         {successMessage ? (
-          <div className="text-center py-10">
-            <motion.div 
-              initial={{ scale: 0 }} 
-              animate={{ scale: 1 }} 
-              transition={{ type: 'spring', damping: 12 }} 
-              className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto mb-6"
-            >
+          <div className="py-10 text-center">
+            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
+              className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10">
               <CheckCircle2 size={32} className="text-emerald-400" />
             </motion.div>
-            <h3 className="text-xl font-black text-white mb-2">Success!</h3>
-            <p className="text-white/50 text-sm">{successMessage}</p>
+            <h3 className="mb-2 text-xl font-semibold text-white">Welcome back</h3>
+            <p className="text-sm text-white/50">{successMessage}</p>
           </div>
         ) : (
           <>
-            <div className="mb-8 text-center sm:text-left">
-              <h3 className="text-2xl font-semibold tracking-[-0.03em] text-[#F4F1EC] leading-tight font-grotesk">
-                {mode === 'login' ? 'Welcome back' : mode === 'signup' ? 'Create your account' : 'Verify your email'}
-              </h3>
-              <p className="text-[#9A968F] text-sm mt-2.5 font-medium leading-relaxed">
-                {mode === 'login' 
-                  ? 'Sign in to manage your contact information and delivery details.'
-                  : mode === 'signup' 
-                    ? 'Create a profile to keep your enquiry and delivery details together.'
-                    : 'A 6-digit verification code has been dispatched to ' + email}
+            <div className="mb-8 pr-8">
+              <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#C8AE7D]">GarageKings account</p>
+              <h3 className="font-grotesk text-3xl font-semibold leading-tight tracking-[-0.04em] text-[#F4F1EC]">Continue with Google</h3>
+              <p className="mt-3 text-sm font-medium leading-relaxed text-[#9A968F]">
+                One secure sign-in for your profile, contact information and delivery details. No password to remember.
               </p>
             </div>
 
-            {error && (
-              <div className="mb-4 bg-red-500/10 border border-red-500/20 text-red-300 text-xs p-3.5 rounded-xl flex items-start gap-2">
-                <ShieldAlert size={16} className="shrink-0 text-red-400 mt-0.5" />
-                <span>{error}</span>
-              </div>
-            )}
+            {error && <div className="mb-5 flex items-start gap-2 rounded-xl border border-red-500/20 bg-red-500/10 p-3.5 text-xs text-red-300">
+              <ShieldAlert size={16} className="mt-0.5 shrink-0 text-red-400" /><span>{error}</span>
+            </div>}
 
-            {loading ? (
-              <div className="flex flex-col items-center justify-center py-16 space-y-5">
-                <Loader2 size={36} className="animate-spin text-[#C8AE7D]" />
-                <p className="text-white/60 text-sm font-medium animate-pulse text-center">
-                  {mode === 'login' 
-                    ? 'Accessing exclusive secure vault...' 
-                    : mode === 'signup' 
-                      ? 'Creating collector profile...' 
-                      : 'Verifying credentials...'}
-                </p>
-              </div>
-            ) : (
-              <>
-                {mode === 'login' && (
-                  <form onSubmit={handleLogin} className="space-y-4">
-                    <div className="relative">
-                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
-                      <input 
-                        required 
-                        type="email" 
-                        autoComplete="email"
-                        disabled={loading}
-                        value={email} 
-                        onChange={e => setEmail(e.target.value)} 
-                        placeholder="Email Address"
-                        className="w-full bg-[#111111] border border-white/[0.1] rounded-xl pl-11 pr-4 py-3.5 text-[#F4F1EC] placeholder:text-[#6F6B65] focus:outline-none focus:border-[#C8AE7D]/45 transition-colors text-sm"
-                      />
-                    </div>
-                    <div className="relative">
-                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
-                      <input 
-                        required 
-                        type={showPassword ? 'text' : 'password'}
-                        autoComplete="current-password"
-                        disabled={loading}
-                        value={password} 
-                        onChange={e => setPassword(e.target.value)} 
-                        placeholder="Password"
-                        className="w-full bg-[#111111] border border-white/[0.1] rounded-xl pl-11 pr-12 py-3.5 text-[#F4F1EC] placeholder:text-[#6F6B65] focus:outline-none focus:border-[#C8AE7D]/45 transition-colors text-sm"
-                      />
-                      <button type="button" onClick={() => setShowPassword(value => !value)} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/35 transition hover:text-white" aria-label={showPassword ? 'Hide password' : 'Show password'}>
-                        {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
-                      </button>
-                    </div>
-                    
-                    <button 
-                      type="submit" 
-                      className={`w-full py-4 rounded-full text-sm uppercase tracking-[0.14em] transition-all cursor-pointer flex items-center justify-center gap-2.5 relative overflow-hidden ${buttonClass}`}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <span>Sign In</span>
-                        <ArrowRight size={14} />
-                      </div>
-                    </button>
+            <button type="button" disabled={loading || !isGoogleAvailable} onClick={triggerGoogleAccountPicker}
+              className="flex w-full items-center justify-center gap-3 rounded-full bg-[#F2EEE7] px-5 py-4 text-sm font-bold text-[#11100E] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-45">
+              {loading ? <Loader2 size={20} className="animate-spin" /> : (
+                <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="#EA4335" d="M12 5.04c1.66 0 3.2.57 4.38 1.69l3.27-3.27C17.67 1.54 15.02 1 12 1 7.35 1 3.37 3.67 1.39 7.56l3.85 2.99c.92-2.75 3.49-4.51 6.76-4.51z" />
+                  <path fill="#4285F4" d="M23.49 12.27c0-.81-.07-1.59-.2-2.34H12v4.44h6.44c-.28 1.48-1.12 2.73-2.38 3.58l3.71 2.88c2.17-2 3.72-4.94 3.72-8.56z" />
+                  <path fill="#FBBC05" d="M5.24 10.55c-.24-.72-.38-1.5-.38-2.3s.14-1.58.38-2.3L1.39 2.96C.5 4.77 0 6.81 0 8.95s.5 4.18 1.39 5.99l3.85-2.99z" />
+                  <path fill="#34A853" d="M12 23c3.24 0 5.97-1.07 7.96-2.91l-3.71-2.88c-1.03.69-2.35 1.1-4.25 1.1-3.27 0-5.84-1.76-6.76-4.51l-3.85 2.99C3.37 20.33 7.35 23 12 23z" />
+                </svg>
+              )}
+              <span>{loading ? 'Connecting securely...' : 'Continue with Google'}</span>
+            </button>
 
-                    {/* Google Sign In option */}
-                    <div className="relative flex py-3 items-center">
-                      <div className="flex-grow border-t border-white/5"></div>
-                      <span className="flex-shrink mx-4 text-white/20 text-[9px] font-bold uppercase tracking-widest">Or Continue With</span>
-                      <div className="flex-grow border-t border-white/5"></div>
-                    </div>
-
-                    {/* Google Sign In always shows the account picker popup */}
-                    <div className="w-full py-1">
-                      <button
-                        type="button"
-                        disabled={!isGoogleAvailable || loading}
-                        onClick={() => {
-                          if (isGoogleAvailable) {
-                            triggerGoogleAccountPicker();
-                          }
-                        }}
-                        className="w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl bg-white text-black hover:bg-white/90 font-bold text-sm transition-all cursor-pointer shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500 disabled:border disabled:border-white/5"
-                      >
-                        {isGoogleAvailable && (
-                          <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
-                            <path fill="#EA4335" d="M12 5.04c1.66 0 3.2.57 4.38 1.69l3.27-3.27C17.67 1.54 15.02 1 12 1 7.35 1 3.37 3.67 1.39 7.56l3.85 2.99c.92-2.75 3.49-4.51 6.76-4.51z"/>
-                            <path fill="#4285F4" d="M23.49 12.27c0-.81-.07-1.59-.2-2.34H12v4.44h6.44c-.28 1.48-1.12 2.73-2.38 3.58l3.71 2.88c2.17-2 3.72-4.94 3.72-8.56z"/>
-                            <path fill="#FBBC05" d="M5.24 10.55c-.24-.72-.38-1.5-.38-2.3s.14-1.58.38-2.3L1.39 2.96C.5 4.77 0 6.81 0 8.95s.5 4.18 1.39 5.99l3.85-2.99z"/>
-                            <path fill="#34A853" d="M12 23c3.24 0 5.97-1.07 7.96-2.91l-3.71-2.88c-1.03.69-2.35 1.1-4.25 1.1-3.27 0-5.84-1.76-6.76-4.51l-3.85 2.99C3.37 20.33 7.35 23 12 23z"/>
-                          </svg>
-                        )}
-                        <span>
-                          {isGoogleAvailable 
-                            ? "Continue with Google" 
-                            : "Google Sign-In is unavailable in this environment."}
-                        </span>
-                      </button>
-                    </div>
-
-                    <div className="text-center text-xs mt-4 text-white/40">
-                      New collector?{' '}
-                      <button 
-                        type="button" 
-                        onClick={() => setMode('signup')} 
-                        className="text-white font-bold hover:underline cursor-pointer"
-                      >
-                        Register Here
-                      </button>
-                    </div>
-                  </form>
-                )}
-
-                {mode === 'signup' && (
-                  <form onSubmit={handleSignUp} className="space-y-4">
-                    <div className="relative">
-                      <User className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
-                      <input 
-                        required 
-                        type="text" 
-                        disabled={loading}
-                        value={fullName} 
-                        onChange={e => setFullName(e.target.value)} 
-                        placeholder="Full Name"
-                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-11 pr-4 py-3.5 text-white placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors text-sm" 
-                      />
-                    </div>
-                    <div className="relative">
-                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
-                      <input 
-                        required 
-                        type="email" 
-                        autoComplete="email"
-                        disabled={loading}
-                        value={email} 
-                        onChange={e => setEmail(e.target.value)} 
-                        placeholder="Email Address"
-                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-11 pr-4 py-3.5 text-white placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors text-sm" 
-                      />
-                    </div>
-                    <div className="relative">
-                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
-                      <input 
-                        required 
-                        type={showPassword ? 'text' : 'password'}
-                        autoComplete="new-password"
-                        disabled={loading}
-                        value={password} 
-                        onChange={e => setPassword(e.target.value)} 
-                        placeholder="Password (Min 8 Characters)"
-                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-11 pr-12 py-3.5 text-white placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors text-sm" 
-                      />
-                      <button type="button" onClick={() => setShowPassword(value => !value)} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/35 transition hover:text-white" aria-label={showPassword ? 'Hide password' : 'Show password'}>
-                        {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
-                      </button>
-                    </div>
-                    <div className="relative">
-                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
-                      <input 
-                        required 
-                        type={showConfirmPassword ? 'text' : 'password'}
-                        autoComplete="new-password"
-                        disabled={loading}
-                        value={confirmPassword} 
-                        onChange={e => setConfirmPassword(e.target.value)} 
-                        placeholder="Confirm Password"
-                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-11 pr-12 py-3.5 text-white placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors text-sm" 
-                      />
-                      <button type="button" onClick={() => setShowConfirmPassword(value => !value)} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/35 transition hover:text-white" aria-label={showConfirmPassword ? 'Hide confirmation password' : 'Show confirmation password'}>
-                        {showConfirmPassword ? <EyeOff size={17} /> : <Eye size={17} />}
-                      </button>
-                    </div>
-                    
-                    <button 
-                      type="submit" 
-                      className={`w-full py-4 rounded-full text-sm uppercase tracking-[0.14em] transition-all cursor-pointer flex items-center justify-center gap-2.5 relative overflow-hidden ${buttonClass}`}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <span>Create Account</span>
-                        <ArrowRight size={14} />
-                      </div>
-                    </button>
-
-                    <div className="text-center text-xs mt-4 text-white/40">
-                      Already registered?{' '}
-                      <button 
-                        type="button" 
-                        onClick={() => setMode('login')} 
-                        className="text-white font-bold hover:underline cursor-pointer"
-                      >
-                        Log In
-                      </button>
-                    </div>
-                  </form>
-                )}
-
-                {mode === 'verify' && (
-                  <form onSubmit={handleVerify} className="space-y-4">
-                    <p className="text-xs text-[#C8AE7D] font-semibold uppercase tracking-wider mb-2 font-grotesk">Check your inbox</p>
-                    <div className="relative">
-                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
-                      <input 
-                        required 
-                        type="text" 
-                        disabled={loading}
-                        value={verificationCode} 
-                        onChange={e => setVerificationCode(e.target.value)} 
-                        placeholder="6-Digit Verification Code"
-                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-11 pr-4 py-3.5 text-white placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors text-sm font-mono text-center tracking-widest" 
-                      />
-                    </div>
-                    
-                    <button 
-                      type="submit" 
-                      className={`w-full py-4 rounded-full text-sm uppercase tracking-[0.14em] transition-all cursor-pointer flex items-center justify-center gap-2.5 relative overflow-hidden ${buttonClass}`}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <span>Confirm Registration</span>
-                        <ArrowRight size={14} />
-                      </div>
-                    </button>
-                  </form>
-                )}
-              </>
-            )}
+            {!isGoogleAvailable && <p className="mt-4 text-center text-xs text-white/35">Google sign-in is unavailable in this environment.</p>}
+            <p className="mt-5 text-center text-[11px] leading-relaxed text-white/30">
+              GarageKings only receives your name, email address and Google profile identity.
+            </p>
           </>
         )}
       </motion.div>

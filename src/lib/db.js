@@ -115,7 +115,7 @@ window.fetch = async function (url, options = {}) {
     // If unauthorized (401), attempt to silently refresh access token via HTTP HttpOnly refresh cookie
     if (response.status === 401) {
       const urlStr = typeof url === 'string' ? url : (url.url || '');
-      if (!urlStr.includes('/auth/login') && !urlStr.includes('/auth/refresh') && !urlStr.includes('/setup/status')) {
+      if (!urlStr.includes('/auth/refresh') && !urlStr.includes('/setup/status')) {
         if (!refreshPromise) {
           refreshPromise = originalFetch(`${API_BASE_URL}/auth/refresh`, {
             method: 'POST',

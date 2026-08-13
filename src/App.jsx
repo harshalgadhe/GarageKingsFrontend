@@ -32,24 +32,17 @@ function PageFallback() {
       aria-hidden="true"
       style={{
         minHeight: '100dvh',
-        background: '#090909',
+        background: '#050505',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
       }}
     >
-      {/* Minimal branded indicator using the same spinner style as the rest of the app */}
-      <div style={{ position: 'relative', width: 48, height: 48 }}>
-        <div style={{
-          position: 'absolute', inset: 0,
-          borderRadius: '50%',
-          border: '2px solid transparent',
-          borderTopColor: '#E15B2C',
-          animation: 'spin 1.2s linear infinite',
-        }} />
+      <div style={{ width: 180, textAlign: 'center' }}>
+        <div style={{ color: '#C8AE7D', fontSize: 10, fontWeight: 700, letterSpacing: '.24em', textTransform: 'uppercase' }}>GarageKings</div>
+        <div style={{ height: 1, marginTop: 14, overflow: 'hidden', background: 'rgba(255,255,255,.08)' }}><div style={{ width: '45%', height: '100%', background: '#C8AE7D', animation: 'gk-load 1.15s ease-in-out infinite' }} /></div>
       </div>
-      {/* Inline keyframe avoids dependency on the CSS bundle being loaded */}
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      <style>{`@keyframes gk-load{0%{transform:translateX(-110%)}100%{transform:translateX(330%)}}`}</style>
     </div>
   )
 }

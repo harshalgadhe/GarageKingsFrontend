@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Plus, Edit2, Trash2, RefreshCw } from 'lucide-react';
+import { Search, Plus, Trash2, RefreshCw } from 'lucide-react';
 import MasterData from '../../pages/admin/MasterData';
 import Pagination from './Pagination';
 
@@ -98,7 +98,16 @@ export default function AdminCatalogTab({
                   return (
                     <tr 
                       key={car.id} 
-                      className="border-b border-white/5 hover:bg-white/[0.02] transition-colors"
+                      onClick={() => handleEditProduct(car)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          handleEditProduct(car);
+                        }
+                      }}
+                      tabIndex={0}
+                      aria-label={`Edit ${car.name}`}
+                      className="cursor-pointer border-b border-white/5 transition-colors hover:bg-[#C8AE7D]/[0.045] focus-visible:bg-[#C8AE7D]/[0.06] focus-visible:outline-none"
                     >
                       <td className="p-4 flex items-center gap-3">
                         <img src={car.image || '/vault-1.png'} className="w-10 h-8 object-cover rounded border border-white/5" />
@@ -140,16 +149,9 @@ export default function AdminCatalogTab({
                               ✓ To Stock
                             </button>
                           )}
+                          {loadingProductId === car.id && <RefreshCw className="mr-2 animate-spin text-[#E1BD65]" size={13} />}
                           <button 
-                            onClick={() => handleEditProduct(car)} 
-                            disabled={loadingProductId !== null || isArchivingProductId !== null}
-                            title="Edit Casting"
-                            className="inline-flex cursor-pointer rounded-lg border border-white/[0.07] bg-white/[0.035] p-2 text-[#A9A49C] transition hover:border-[#C8AE7D]/25 hover:bg-[#C8AE7D]/[0.08] hover:text-[#E1BD65] disabled:cursor-not-allowed disabled:opacity-40"
-                          >
-                            {loadingProductId === car.id ? <RefreshCw className="animate-spin" size={12} /> : <Edit2 size={12} />}
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteProduct(car.id)} 
+                            onClick={(event) => { event.stopPropagation(); handleDeleteProduct(car.id); }}
                             disabled={loadingProductId !== null || isArchivingProductId !== null}
                             title="Delete Casting"
                             className="text-red-400 hover:text-red-300 p-1.5 rounded bg-red-500/5 hover:bg-red-500/10 transition-colors border border-red-500/10 cursor-pointer inline-flex disabled:opacity-40 disabled:cursor-not-allowed"
