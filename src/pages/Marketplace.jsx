@@ -121,12 +121,19 @@ export default function Marketplace() {
         // Helper to push sold out items to the end of the list
         const sortSoldOutLast = (list) => {
           return list.slice().sort((a, b) => {
-            const aSoldOut = a.isSoldOut !== undefined
-              ? a.isSoldOut
-              : (a.availableStock !== undefined ? Number(a.availableStock) <= 0 : (Number(a.totalStock || 0) - Number(a.soldStock || 0) <= 0));
-            const bSoldOut = b.isSoldOut !== undefined
-              ? b.isSoldOut
-              : (b.availableStock !== undefined ? Number(b.availableStock) <= 0 : (Number(b.totalStock || 0) - Number(b.soldStock || 0) <= 0));
+            const soldOut = (product) => {
+              const state = String(product.availabilityState || '').trim().toUpperCase();
+              const explicitlySoldOut = product.isSoldOut === true || String(product.isSoldOut).toLowerCase() === 'true';
+              const hasStockFigure = product.availableStock != null || product.stock != null || product.totalStock != null;
+              const available = product.availableStock != null
+                ? Number(product.availableStock)
+                : product.stock != null
+                  ? Number(product.stock)
+                  : Number(product.totalStock || 0) - Number(product.soldStock || 0) - Number(product.lockedStock || 0);
+              return state === 'OUT_OF_STOCK' || state === 'SOLD_OUT' || explicitlySoldOut || (hasStockFigure && available <= 0);
+            };
+            const aSoldOut = soldOut(a);
+            const bSoldOut = soldOut(b);
 
             if (aSoldOut && !bSoldOut) return 1;
             if (!aSoldOut && bSoldOut) return -1;
@@ -275,7 +282,6 @@ export default function Marketplace() {
           <>
             <div className="mb-8 flex items-end justify-between border-b border-white/[0.06] pb-5">
               <div><span className="text-[9px] uppercase tracking-[0.2em] text-[#D8BC78]">Browse models</span><h2 className="mt-1 text-2xl font-semibold tracking-tight">Available and pre-booking</h2></div>
-              <span className="hidden font-mono text-[10px] uppercase tracking-widest text-[#74716B] md:block">Enquire directly on WhatsApp or Instagram</span>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
               {cars.map((car, index) => (

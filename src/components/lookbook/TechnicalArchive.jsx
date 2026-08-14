@@ -1,6 +1,6 @@
 "use client"
 
-import { forwardRef, useEffect, useState } from 'react'
+import { forwardRef, useEffect, useMemo, useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { buildBrandTheme } from '../../data/brandThemes'
@@ -10,6 +10,14 @@ const TechnicalArchive = forwardRef(function TechnicalArchive(props, ref) {
   const reduce = useReducedMotion()
   const navigate = useNavigate()
   const [brands, setBrands] = useState([])
+  const featuredBrands = useMemo(() => {
+    const shuffled = [...brands]
+    for (let index = shuffled.length - 1; index > 0; index -= 1) {
+      const swapIndex = Math.floor(Math.random() * (index + 1))
+      ;[shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]]
+    }
+    return shuffled.slice(0, 6)
+  }, [brands])
 
   useEffect(() => {
     let active = true
@@ -54,7 +62,7 @@ const TechnicalArchive = forwardRef(function TechnicalArchive(props, ref) {
 
           {/* Brands Grid Layout */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-            {brands.map((brand, idx) => (
+            {featuredBrands.map((brand, idx) => (
               <motion.div
                 key={brand.slug}
                 initial={reduce ? false : { opacity: 0, y: 30 }}
@@ -62,7 +70,7 @@ const TechnicalArchive = forwardRef(function TechnicalArchive(props, ref) {
                 viewport={{ once: true, amount: 0.1 }}
                 transition={{ duration: 0.6, delay: idx * 0.05, ease: [0.22, 1, 0.36, 1] }}
                 onClick={() => navigate(`/brands/${brand.slug}`)}
-                className="group relative overflow-hidden rounded-2xl border border-white/5 bg-zinc-950/40 p-8 flex flex-col justify-between min-h-[280px] cursor-pointer hover:border-white/10 hover:bg-zinc-900/40 transition-all duration-500 text-left"
+                className={`group relative overflow-hidden rounded-2xl border border-white/5 bg-zinc-950/40 p-8 flex-col justify-between min-h-[280px] cursor-pointer hover:border-white/10 hover:bg-zinc-900/40 transition-all duration-500 text-left ${idx >= 3 ? 'hidden md:flex' : 'flex'}`}
               >
                 {/* Background Brand Initials for high-end aesthetic */}
                 <div className="absolute right-[-20px] bottom-[-20px] text-[120px] font-black text-white/[0.01] group-hover:text-white/[0.02] tracking-tighter select-none pointer-events-none transition-all duration-700 ease-out uppercase font-grotesk group-hover:scale-110">
@@ -116,6 +124,17 @@ const TechnicalArchive = forwardRef(function TechnicalArchive(props, ref) {
               </motion.div>
             ))}
           </div>
+          {brands.length > 0 && (
+            <div className="mt-10 flex justify-center">
+              <button
+                type="button"
+                onClick={() => navigate('/brands')}
+                className="rounded-full border border-white/12 bg-white/[0.025] px-6 py-3 text-[10px] font-bold uppercase tracking-[0.14em] text-white/65 transition hover:border-[#D8BC78]/45 hover:text-[#E8D098]"
+              >
+                Browse all brands
+              </button>
+            </div>
+          )}
         </div>
       </section>
     </div>

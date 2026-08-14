@@ -107,9 +107,12 @@ export default function ProductDetail() {
   }
 
   const selectedAvailableStock = variant.availableStock ?? variant.stock ?? product.availableStock ?? product.stock ?? product.totalStock
-  const soldOut = product.isSoldOut !== undefined
-    ? Boolean(product.isSoldOut)
-    : (selectedAvailableStock !== undefined ? Number(selectedAvailableStock) <= 0 : false)
+  const availabilityState = String(product.availabilityState || variant.availabilityState || '').trim().toUpperCase()
+  const explicitlySoldOut = product.isSoldOut === true || String(product.isSoldOut).toLowerCase() === 'true'
+  const soldOut = availabilityState === 'OUT_OF_STOCK'
+    || availabilityState === 'SOLD_OUT'
+    || explicitlySoldOut
+    || (selectedAvailableStock !== undefined && Number(selectedAvailableStock) <= 0)
   const preOrder = Boolean(product.isPrebook || product.status === 'Pre-Order')
   const total = Number(variant.price || product.price || product.sellingPrice || 0)
   const deposit = Number(variant.poAmount || product.poAmount || product.prebookDepositAmount || 0)

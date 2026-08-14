@@ -17,11 +17,18 @@ export default function VaultModuleCard({ car, onClick, isPreview = false, theme
   const hasImage = Boolean(car.image) && !imageFailed;
 
   // Determine stock availability state
-  const isSoldOut = car.isSoldOut !== undefined
-    ? car.isSoldOut
-    : (car.availableStock !== undefined 
-        ? car.availableStock <= 0 
-        : (Number(car.totalStock || 0) - Number(car.soldStock || 0) <= 0));
+  const availabilityState = String(car.availabilityState || '').trim().toUpperCase();
+  const hasStockFigure = car.availableStock != null || car.stock != null || car.totalStock != null;
+  const calculatedAvailableStock = car.availableStock != null
+    ? Number(car.availableStock)
+    : car.stock != null
+      ? Number(car.stock)
+      : Number(car.totalStock || 0) - Number(car.soldStock || 0) - Number(car.lockedStock || 0);
+  const explicitlySoldOut = car.isSoldOut === true || String(car.isSoldOut).toLowerCase() === 'true';
+  const isSoldOut = availabilityState === 'OUT_OF_STOCK'
+    || availabilityState === 'SOLD_OUT'
+    || explicitlySoldOut
+    || (hasStockFigure && calculatedAvailableStock <= 0);
 
   const isPrebook = Boolean(car.isPrebook || car.status === 'Pre-Order');
   const availableCount = Number(car.availableStock ?? car.stock ?? 0);
@@ -60,23 +67,6 @@ export default function VaultModuleCard({ car, onClick, isPreview = false, theme
     >
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-30 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100" style={{ background: 'radial-gradient(360px circle at var(--pointer-x, 50%) var(--pointer-y, 24%), rgba(216,188,120,.08), transparent 55%)' }} />
       {/* ── 1. ARCHIVE / VAULT INDEX HEADER BAR ── */}
-      {(isSoldOut || isPrebook || isLowStock) && <div className="px-4 py-2.5 flex items-center justify-end border-b border-white/[0.04] bg-[#050505]/40 text-[10px] uppercase font-mono tracking-widest text-[#74716B]" style={theme ? { backgroundColor: `${theme.cardStage || theme.background}CC`, borderBottomColor: `${theme.accent}18` } : undefined}>
-        {/* State Badge */}
-        {isSoldOut ? (
-          <span className="px-2 py-0.5 rounded-md text-[9px] font-bold tracking-wider bg-[#B85C5C]/15 text-[#B85C5C] border border-[#B85C5C]/30">
-            SOLD OUT
-          </span>
-        ) : isPrebook ? (
-          <span className="px-2 py-0.5 rounded-md text-[9px] font-bold tracking-wider bg-[#C99652]/15 text-[#C99652] border border-[#C99652]/30">
-            PRE-BOOKING
-          </span>
-        ) : isLowStock ? (
-          <span className="px-2 py-0.5 rounded-md text-[9px] font-bold tracking-wider bg-[#C99652]/15 text-[#C99652] border border-[#C99652]/30">
-            FEW REMAINING
-          </span>
-        ) : null}
-      </div>}
-
       {/* ── 2. ARTIFACT STAGE (Controlled Radial Spotlight & Museum Presentation) ── */}
       <div className="relative flex h-72 w-full items-center justify-center overflow-hidden border-b border-white/[0.04] bg-[#080808] p-3 sm:h-60 sm:p-5" style={theme ? { backgroundColor: theme.cardStage || theme.background, borderBottomColor: `${theme.accent}18` } : undefined}>
         {hasImage && <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,.08),rgba(5,5,5,.62)),radial-gradient(circle_at_50%_42%,rgba(255,255,255,.11),transparent_54%)]" />}
@@ -103,10 +93,21 @@ export default function VaultModuleCard({ car, onClick, isPreview = false, theme
           </div>
         )}
 
-        {/* Grade / Lane Accent Badge */}
+        {/* Curated/rarity labels always occupy the left lane. */}
         {car.tag && !['standard', 'standard edition', 'none', ''].includes(String(car.tag).trim().toLowerCase()) && (
-          <div className="absolute top-3 right-3 z-20 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest bg-[#050505]/80 text-[#C8AE7D] border border-[#C8AE7D]/30 backdrop-blur-md">
+          <div className="absolute left-3 top-3 z-20 max-w-[46%] truncate rounded-md border border-[#C8AE7D]/30 bg-[#050505]/85 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.12em] text-[#D8BC78] backdrop-blur-md">
             {car.tag}
+          </div>
+        )}
+
+        {/* Availability always occupies the right lane and takes visual priority. */}
+        {(isSoldOut || isPrebook || isLowStock) && (
+          <div className={`absolute right-3 top-3 z-20 max-w-[48%] truncate rounded-md border px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.12em] backdrop-blur-md ${
+            isSoldOut
+              ? 'border-[#D96A62]/40 bg-[#351918]/90 text-[#FF8178]'
+              : 'border-[#C99652]/35 bg-[#261D12]/90 text-[#E0B36E]'
+          }`}>
+            {isSoldOut ? 'Sold out' : isPrebook ? 'Pre-booking' : 'Few remaining'}
           </div>
         )}
       </div>

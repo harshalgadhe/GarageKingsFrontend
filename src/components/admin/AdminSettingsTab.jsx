@@ -99,6 +99,29 @@ export default function AdminSettingsTab({
           </button>
         </div>
       </div>
+
+      <div className="bg-[#141414] border border-white/5 rounded-2xl p-6 space-y-6">
+        <div>
+          <h4 className="text-xs font-black uppercase tracking-wider text-white">Sold-out products</h4>
+          <p className="text-[10px] text-[#888888] mt-0.5">Choose whether sold-out products remain visible in the public Garage and product pages.</p>
+        </div>
+        <div className="flex justify-between items-center gap-4 bg-[#1c1c1c] border border-white/5 rounded-xl px-4 py-3">
+          <div>
+            <span className="text-xs font-bold text-white uppercase tracking-wider block">Show sold-out products</span>
+            <span className="text-[9px] text-[#888888] uppercase mt-0.5">Pre-booking products are unaffected</span>
+          </div>
+          <button
+            onClick={() => handleUpdateGlobalSettings({ showSoldOutProducts: globalSettings.showSoldOutProducts === false })}
+            className={`shrink-0 text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border transition-colors cursor-pointer ${
+              globalSettings.showSoldOutProducts !== false
+                ? 'bg-[#C8AE7D]/10 border-[#C8AE7D]/30 text-[#E1BD65]'
+                : 'bg-white/5 border-white/10 text-[#888888]'
+            }`}
+          >
+            {globalSettings.showSoldOutProducts !== false ? 'Shown' : 'Hidden'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
