@@ -8,18 +8,42 @@ import Home from './pages/Home'
 import Marketplace from './pages/Marketplace'
 import BrandsIndex from './pages/BrandsIndex'
 
+const STALE_CHUNK_RELOAD_KEY = 'gk-stale-chunk-reload'
+
+function lazyWithDeploymentRecovery(importPage) {
+  return lazy(async () => {
+    try {
+      const page = await importPage()
+      sessionStorage.removeItem(STALE_CHUNK_RELOAD_KEY)
+      return page
+    } catch (error) {
+      const message = String(error?.message || error)
+      const staleChunk = /dynamically imported module|module script|importing a module script/i.test(message)
+      const lastReload = Number(sessionStorage.getItem(STALE_CHUNK_RELOAD_KEY) || 0)
+
+      if (staleChunk && Date.now() - lastReload > 60_000) {
+        sessionStorage.setItem(STALE_CHUNK_RELOAD_KEY, String(Date.now()))
+        window.location.reload()
+        return new Promise(() => {})
+      }
+
+      throw error
+    }
+  })
+}
+
 // Lazy-loaded page routes keep the initial JS bundle smaller
 // and defers parsing of heavy admin/account/product pages until needed.
 // Primary navigation destinations ship with the app shell so moving between
 // Home, Brands and Garage never blanks the page while a route chunk downloads.
-const ProductDetail = lazy(() => import('./pages/ProductDetail'))
-const Cart       = lazy(() => import('./pages/Cart'))
-const Account    = lazy(() => import('./pages/Account'))
-const Admin      = lazy(() => import('./pages/Admin'))
-const Help       = lazy(() => import('./pages/Help'))
-const Policies   = lazy(() => import('./pages/Policies'))
-const BrandPage  = lazy(() => import('./pages/BrandPage'))
-const NotFound   = lazy(() => import('./pages/NotFound'))
+const ProductDetail = lazyWithDeploymentRecovery(() => import('./pages/ProductDetail'))
+const Cart       = lazyWithDeploymentRecovery(() => import('./pages/Cart'))
+const Account    = lazyWithDeploymentRecovery(() => import('./pages/Account'))
+const Admin      = lazyWithDeploymentRecovery(() => import('./pages/Admin'))
+const Help       = lazyWithDeploymentRecovery(() => import('./pages/Help'))
+const Policies   = lazyWithDeploymentRecovery(() => import('./pages/Policies'))
+const BrandPage  = lazyWithDeploymentRecovery(() => import('./pages/BrandPage'))
+const NotFound   = lazyWithDeploymentRecovery(() => import('./pages/NotFound'))
 
 /**
  * Dark-themed fallback shown while a lazy chunk loads.

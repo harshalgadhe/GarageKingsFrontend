@@ -85,6 +85,18 @@ window.fetch = async function (resource, config) {
 
 initTelemetry()
 
+// Vite emits this when an open tab references a chunk removed by a newer
+// deployment. Reload once so the browser receives the current asset manifest.
+window.addEventListener('vite:preloadError', (event) => {
+  event.preventDefault()
+  const key = 'gk-stale-chunk-reload'
+  const lastReload = Number(sessionStorage.getItem(key) || 0)
+  if (Date.now() - lastReload > 60_000) {
+    sessionStorage.setItem(key, String(Date.now()))
+    window.location.reload()
+  }
+})
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <App />
