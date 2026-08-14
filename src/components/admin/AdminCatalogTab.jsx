@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Plus, Trash2, RefreshCw, ArrowUpRight, MoreHorizontal, PackageCheck, Pencil, Eye, EyeOff } from 'lucide-react';
+import { Search, Plus, Trash2, RefreshCw, ArrowUpRight, MoreHorizontal, PackageCheck, Pencil } from 'lucide-react';
 import MasterData from '../../pages/admin/MasterData';
 import Pagination from './Pagination';
 
@@ -14,7 +14,6 @@ export default function AdminCatalogTab({
   setInventorySearchQuery,
   filteredCars,
   handleConvertPoToStock,
-  handleToggleProductVisibility,
   handleEditProduct,
   handleDeleteProduct,
   loadingProductId,
@@ -124,13 +123,6 @@ export default function AdminCatalogTab({
                         {(car.isFeatured || car.is_featured) && (
                           <span className="rounded-full border border-[#E1BD65]/25 bg-[#E1BD65]/10 px-2 py-1 text-[8px] font-bold uppercase tracking-[0.12em] text-[#E1BD65]">Featured</span>
                         )}
-                        <span className={`rounded-full border px-2 py-1 text-[8px] font-bold uppercase tracking-[0.12em] ${
-                          car.isPublic === false
-                            ? 'border-zinc-500/25 bg-zinc-500/[0.08] text-zinc-400'
-                            : 'border-sky-500/20 bg-sky-500/[0.08] text-sky-300'
-                        }`}>
-                          {car.isPublic === false ? 'Hidden' : 'Public'}
-                        </span>
                       </div>
                     </div>
                   </div>
@@ -177,15 +169,6 @@ export default function AdminCatalogTab({
                             <PackageCheck size={14} /> Move to stock
                           </button>
                         )}
-                        <button
-                          type="button"
-                          onClick={(event) => { event.stopPropagation(); handleToggleProductVisibility(car); }}
-                          disabled={loadingProductId === car.id}
-                          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-xs font-medium text-[#EEEAE2] transition hover:bg-white/[0.06] disabled:opacity-40"
-                        >
-                          {car.isPublic === false ? <Eye size={14} className="text-emerald-300" /> : <EyeOff size={14} className="text-zinc-400" />}
-                          {car.isPublic === false ? 'Show publicly' : 'Hide publicly'}
-                        </button>
                         <div className="my-1 h-px bg-white/[0.07]" />
                         <button
                           type="button"

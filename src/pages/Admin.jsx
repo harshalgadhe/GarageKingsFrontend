@@ -300,7 +300,6 @@ export default function Admin() {
   const [cmsData, setCmsData] = useState({ sections: [], items: [] });
   const [globalSettings, setGlobalSettings] = useState({
     showPrices: true,
-    showSoldOutProducts: true,
     instagramUrl: 'https://www.instagram.com/garagekingsindia/',
     companyUpiId: 'garagekings@upi',
     upiQrImage: '/upi-qr.png',
@@ -1617,20 +1616,6 @@ export default function Admin() {
     }
   };
 
-  const handleToggleProductVisibility = async (product) => {
-    const nextVisibility = product.isPublic === false;
-    setLoadingProductId(product.id);
-    try {
-      await updateCar(product.id, { isPublic: nextVisibility });
-      await fetchInventory(inventoryPage, inventorySearchQuery);
-      showToast(nextVisibility ? 'Product is now visible publicly.' : 'Product hidden from the public catalog.', 'success');
-    } catch (err) {
-      showToast(`Could not update product visibility: ${err.message}`, 'error');
-    } finally {
-      setLoadingProductId(null);
-    }
-  };
-
   // Orders Actions handlers
   const handleConfirmOrder = async (orderId) => {
     if (!confirm('Verify UPI payment screenshot and confirm this order?')) return;
@@ -1935,7 +1920,6 @@ export default function Admin() {
               setInventorySearchQuery={setInventorySearchQuery}
               filteredCars={filteredCars}
               handleConvertPoToStock={handleConvertPoToStock}
-              handleToggleProductVisibility={handleToggleProductVisibility}
               handleEditProduct={handleEditProduct}
               handleDeleteProduct={handleDeleteProduct}
               loadingProductId={loadingProductId}
