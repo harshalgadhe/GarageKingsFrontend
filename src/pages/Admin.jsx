@@ -300,7 +300,7 @@ export default function Admin() {
   const [cmsData, setCmsData] = useState({ sections: [], items: [] });
   const [globalSettings, setGlobalSettings] = useState({
     showPrices: true,
-    showSoldOutProducts: true,
+    showSoldOutProducts: null,
     instagramUrl: 'https://www.instagram.com/garagekingsindia/',
     companyUpiId: 'garagekings@upi',
     upiQrImage: '/upi-qr.png',
@@ -317,6 +317,8 @@ export default function Admin() {
   const [productForm, setProductForm] = useState({ name: '', brand: '', price: '', scale: '1:64', lane: '', totalStock: 10, availableStock: 10, lockedStock: 0, soldStock: 0, description: '', image: '', category: 'JDM', purchasePrice: '', maxQtyPerCustomer: '', hasLimit: false });
   const [uploadingImage, setUploadingImage] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [settingsLoading, setSettingsLoading] = useState(true);
+  const [settingsError, setSettingsError] = useState('');
 
   // ERP State variables
   const [catalogSubTab, setCatalogSubTab] = useState('products'); // 'products', 'variants', 'lookups'
@@ -991,11 +993,14 @@ export default function Admin() {
   };
 
   const fetchSettings = async () => {
+    setSettingsLoading(true);
+    setSettingsError('');
     try {
-      const res = await fetch(`${API_BASE_URL}/admin/settings`, { credentials: 'include' });
-      if (res.ok) setGlobalSettings(await res.json());
+      setGlobalSettings(await getGlobalSettings());
     } catch (e) {
-      console.error("Error loading settings:", e);
+      setSettingsError(e.message || 'Unable to load visibility settings.');
+    } finally {
+      setSettingsLoading(false);
     }
   };
 
@@ -1782,10 +1787,15 @@ export default function Admin() {
 
   const handleUpdateGlobalSettings = async (updates) => {
     try {
-      await updateGlobalSettings(updates);
-      fetchSettings();
+      setSettingsLoading(true);
+      setSettingsError('');
+      const saved = await updateGlobalSettings(updates);
+      setGlobalSettings(saved);
     } catch (err) {
+      setSettingsError(err.message || 'Unable to save visibility settings.');
       showToast(err.message, "error");
+    } finally {
+      setSettingsLoading(false);
     }
   };
 
@@ -2129,10 +2139,11 @@ export default function Admin() {
           {/* 10. SETTINGS TAB */}
           {adminTab === 'settings' && (
             <AdminSettingsTab
-              dropSettingsForm={dropSettingsForm}
-              setDropSettingsForm={setDropSettingsForm}
               handleUpdateGlobalSettings={handleUpdateGlobalSettings}
               globalSettings={globalSettings}
+              settingsLoading={settingsLoading}
+              settingsError={settingsError}
+              retrySettings={fetchSettings}
             />
           )}
 

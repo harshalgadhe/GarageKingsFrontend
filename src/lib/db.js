@@ -155,16 +155,12 @@ function getAuthHeaders() {
 
 // Global Settings endpoints
 export async function getGlobalSettings() {
-  try {
-    const res = await fetch(`${API_BASE_URL}/settings`, {
-      headers: getAuthHeaders()
-    });
-    if (!res.ok) throw new Error("Failed to fetch settings");
-    return await res.json();
-  } catch (err) {
-    console.error("Error fetching settings:", err);
-    return { showPrices: false };
-  }
+  const res = await fetch(`${API_BASE_URL}/admin/settings`, {
+    headers: getAuthHeaders(),
+    credentials: 'include'
+  });
+  if (!res.ok) throw new Error("Unable to load visibility settings.");
+  return await res.json();
 }
 
 export async function getPublicSettings() {
@@ -179,9 +175,10 @@ export async function getPublicSettings() {
 }
 
 export async function updateGlobalSettings(settings) {
-  const res = await fetch(`${API_BASE_URL}/settings`, {
+  const res = await fetch(`${API_BASE_URL}/admin/settings`, {
     method: 'POST',
     headers: getAuthHeaders(),
+    credentials: 'include',
     body: JSON.stringify(settings)
   });
   if (!res.ok) throw new Error("Failed to save global settings");
