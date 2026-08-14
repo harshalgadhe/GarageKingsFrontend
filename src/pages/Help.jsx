@@ -19,7 +19,7 @@ function FAQItem({ question, children }) {
 }
 
 const enquirySteps = [
-  'Browse the Garage or search by model, brand or reference number',
+  'Browse the Garage or search by model or brand',
   'Open the model page and review its available details',
   'Use WhatsApp or Instagram to ask about the model',
   'Confirm availability, condition, price and arrangements directly',
@@ -58,7 +58,7 @@ export default function Help() {
 
         <section className="grid gap-4 sm:grid-cols-3">
           {[
-            [PackageSearch, 'Start with the collection', 'Search by model, brand or reference number and review the available product information.'],
+            [PackageSearch, 'Start with the collection', 'Search by model or brand and review the available product information.'],
             [MessageCircle, 'Direct confirmation', 'Availability and arrangements are confirmed by a person through official channels.'],
             [ShieldCheck, 'No website payment', 'GarageKings does not request payment or receipt uploads through the public website.'],
           ].map(([Icon, title, copy]) => <div key={title} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5"><Icon size={18} className="text-[#D8BC78]" /><h3 className="mt-4 text-sm font-semibold">{title}</h3><p className="mt-2 text-xs leading-5 text-[#85817A]">{copy}</p></div>)}

@@ -97,7 +97,7 @@ export default function Navigation({ activeSection, theme }) {
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') submitGlobalSearch(event)
                 }}
-                placeholder="Search models or reference number"
+                placeholder="Search models"
                 aria-label="Search all GarageKings models"
                 className="h-11 w-full rounded-full border border-white/[0.09] bg-white/[0.035] pl-11 pr-12 text-[13px] text-[#F4F1EC] shadow-[inset_0_1px_0_rgba(255,255,255,.025)] outline-none transition-all placeholder:text-[#6F6B65] hover:border-white/[0.16] hover:bg-white/[0.045] focus:border-[#C8AE7D]/45 focus:bg-[#0A0908] focus:shadow-[0_0_0_3px_rgba(200,174,125,.07)]"
               />

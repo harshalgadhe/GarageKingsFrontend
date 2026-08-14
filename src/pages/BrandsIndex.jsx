@@ -45,10 +45,10 @@ export default function BrandsIndex() {
           <div className="mt-5 grid gap-8 lg:grid-cols-12 lg:items-end">
             <h1 className="max-w-4xl text-5xl font-semibold leading-[.9] tracking-[-.055em] sm:text-7xl lg:col-span-8 lg:text-8xl">Choose a brand.<br /><span className="text-[#C8AE7D]">See its models.</span></h1>
             <div className="lg:col-span-4">
-              <p className="max-w-md text-sm leading-relaxed text-white/50">Browse every brand available in the GarageKings collection, then search by model or reference number.</p>
+              <p className="max-w-md text-sm leading-relaxed text-white/50">Browse every brand available in the GarageKings collection, then search by brand or model name.</p>
               <form onSubmit={searchCollection} className="relative mt-6 min-w-0 overflow-hidden rounded-full">
                 <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/35" />
-                <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search brands, models or reference number" className="min-w-0 w-full text-ellipsis rounded-full border border-white/10 bg-white/[.035] py-3.5 pl-11 pr-36 text-sm outline-none transition placeholder:text-white/30 focus:border-[#C8AE7D]/55 sm:pr-40" />
+                <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search brands or models" className="min-w-0 w-full text-ellipsis rounded-full border border-white/10 bg-white/[.035] py-3.5 pl-11 pr-36 text-sm outline-none transition placeholder:text-white/30 focus:border-[#C8AE7D]/55 sm:pr-40" />
                 <button className="absolute bottom-1.5 right-1.5 top-1.5 max-w-[8.5rem] shrink-0 rounded-full bg-[#F4F1EC] px-4 text-[10px] font-black uppercase tracking-[.12em] text-black">Search all</button>
               </form>
             </div>

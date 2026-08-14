@@ -16,9 +16,9 @@ function imageUrl(image) {
   return image?.fullUrl || image?.thumbnailUrl || image?.url || image?.src || null
 }
 
-function money(value) {
+function money(value, showZero = false) {
   const number = Number(value)
-  return Number.isFinite(number) && number > 0 ? `₹${number.toLocaleString('en-IN')}` : 'Ask for price'
+  return Number.isFinite(number) && (number > 0 || showZero) ? `₹${number.toLocaleString('en-IN')}` : 'Ask for price'
 }
 
 export default function ProductDetail() {
@@ -114,8 +114,7 @@ export default function ProductDetail() {
   const total = Number(variant.price || product.price || product.sellingPrice || 0)
   const deposit = Number(variant.poAmount || product.poAmount || product.prebookDepositAmount || 0)
   const balance = Math.max(0, total - deposit)
-  const reference = `GK-${String(product.id || '').replace(/-/g, '').slice(0, 8).toUpperCase()}`
-  const condition = product.condition || product.packagingCondition || 'Ask to confirm'
+  const modelId = product.sku || ''
 
   const enquire = () => window.open(
     createProductEnquiryUrl({
@@ -125,7 +124,7 @@ export default function ProductDetail() {
       casingType: variant.casingType || product.casing,
       availability: soldOut ? 'Sold out' : preOrder ? 'Pre-booking' : 'Available',
       isSoldOut: soldOut,
-    }, reference),
+    }, modelId),
     '_blank',
     'noopener,noreferrer',
   )
@@ -134,8 +133,7 @@ export default function ProductDetail() {
     ['Brand', product.brand || 'Not specified'],
     ['Scale', product.scale || 'Not specified'],
     ['Packaging', variant.casingType || product.casing || 'Not specified'],
-    ['Condition', condition],
-    ['Reference number', product.sku || reference],
+    ['Model ID', modelId || 'Not specified'],
     ['Availability', soldOut ? 'Sold out' : preOrder ? 'Pre-booking' : 'Available'],
   ]
 
@@ -144,9 +142,8 @@ export default function ProductDetail() {
       <Navigation activeSection="vault" />
 
       <div className="border-b border-white/[0.08]">
-        <div className="mx-auto flex max-w-[1440px] items-center justify-between px-4 py-4 sm:px-6 lg:px-12">
+        <div className="mx-auto flex max-w-[1440px] items-center px-4 py-4 sm:px-6 lg:px-12">
           <button onClick={() => navigate('/marketplace')} className="flex items-center gap-2 text-xs font-semibold text-[#A1A1A6] transition hover:text-white"><ArrowLeft size={15} /> Back to collection</button>
-          <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-[#6E6E73]">{reference}</span>
         </div>
       </div>
 
@@ -173,7 +170,7 @@ export default function ProductDetail() {
             </div>
 
             {images.length > 1 && (
-              <div className="mt-4 flex gap-3 overflow-x-auto pb-2 lg:absolute lg:left-5 lg:top-1/2 lg:z-30 lg:mt-0 lg:max-h-[calc(100%-40px)] lg:-translate-y-1/2 lg:flex-col lg:overflow-y-auto lg:rounded-2xl lg:bg-black/45 lg:p-2 lg:backdrop-blur-md">
+              <div className="mt-4 flex max-w-full gap-3 overflow-x-auto pb-2 lg:absolute lg:bottom-5 lg:left-5 lg:top-5 lg:z-30 lg:mt-0 lg:w-20 lg:flex-col lg:overflow-x-hidden lg:overflow-y-auto lg:rounded-2xl lg:bg-black/45 lg:p-2 lg:backdrop-blur-md">
                 {images.map((image, index) => (
                   <button key={image} onClick={() => setActiveImage(image)} className={`h-20 w-20 shrink-0 overflow-hidden rounded-2xl border bg-[#101010] p-1.5 transition lg:h-16 lg:w-16 ${activeImage === image ? 'border-[#E1BD65]' : 'border-white/[0.08] opacity-60 hover:opacity-100'}`} aria-label={`View image ${index + 1}`}>
                     <img src={image} alt="" className="h-full w-full object-contain" />
@@ -186,11 +183,6 @@ export default function ProductDetail() {
           <motion.aside initial={reduceMotion ? false : { opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.65, delay: 0.08 }} className="self-start lg:col-span-5 lg:self-center">
             <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#D8BC78]">{product.brand || 'GarageKings'}</div>
             <h1 className="mt-3 text-4xl font-semibold leading-[0.96] tracking-[-0.045em] text-white sm:text-5xl lg:text-5xl">{product.name}</h1>
-
-            <div className="mt-5 flex flex-wrap gap-2 text-[10px] font-semibold text-[#A1A1A6]">
-              <span className="rounded-full border border-white/[0.1] px-3 py-1.5">{product.scale || 'Scale not specified'}</span>
-              <span className="rounded-full border border-white/[0.1] px-3 py-1.5">{variant.casingType || product.casing || 'Packaging not specified'}</span>
-            </div>
 
             <div className="mt-5 grid grid-cols-2 gap-x-6 gap-y-0 border-y border-white/[0.08] py-2">
               {facts.map(([label, value]) => (
@@ -229,24 +221,24 @@ export default function ProductDetail() {
                     </div>
                     <div className="p-3.5">
                       <div className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#8B8984]">Balance · pay later</div>
-                      <div className="mt-1.5 text-lg font-semibold text-[#C9C6C0]">{money(balance)}</div>
+                      <div className="mt-1.5 text-lg font-semibold text-[#C9C6C0]">{money(balance, true)}</div>
                     </div>
                   </div>
                   <p className="mt-2.5 text-[10px] leading-relaxed text-[#77746E]">The PO amount reserves the model and is included in the total price. The balance is payable when the model arrives.</p>
                 </div>
               ) : (
-                <div className="flex items-end justify-between gap-4"><span className="text-sm text-[#A1A1A6]">Listed price</span><strong className="text-3xl font-semibold text-white">{money(total)}</strong></div>
+                <div className="flex items-end justify-between gap-4"><span className="text-lg font-semibold text-[#D2D2D7]">Price</span><strong className="text-3xl font-semibold text-white">{money(total)}</strong></div>
               )}
               <p className="mt-3 text-[10px] leading-relaxed text-[#6E6E73]">Contact us to confirm current availability, price and delivery or collection details.</p>
             </div>
 
             <div className="mt-4">
               <div className="mb-3">
-                <div className="text-sm font-semibold text-[#F5F5F7]">{soldOut ? 'Ask about this model' : 'Interested in this model?'}</div>
-                <p className="mt-1 text-[11px] leading-relaxed text-[#6E6E73]">{soldOut ? 'Ask about a restock, another edition, or a similar model from the collection.' : 'Choose how you would like to contact GarageKings.'}</p>
+                <div className="text-sm font-semibold text-[#F5F5F7]">{soldOut ? 'Looking for this model?' : 'Interested in this model?'}</div>
+                <p className="mt-1 text-[11px] leading-relaxed text-[#6E6E73]">{soldOut ? 'Check whether it may return, or let us help you find a similar model.' : 'Choose how you would like to contact GarageKings.'}</p>
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
-                <button onClick={enquire} className="flex items-center justify-center gap-2 rounded-full border border-white/[0.11] bg-white/[0.045] px-5 py-3 text-xs font-semibold text-[#E8E8ED] transition hover:bg-white hover:text-black"><SiWhatsapp size={18} className="text-[#25D366]" /> {soldOut ? 'Ask about restock' : 'WhatsApp'}</button>
+                <button onClick={enquire} className="flex items-center justify-center gap-2 rounded-full border border-white/[0.11] bg-white/[0.045] px-5 py-3 text-xs font-semibold text-[#E8E8ED] transition hover:bg-white hover:text-black"><SiWhatsapp size={18} className="text-[#25D366]" /> {soldOut ? 'Enquire on WhatsApp' : 'WhatsApp'}</button>
                 <a href={CONTACT.instagramUrl} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 rounded-full border border-white/[0.11] bg-white/[0.045] px-5 py-3 text-xs font-semibold text-[#E8E8ED] transition hover:bg-white hover:text-black"><SiInstagram size={17} className="text-[#E1306C]" /> Instagram</a>
               </div>
             </div>

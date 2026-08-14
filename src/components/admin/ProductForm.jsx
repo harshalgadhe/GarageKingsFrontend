@@ -174,7 +174,8 @@ export default function ProductForm({
       }
       const skuCheck = await checkProductSkuAvailability(currentSku, initialData?.id);
       if (!skuCheck.available) {
-        setValidationError(`SKU "${skuCheck.sku || currentSku}" already exists. Open that product to update it before uploading more images.`);
+        const conflictName = skuCheck.conflict?.productName;
+        setValidationError(`SKU "${skuCheck.sku || currentSku}" is already assigned${conflictName ? ` to ${conflictName}` : ' to another product'}. Open that product to update it before uploading more images.`);
         return;
       }
 
@@ -238,7 +239,8 @@ export default function ProductForm({
     try {
       const skuCheck = await checkProductSkuAvailability(userSku, initialData?.id);
       if (!skuCheck.available) {
-        setValidationError(`SKU "${skuCheck.sku || userSku}" already exists. Open that product to update it, or use a different SKU.`);
+        const conflictName = skuCheck.conflict?.productName;
+        setValidationError(`SKU "${skuCheck.sku || userSku}" is already assigned${conflictName ? ` to ${conflictName}` : ' to another product'}. Open that product to update it, or use a different SKU.`);
         return;
       }
 

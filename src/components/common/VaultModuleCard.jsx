@@ -5,7 +5,7 @@ import { ArrowUpRight, ImageOff } from 'lucide-react';
  * VaultModuleCard: Signature GarageKings collector display card
  * 
  * Replaces generic dark ecommerce cards with an archival vault entry module:
- * - Internal Archive Reference (Vault Index)
+ * - Clear availability state
  * - Controlled Artifact Stage lighting & pedestal grounded shadow
  * - Tabular figures & Collector Plaque metadata
  * - High-contrast state markers for exceptional availability states
@@ -26,10 +26,6 @@ export default function VaultModuleCard({ car, onClick, isPreview = false, theme
   const isPrebook = Boolean(car.isPrebook || car.status === 'Pre-Order');
   const availableCount = Number(car.availableStock ?? car.stock ?? 0);
   const isLowStock = !isSoldOut && availableCount > 0 && availableCount <= 3;
-
-  // Generate deterministic Vault Index Archive ID based on ID hash
-  const shortHash = String(car.id || '').replace(/-/g, '').substring(0, 4).toUpperCase() || '0001';
-  const vaultIndex = `GK-2026-${shortHash}`;
 
   // Formatted price strings with tabular numbers
   const displayPrice = car.price != null && Number(car.price) > 0
@@ -64,12 +60,7 @@ export default function VaultModuleCard({ car, onClick, isPreview = false, theme
     >
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-30 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100" style={{ background: 'radial-gradient(360px circle at var(--pointer-x, 50%) var(--pointer-y, 24%), rgba(216,188,120,.08), transparent 55%)' }} />
       {/* ── 1. ARCHIVE / VAULT INDEX HEADER BAR ── */}
-      <div className="px-4 pt-3.5 pb-2 flex items-center justify-between border-b border-white/[0.04] bg-[#050505]/40 text-[10px] uppercase font-mono tracking-widest text-[#74716B]" style={theme ? { backgroundColor: `${theme.cardStage || theme.background}CC`, borderBottomColor: `${theme.accent}18` } : undefined}>
-        <span className="flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#C8AE7D]/60" />
-          <span className="text-[#A9A49C] font-semibold">{vaultIndex}</span>
-        </span>
-
+      {(isSoldOut || isPrebook || isLowStock) && <div className="px-4 py-2.5 flex items-center justify-end border-b border-white/[0.04] bg-[#050505]/40 text-[10px] uppercase font-mono tracking-widest text-[#74716B]" style={theme ? { backgroundColor: `${theme.cardStage || theme.background}CC`, borderBottomColor: `${theme.accent}18` } : undefined}>
         {/* State Badge */}
         {isSoldOut ? (
           <span className="px-2 py-0.5 rounded-md text-[9px] font-bold tracking-wider bg-[#B85C5C]/15 text-[#B85C5C] border border-[#B85C5C]/30">
@@ -84,7 +75,7 @@ export default function VaultModuleCard({ car, onClick, isPreview = false, theme
             FEW REMAINING
           </span>
         ) : null}
-      </div>
+      </div>}
 
       {/* ── 2. ARTIFACT STAGE (Controlled Radial Spotlight & Museum Presentation) ── */}
       <div className="relative flex h-72 w-full items-center justify-center overflow-hidden border-b border-white/[0.04] bg-[#080808] p-3 sm:h-60 sm:p-5" style={theme ? { backgroundColor: theme.cardStage || theme.background, borderBottomColor: `${theme.accent}18` } : undefined}>
@@ -124,20 +115,10 @@ export default function VaultModuleCard({ car, onClick, isPreview = false, theme
       <div className="p-4 flex flex-col flex-1 justify-between gap-3">
         <div>
           {/* Brand + Metadata Line */}
-          <div className="flex items-center justify-between gap-2 mb-1.5">
+          <div className="mb-1.5">
             <span className="text-[10px] font-black uppercase tracking-widest text-[#C8AE7D]" style={theme ? { color: theme.accent } : undefined}>
               {car.brand || 'Mini GT'}
             </span>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[9px] font-bold uppercase tracking-wider text-[#A9A49C] bg-white/[0.04] border border-white/[0.08] px-2 py-0.5 rounded">
-                {car.scale || '1:64'}
-              </span>
-              {car.casing && (
-                <span className="text-[9px] font-bold uppercase tracking-wider text-[#7E93A8] bg-[#7E93A8]/10 border border-[#7E93A8]/20 px-2 py-0.5 rounded">
-                  {car.casing}
-                </span>
-              )}
-            </div>
           </div>
 
           {/* Title Line */}
@@ -151,7 +132,11 @@ export default function VaultModuleCard({ car, onClick, isPreview = false, theme
               ? car.subtags
               : (Array.isArray(car.tags) ? car.tags : []);
 
-            const validSubtags = rawSubtags.filter(t => t && String(t).trim().toLowerCase() !== 'none').slice(0, 3);
+            const hiddenMetadata = new Set(['blister', 'box', 'acrylic', '1:64', '1:43', '1:24', '1:18', '1:12']);
+            const validSubtags = rawSubtags.filter((t) => {
+              const normalized = String(t || '').trim().toLowerCase();
+              return normalized && normalized !== 'none' && !hiddenMetadata.has(normalized);
+            }).slice(0, 3);
             if (validSubtags.length === 0) return null;
             return (
               <div className="flex flex-wrap gap-1 mb-2">
@@ -177,11 +162,11 @@ export default function VaultModuleCard({ car, onClick, isPreview = false, theme
         <div className="grid gap-3 border-t border-white/[0.06] pt-3">
           <div>
             <div className="text-[8px] font-bold uppercase tracking-widest text-[#74716B] mb-0.5">
-              {isPrebook ? (poDeposit ? 'Pre-order reference' : 'Pre-booking') : 'Listed at'}
+              Price
             </div>
 
             {displayPrice ? (
-              <div className="font-mono text-base font-black text-[#F4F1EC]">
+              <div className="font-mono text-xl font-black text-[#F4F1EC]">
                 {displayPrice}
                 {isPrebook && poDeposit && (
                   <span className="block text-[9px] font-normal text-[#C99652] font-mono mt-0.5">

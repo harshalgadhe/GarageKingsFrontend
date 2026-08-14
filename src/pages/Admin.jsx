@@ -1507,7 +1507,7 @@ export default function Admin() {
             await addCar(cleanItem);
           } catch (err) {
             const errMsg = String(err?.message || '');
-            if (errMsg.includes('products_sku_key') || errMsg.includes('duplicate key') || errMsg.includes('already exists') || errMsg.includes('409') || errMsg.includes('400')) {
+            if (errMsg.includes('SKU') || errMsg.includes('products_sku_key') || errMsg.includes('idx_products_sku_active_normalized')) {
               throw new Error(`SKU ID "${cleanItem.sku}" is already in use by another product. Please enter a unique SKU ID.`);
             }
             throw err;
@@ -1519,7 +1519,7 @@ export default function Admin() {
           await addCar(cleanPayload);
         } catch (err) {
           const errMsg = String(err?.message || '');
-          if (errMsg.includes('products_sku_key') || errMsg.includes('duplicate key') || errMsg.includes('already exists') || errMsg.includes('409') || errMsg.includes('400')) {
+          if (errMsg.includes('SKU') || errMsg.includes('products_sku_key') || errMsg.includes('idx_products_sku_active_normalized')) {
             throw new Error(`SKU ID "${cleanPayload.sku}" is already in use by another product. Please enter a unique SKU ID.`);
           }
           throw err;
