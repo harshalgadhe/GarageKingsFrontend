@@ -1035,6 +1035,8 @@ export default function Admin() {
       }
     } else if (tab === 'receipts') {
       fetchReceiptsList(receiptsPage, receiptsSearch);
+    } else if (tab === 'settings') {
+      fetchSettings();
     } else if (tab === 'notifications') {
       fetchNotifications();
     } else if (tab === 'diagnostics') {
