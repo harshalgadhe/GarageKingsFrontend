@@ -300,6 +300,7 @@ export default function Admin() {
   const [cmsData, setCmsData] = useState({ sections: [], items: [] });
   const [globalSettings, setGlobalSettings] = useState({
     showPrices: true,
+    showSoldOutProducts: true,
     instagramUrl: 'https://www.instagram.com/garagekingsindia/',
     companyUpiId: 'garagekings@upi',
     upiQrImage: '/upi-qr.png',
