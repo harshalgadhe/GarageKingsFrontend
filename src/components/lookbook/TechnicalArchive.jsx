@@ -3,7 +3,7 @@ import { motion, useReducedMotion } from 'framer-motion'
 import { ArrowRight, ImageOff } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { buildBrandTheme } from '../../data/brandThemes'
-import { getBrands, getCars, getHomepageProducts } from '../../lib/db'
+import { getBrands, getCars } from '../../lib/db'
 
 const brandKey = (value) => String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '')
 const canRepresentBrand = (model) => Boolean(
@@ -20,31 +20,31 @@ const TechnicalArchive = forwardRef(function TechnicalArchive(props, ref) {
   const [loading, setLoading] = useState(true)
 
   const featuredBrands = useMemo(() => {
-    const brandsWithLogos = brands
-      .map((brand) => ({
-        ...brand,
-        model: models.find((model) => brandKey(model.brand) === brandKey(brand.name) && canRepresentBrand(model)) || null,
-      }))
-      .filter((brand) => Boolean(brand.logo))
-    const shuffled = [...brandsWithLogos]
-    for (let index = shuffled.length - 1; index > 0; index -= 1) {
-      const swapIndex = Math.floor(Math.random() * (index + 1))
-      ;[shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]]
-    }
-    return shuffled.slice(0, 6)
+    return brands.map((brand) => ({
+      ...brand,
+      model: models.find((model) => brandKey(model.brand) === brandKey(brand.name) && canRepresentBrand(model)) || null,
+    }))
   }, [brands, models])
 
   useEffect(() => {
     let active = true
-    Promise.all([getBrands(), getCars({ page: 1, limit: 100 }), getHomepageProducts()])
-      .then(([records, products, homepage]) => {
+    getBrands()
+      .then(async (records) => {
         if (!active) return
-        setBrands((Array.isArray(records) ? records : []).map(buildBrandTheme).filter(Boolean))
-        setModels([
-          homepage?.featured,
-          ...(homepage?.recent || []),
-          ...(Array.isArray(products) ? products : []),
-        ].filter(canRepresentBrand))
+        const candidates = (Array.isArray(records) ? records : []).map(buildBrandTheme).filter((brand) => brand?.logo)
+        for (let index = candidates.length - 1; index > 0; index -= 1) {
+          const swapIndex = Math.floor(Math.random() * (index + 1))
+          ;[candidates[index], candidates[swapIndex]] = [candidates[swapIndex], candidates[index]]
+        }
+        const cardLimit = window.matchMedia('(min-width: 768px)').matches ? 6 : 3
+        const selectedBrands = candidates.slice(0, cardLimit)
+        setBrands(selectedBrands)
+
+        const latestProducts = await Promise.all(selectedBrands.map(async (brand) => {
+          const products = await getCars({ page: 1, limit: 1, brand: brand.name })
+          return Array.isArray(products) ? products[0] || null : null
+        }))
+        if (active) setModels(latestProducts.filter(canRepresentBrand))
       })
       .catch(() => {})
       .finally(() => { if (active) setLoading(false) })

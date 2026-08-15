@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Edit2, Archive, RefreshCw, Eye, EyeOff, Globe, Sparkles, MoreHorizontal, Search, ImagePlus, Trash2 } from 'lucide-react';
 import { 
   getBrands, createBrand, updateBrand, deleteBrand, uploadImageToStorage,
@@ -8,6 +8,7 @@ import {
 } from '../../lib/db';
 
 export default function MasterData() {
+  const formRef = useRef(null);
   const [activeTab, setActiveTab] = useState('brands'); // 'brands', 'manufacturers', 'scales', 'series'
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -89,7 +90,12 @@ export default function MasterData() {
     });
   };
 
-  const handleEditClick = (item) => {
+  const handleEditClick = (item, e) => {
+    if (e) {
+      if (e.stopPropagation) e.stopPropagation();
+      const detailsElem = e.currentTarget?.closest?.('details');
+      if (detailsElem) detailsElem.removeAttribute('open');
+    }
     setIsEditing(true);
     setIsFormOpen(true);
     setCurrentItem(item);
@@ -109,6 +115,9 @@ export default function MasterData() {
       kicker: item.kicker || '', headline: item.headline || '', description: item.description || '',
       originLabel: item.origin_label || '', styleLabel: item.style_label || ''
     });
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 60);
   };
 
   const handleSubmit = async (e) => {
@@ -272,7 +281,7 @@ export default function MasterData() {
       <div className="space-y-6">
         
         {/* Left Side: Form */}
-        {isFormOpen && <div className="mx-auto w-full max-w-3xl bg-[#111111] border border-white/[0.08] rounded-2xl p-5 sm:p-6 h-fit space-y-4">
+        {isFormOpen && <div ref={formRef} className="mx-auto w-full max-w-3xl bg-[#111111] border border-white/[0.08] rounded-2xl p-5 sm:p-6 h-fit space-y-4 shadow-[0_20px_50px_rgba(0,0,0,0.6)]">
           <div className="flex items-center justify-between">
             <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
               <Sparkles size={14} className="text-[#ff5500]" />
@@ -468,11 +477,18 @@ export default function MasterData() {
                     <strong className="mt-0.5 block font-mono text-xs font-medium text-[#C8C3BB]">{item.display_order ?? 0}</strong>
                   </div>
                   <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={(e) => handleEditClick(item, e)}
+                      className="flex min-h-10 cursor-pointer items-center gap-1.5 rounded-xl border border-[#C8AE7D]/30 bg-[#C8AE7D]/[0.12] px-3.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[#F1D99F] transition hover:bg-[#C8AE7D]/[0.2]"
+                    >
+                      <Edit2 size={13} /> Edit
+                    </button>
                     {item.website && <a href={item.website} target="_blank" rel="noreferrer" onClick={event => event.stopPropagation()} aria-label={`${item.name} website`} className="grid h-10 w-10 place-items-center rounded-xl border border-white/[0.09] bg-white/[0.04] text-[#969189] hover:text-white"><Globe size={14} /></a>}
                     <details className="relative" onClick={event => event.stopPropagation()}>
-                      <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.045] px-4 text-[10px] font-bold uppercase tracking-[0.12em] text-[#E7E2DA] [&::-webkit-details-marker]:hidden"><MoreHorizontal size={15} /> Actions</summary>
+                      <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.045] px-3 text-[10px] font-bold uppercase tracking-[0.12em] text-[#E7E2DA] [&::-webkit-details-marker]:hidden"><MoreHorizontal size={15} /></summary>
                       <div className="absolute bottom-[calc(100%+0.5rem)] right-0 z-20 w-44 overflow-hidden rounded-xl border border-white/[0.11] bg-[#151412] p-1.5 shadow-[0_18px_45px_rgba(0,0,0,.65)]">
-                        <button onClick={() => handleEditClick(item)} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-xs text-[#EEEAE2] hover:bg-white/[0.06]"><Edit2 size={14} className="text-[#C8AE7D]" /> Edit</button>
+                        <button onClick={(e) => handleEditClick(item, e)} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-xs text-[#EEEAE2] hover:bg-white/[0.06]"><Edit2 size={14} className="text-[#C8AE7D]" /> Edit</button>
                         {item.status !== 'Archived' && <button onClick={() => handleArchive(item.id)} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-xs text-red-300 hover:bg-red-500/[0.08]"><Archive size={14} /> Archive</button>}
                       </div>
                     </details>
