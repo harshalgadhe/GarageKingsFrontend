@@ -68,20 +68,19 @@ export default function VaultModuleCard({ car, onClick, isPreview = false, theme
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-30 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100" style={{ background: 'radial-gradient(360px circle at var(--pointer-x, 50%) var(--pointer-y, 24%), rgba(216,188,120,.08), transparent 55%)' }} />
       {/* ── 1. ARCHIVE / VAULT INDEX HEADER BAR ── */}
       {/* ── 2. ARTIFACT STAGE (Controlled Radial Spotlight & Museum Presentation) ── */}
-      <div className="relative flex h-72 w-full items-center justify-center overflow-hidden border-b border-white/[0.04] bg-[#080808] p-3 sm:h-60 sm:p-5" style={theme ? { backgroundColor: theme.cardStage || theme.background, borderBottomColor: `${theme.accent}18` } : undefined}>
-        {hasImage && <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,.08),rgba(5,5,5,.62)),radial-gradient(circle_at_50%_42%,rgba(255,255,255,.11),transparent_54%)]" />}
-        {/* Soft Pedestal Shadow under the model */}
-        <div className="absolute bottom-3 inset-x-12 h-4 rounded-full bg-black/80 blur-md pointer-events-none" />
-
+      <div className="relative flex h-72 w-full items-center justify-center overflow-hidden border-b border-white/[0.04] bg-[#080808] sm:h-60" style={theme ? { backgroundColor: theme.cardStage || theme.background, borderBottomColor: `${theme.accent}18` } : undefined}>
         {hasImage ? (
-          <img
-            src={car.image}
-            alt={`${car.brand || ''} ${car.name || 'Diecast model'}`}
-            loading="lazy"
-            onError={() => setImageFailed(true)}
-            className="pointer-events-none relative z-10 h-full w-full select-none object-contain drop-shadow-[0_22px_30px_rgba(0,0,0,.72)] transition-transform duration-700 ease-[cubic-bezier(.16,1,.3,1)] group-hover:-translate-y-1 group-hover:scale-[1.035]"
-            style={{ WebkitUserDrag: 'none' }}
-          />
+          <>
+            <img
+              src={car.image}
+              alt={`${car.brand || ''} ${car.name || 'Diecast model'}`}
+              loading="lazy"
+              onError={() => setImageFailed(true)}
+              className="pointer-events-none absolute inset-0 h-full w-full select-none object-cover object-center transition-transform duration-700 ease-[cubic-bezier(.16,1,.3,1)] group-hover:scale-[1.055]"
+              style={{ WebkitUserDrag: 'none' }}
+            />
+            <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(0,0,0,.08)_0%,transparent_52%,rgba(0,0,0,.38)_100%)]" />
+          </>
         ) : (
           <div className="relative z-10 flex flex-col items-center text-center">
             <div className="relative grid h-16 w-16 place-items-center rounded-full border border-white/[0.08] bg-white/[0.025] text-[#77736B]">
@@ -95,7 +94,7 @@ export default function VaultModuleCard({ car, onClick, isPreview = false, theme
 
         {/* Curated/rarity labels always occupy the left lane. */}
         {car.tag && !['standard', 'standard edition', 'none', ''].includes(String(car.tag).trim().toLowerCase()) && (
-          <div className="absolute left-3 top-3 z-20 max-w-[46%] truncate rounded-md border border-[#C8AE7D]/30 bg-[#050505]/85 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.12em] text-[#D8BC78] backdrop-blur-md">
+          <div className="absolute left-3 top-3 z-20 max-w-[46%] truncate rounded-md border border-[#E45A50]/40 bg-[#2B1110]/90 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.12em] text-[#FF8178] backdrop-blur-md">
             {car.tag}
           </div>
         )}
@@ -117,13 +116,13 @@ export default function VaultModuleCard({ car, onClick, isPreview = false, theme
         <div>
           {/* Brand + Metadata Line */}
           <div className="mb-1.5">
-            <span className="text-[10px] font-black uppercase tracking-widest text-[#C8AE7D]" style={theme ? { color: theme.accent } : undefined}>
+            <span className="block truncate text-[10px] font-black uppercase tracking-widest text-[#E2665D]" style={theme ? { color: theme.accent } : undefined}>
               {car.brand || 'Mini GT'}
             </span>
           </div>
 
           {/* Title Line */}
-          <h3 className="text-sm font-bold text-[#F4F1EC] leading-snug group-hover:text-[#D8C49A] transition-colors line-clamp-2 mb-1.5">
+          <h3 className="mb-1.5 min-h-[2.5rem] line-clamp-2 break-words text-sm font-bold leading-snug text-[#F4F1EC] transition-colors group-hover:text-[#D8C49A]">
             {car.name || 'Collectible Title'}
           </h3>
 
@@ -140,9 +139,9 @@ export default function VaultModuleCard({ car, onClick, isPreview = false, theme
             }).slice(0, 3);
             if (validSubtags.length === 0) return null;
             return (
-              <div className="flex flex-wrap gap-1 mb-2">
+              <div className="mb-2 flex max-w-full gap-1 overflow-hidden" title={validSubtags.join(', ')}>
                 {validSubtags.map((t, idx) => (
-                  <span key={idx} className="px-1.5 py-0.5 rounded text-[8px] font-semibold uppercase tracking-wider bg-white/[0.03] text-[#A9A49C] border border-white/[0.06]">
+                  <span key={idx} className="max-w-[42%] shrink-0 truncate rounded border border-[#D4473F]/20 bg-[#D4473F]/[0.07] px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wider text-[#DFA09A]">
                     {t}
                   </span>
                 ))}
@@ -152,9 +151,9 @@ export default function VaultModuleCard({ car, onClick, isPreview = false, theme
 
           {/* Human-formatted ETA */}
           {car.customerEta && (
-            <div className="text-[10px] font-semibold text-[#C99652] mt-1 flex items-center gap-1 font-mono">
-              <span className="text-[8px] uppercase tracking-wider text-[#74716B]">EST. ARRIVAL:</span>
-              <span>{car.customerEta}</span>
+            <div className="mt-1 flex min-w-0 items-center gap-1 font-mono text-[10px] font-semibold text-[#D77A72]" title={`Estimated arrival: ${car.customerEta}`}>
+              <span className="shrink-0 text-[8px] uppercase tracking-wider text-[#74716B]">EST. ARRIVAL:</span>
+              <span className="truncate">{car.customerEta}</span>
             </div>
           )}
         </div>
@@ -170,7 +169,7 @@ export default function VaultModuleCard({ car, onClick, isPreview = false, theme
               <div className="font-mono text-xl font-black text-[#F4F1EC]">
                 {displayPrice}
                 {isPrebook && poDeposit && (
-                  <span className="block text-[9px] font-normal text-[#C99652] font-mono mt-0.5">
+                  <span className="mt-0.5 block font-mono text-[9px] font-normal text-[#D77A72]">
                     Deposit: {poDeposit}
                   </span>
                 )}
@@ -180,9 +179,9 @@ export default function VaultModuleCard({ car, onClick, isPreview = false, theme
             )}
           </div>
 
-          <div className="flex min-h-11 w-full items-center justify-between rounded-xl border border-[#D8BC78]/35 bg-[#D8BC78] px-4 py-2.5 text-[#11100E] shadow-[0_10px_28px_rgba(216,188,120,.16)] transition-all duration-200 group-hover:border-[#F2D98E] group-hover:bg-[#F2D98E] group-hover:shadow-[0_14px_34px_rgba(216,188,120,.28)] group-active:scale-[.985]">
+          <div className="flex min-h-11 w-full items-center justify-between rounded-xl border border-[#E45A50]/45 bg-[#B93630] px-4 py-2.5 text-[#FFF8F2] shadow-[0_10px_28px_rgba(185,54,48,.22)] transition-all duration-200 group-hover:border-[#FF7A70]/60 group-hover:bg-[#D4473F] group-hover:shadow-[0_14px_34px_rgba(212,71,63,.32)] group-active:scale-[.985]">
             <span className="text-[10px] font-black uppercase tracking-[.14em]">View details</span>
-            <span className="grid h-6 w-6 place-items-center rounded-full bg-black/10 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"><ArrowUpRight size={14} strokeWidth={2.2} /></span>
+            <span className="grid h-6 w-6 place-items-center rounded-full bg-black/20 ring-1 ring-white/10 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"><ArrowUpRight size={14} strokeWidth={2.2} /></span>
           </div>
         </div>
       </div>

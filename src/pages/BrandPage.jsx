@@ -9,18 +9,6 @@ import { MarketplaceGridSkeleton } from '../components/Skeletons'
 import { getBrands, getCars } from '../lib/db'
 import { buildBrandTheme } from '../data/brandThemes'
 
-function BrandMark({ theme }) {
-  if (theme.logo) {
-    return <img src={theme.logo} alt={`${theme.name} logo`} className={`h-auto w-[72%] max-h-[44%] object-contain drop-shadow-[0_18px_50px_rgba(0,0,0,.35)] ${theme.logoClass || ''}`} />
-  }
-
-  return (
-    <div className={`text-center font-black uppercase leading-[.72] tracking-[-.07em] ${theme.mode === 'neon' ? 'italic' : ''}`} style={{ color: theme.secondary, fontSize: 'clamp(4rem, 10vw, 9rem)', textShadow: `0 0 45px ${theme.accent}50` }}>
-      {theme.name.split(' ').map((word) => <span key={word} className="block">{word}</span>)}
-    </div>
-  )
-}
-
 function BrandPageSkeleton() {
   return (
     <div className="min-h-screen bg-[#050505] pt-16 text-[#F5F5F7]">
@@ -128,12 +116,13 @@ export default function BrandPage() {
           </motion.div>
 
           <motion.div initial={reduceMotion ? false : { opacity: 0, scale: .9 }} animate={{ opacity: 1, scale: 1, rotate: 0 }} transition={{ duration: .85, ease: [0.16, 1, 0.3, 1] }} className="relative hidden xl:col-span-6 xl:block">
-            <div className={`relative mx-auto grid aspect-[4/3] max-w-3xl place-items-center overflow-hidden border border-white/10 bg-white/[.025] ${race || precision || telemetry ? 'rounded-none' : neon ? 'rounded-[4rem_1rem_4rem_1rem]' : 'rounded-[2rem]'}`} style={{ boxShadow: `0 40px 120px ${theme.accent}14` }}>
-              <div className="absolute inset-5 border border-white/[.06]" />
-              <div className="absolute -left-20 top-1/2 h-36 w-[130%] -translate-y-1/2 -rotate-6 opacity-10" style={{ backgroundColor: theme.highlight || theme.accent }} />
-              <div className="absolute inset-0 opacity-40" style={{ backgroundImage: theme.motif }} />
-              <div className="relative z-10 grid h-full w-full place-items-center p-12"><BrandMark theme={theme} /></div>
-              <div className="absolute bottom-6 left-6 text-[9px] font-bold uppercase tracking-[.22em] text-white/35">Brand logo</div>
+            <div className={`relative mx-auto aspect-[4/3] max-w-3xl overflow-hidden border border-white/10 bg-white/[.025] ${race || precision || telemetry ? 'rounded-none' : neon ? 'rounded-[4rem_1rem_4rem_1rem]' : 'rounded-[2rem]'}`} style={{ boxShadow: `0 40px 120px ${theme.accent}14` }}>
+              {(theme.coverImage || theme.logo) ? <img src={theme.coverImage || theme.logo} alt={`${theme.name} brand artwork`} className={`absolute inset-0 h-full w-full object-cover object-center ${!theme.coverImage ? theme.logoClass || '' : ''}`} /> : <div className="absolute inset-0 grid place-items-center text-8xl font-black uppercase tracking-[-.07em] text-white/10">{theme.name}</div>}
+              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,.04)_0%,rgba(0,0,0,.02)_52%,rgba(5,5,5,.82)_100%)]" />
+              <div className="absolute inset-0 opacity-25 mix-blend-color" style={{ backgroundImage: theme.motif }} />
+              {theme.coverImage && theme.logo && <div className="absolute right-6 top-6 z-10 grid min-h-14 min-w-24 max-w-40 place-items-center rounded-2xl border border-white/15 bg-white/[.92] px-4 py-3 shadow-xl"><img src={theme.logo} alt={`${theme.name} logo`} className={`max-h-9 max-w-full object-contain ${theme.logoClass || ''}`} /></div>}
+              <div className="absolute inset-5 border border-white/[.08]" />
+              <div className="absolute bottom-6 left-6 text-[9px] font-bold uppercase tracking-[.22em] text-white/55">{theme.style}</div>
               <div className="absolute bottom-6 right-6 font-mono text-[9px] uppercase tracking-[.18em]" style={{ color: theme.accent }}>{theme.origin}</div>
             </div>
           </motion.div>

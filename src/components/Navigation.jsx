@@ -20,6 +20,12 @@ export default function Navigation({ activeSection, theme }) {
   const [socialOpen, setSocialOpen] = useState(false)
   const [globalSearch, setGlobalSearch] = useState(() => new URLSearchParams(location.search).get('search') || '')
   const [user, setUser] = useState(() => getCurrentUser())
+  const isIndependenceDay = (() => {
+    const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'numeric' }).formatToParts(new Date())
+    const day = Number(parts.find((part) => part.type === 'day')?.value)
+    const month = Number(parts.find((part) => part.type === 'month')?.value)
+    return day === 15 && month === 8
+  })()
 
   useEffect(() => {
     const syncUser = () => setUser(getCurrentUser())
@@ -123,6 +129,13 @@ export default function Navigation({ activeSection, theme }) {
             <span className="pointer-events-none absolute inset-x-2 bottom-0 h-px bg-gradient-to-r from-transparent via-[#C8AE7D]/70 to-transparent" />
           </button>
         </div>
+        {isIndependenceDay && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 flex h-[2px]" title="Independence Day">
+            <span className="flex-1 bg-[#FF9933]/75" />
+            <span className="flex-1 bg-[#F4F1EC]/75" />
+            <span className="flex-1 bg-[#138808]/75" />
+          </div>
+        )}
       </motion.header>
 
       {socialOpen && <button className="fixed inset-0 z-[85] bg-black/20 lg:hidden" onClick={() => setSocialOpen(false)} aria-label="Close social menu" />}

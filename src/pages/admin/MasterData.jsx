@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Archive, RefreshCw, Eye, EyeOff, Globe, Sparkles, MoreHorizontal, Search } from 'lucide-react';
+import { Plus, Edit2, Archive, RefreshCw, Eye, EyeOff, Globe, Sparkles, MoreHorizontal, Search, ImagePlus, Trash2 } from 'lucide-react';
 import { 
-  getBrands, createBrand, updateBrand, deleteBrand,
+  getBrands, createBrand, updateBrand, deleteBrand, uploadImageToStorage,
   getManufacturers, createManufacturer, updateManufacturer, deleteManufacturer,
   getScales, createScale, updateScale, deleteScale,
   getSeries, createSeries, updateSeries, deleteSeries
@@ -25,6 +25,7 @@ export default function MasterData() {
   const [formData, setFormData] = useState({
     name: '',
     logoUrl: '',
+    coverImageUrl: '',
     website: '',
     displayOrder: 0,
     isVisible: true,
@@ -78,6 +79,7 @@ export default function MasterData() {
     setFormData({
       name: '',
       logoUrl: '',
+      coverImageUrl: '',
       website: '',
       displayOrder: 0,
       isVisible: true,
@@ -94,6 +96,7 @@ export default function MasterData() {
     setFormData({
       name: item.name || '',
       logoUrl: item.logo_url || '',
+      coverImageUrl: item.cover_image_url || '',
       website: item.website || '',
       displayOrder: item.display_order ?? 0,
       isVisible: item.is_visible ?? true,
@@ -117,6 +120,7 @@ export default function MasterData() {
       const payload = {
         name: formData.name.trim(),
         logoUrl: formData.logoUrl.trim() || null,
+        coverImageUrl: formData.coverImageUrl.trim() || null,
         website: formData.website.trim() || null,
         displayOrder: Number(formData.displayOrder),
         isVisible: formData.isVisible,
@@ -162,6 +166,24 @@ export default function MasterData() {
       console.error(err);
       setError('Operation failed. Please ensure unique constraints are satisfied.');
     } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleBrandImageUpload = async (event, field) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setIsLoading(true);
+    setError('');
+    try {
+      const url = await uploadImageToStorage(file);
+      if (!url) throw new Error('Upload did not return an image URL.');
+      setFormData(previous => ({ ...previous, [field]: url }));
+    } catch (err) {
+      console.error(err);
+      setError('Image upload failed. Please try again.');
+    } finally {
+      event.target.value = '';
       setIsLoading(false);
     }
   };
@@ -282,15 +304,26 @@ export default function MasterData() {
             {/* Logo and Website for Brands / Manufacturers */}
             {(activeTab === 'brands' || activeTab === 'manufacturers') && (
               <>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">Logo URL (Optional)</label>
-                  <input 
-                    type="text" 
-                    value={formData.logoUrl} 
-                    onChange={e => setFormData(p => ({ ...p, logoUrl: e.target.value }))} 
-                    placeholder="/brand-logos/example.svg or https://..." 
-                    className="w-full bg-[#141414] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ff5500]/40 text-xs" 
-                  />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {[
+                    { field: 'logoUrl', label: 'Brand logo', hint: 'Transparent PNG, WebP or SVG works best', fit: 'object-contain p-4' },
+                    { field: 'coverImageUrl', label: 'Brand cover image', hint: 'Wide product or campaign photograph', fit: 'object-cover' },
+                  ].map(({ field, label, hint, fit }) => (
+                    <div key={field} className="overflow-hidden rounded-xl border border-white/[0.08] bg-black/20">
+                      <div className="relative aspect-[16/9] bg-[#0B0B0B]">
+                        {formData[field] ? <img src={formData[field]} alt="" className={`h-full w-full ${fit}`} /> : <div className="grid h-full place-items-center text-zinc-700"><ImagePlus size={24} /></div>}
+                        {formData[field] && <button type="button" onClick={() => setFormData(previous => ({ ...previous, [field]: '' }))} aria-label={`Remove ${label.toLowerCase()}`} className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full border border-white/10 bg-black/70 text-white/70 backdrop-blur hover:text-red-300"><Trash2 size={13} /></button>}
+                      </div>
+                      <div className="space-y-2 p-3">
+                        <div><div className="text-[10px] font-bold uppercase tracking-widest text-[#C8AE7D]">{label}</div><p className="mt-1 text-[9px] text-[#706C65]">{hint}</p></div>
+                        <label className="flex min-h-9 cursor-pointer items-center justify-center gap-2 rounded-lg border border-white/[0.09] bg-white/[0.04] px-3 text-[9px] font-bold uppercase tracking-wider text-[#E7E2DA] transition hover:bg-white/[0.08]">
+                          <ImagePlus size={13} /> {formData[field] ? 'Replace image' : 'Upload image'}
+                          <input type="file" accept="image/*" className="hidden" disabled={isLoading} onChange={event => handleBrandImageUpload(event, field)} />
+                        </label>
+                        <input type="text" value={formData[field]} onChange={event => setFormData(previous => ({ ...previous, [field]: event.target.value }))} placeholder="Or paste an image URL" className="w-full rounded-lg border border-white/5 bg-[#141414] px-3 py-2 text-[10px] text-white outline-none focus:border-[#C8AE7D]/40" />
+                      </div>
+                    </div>
+                  ))}
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-[#888888] uppercase tracking-widest block">Website (Optional)</label>

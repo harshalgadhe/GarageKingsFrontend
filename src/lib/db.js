@@ -221,19 +221,31 @@ export async function getCars(params = {}) {
   }
 }
 
+let homepageProductsRequest = null;
+let homepageProductsCachedAt = 0;
+
 export async function getHomepageProducts() {
-  try {
-    const res = await fetch(`${API_BASE_URL}/products/homepage`);
-    if (!res.ok) throw new Error('Failed to fetch homepage catalog');
-    const data = await res.json();
-    return {
-      featured: data.featured ? normalizeProductMedia(data.featured) : null,
-      recent: (data.recent || []).map(normalizeProductMedia),
-    };
-  } catch (err) {
-    console.error('Error fetching homepage catalog:', err);
-    return { featured: null, recent: [] };
-  }
+  const cacheIsFresh = homepageProductsRequest && Date.now() - homepageProductsCachedAt < 15_000;
+  if (cacheIsFresh) return homepageProductsRequest;
+
+  homepageProductsCachedAt = Date.now();
+  homepageProductsRequest = (async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/products/homepage`);
+      if (!res.ok) throw new Error('Failed to fetch homepage catalog');
+      const data = await res.json();
+      return {
+        featured: data.featured ? normalizeProductMedia(data.featured) : null,
+        recent: (data.recent || []).map(normalizeProductMedia),
+      };
+    } catch (err) {
+      console.error('Error fetching homepage catalog:', err);
+      homepageProductsCachedAt = 0;
+      return { featured: null, recent: [] };
+    }
+  })();
+
+  return homepageProductsRequest;
 }
 
 export async function getProduct(id) {

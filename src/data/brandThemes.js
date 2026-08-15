@@ -29,6 +29,7 @@ export function buildBrandTheme(brand) {
     name: brand.name,
     slug: brand.slug,
     logo: brand.logo_url || null,
+    coverImage: brand.cover_image_url || null,
     logoClass: brand.logo_treatment === 'invert' ? 'invert' : '',
     origin: brand.origin_label || 'GarageKings collection',
     style: plainBrandCopy(brand.style_label) || 'Scale models',
