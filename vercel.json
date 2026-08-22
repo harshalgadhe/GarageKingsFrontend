@@ -12,6 +12,17 @@
   ],
   "rewrites": [
     {
+      "source": "/product/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(WhatsApp|facebookexternalhit|Facebot|Twitterbot|LinkedInBot|TelegramBot|Slackbot|Discordbot).*"
+        }
+      ],
+      "destination": "/api/product-preview?id=:id"
+    },
+    {
       "source": "/api/:path*",
       "destination": "https://d2ibhhn5bex55q.cloudfront.net/api/:path*"
     },
