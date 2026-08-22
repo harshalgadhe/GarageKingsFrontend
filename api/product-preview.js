@@ -38,11 +38,14 @@ function firstImage(product) {
 function pageHtml(product, id) {
   const canonicalUrl = `${SITE_ORIGIN}/product/${encodeURIComponent(id)}`;
   const productName = product?.name || 'Collectible model';
-  const brand = product?.brand ? `${product.brand} ` : '';
-  const title = `${brand}${productName} | Garage Kings`;
+  const brandName = product?.brand?.trim() || '';
+  const displayName = brandName && !productName.toLowerCase().startsWith(brandName.toLowerCase())
+    ? `${brandName} ${productName}`
+    : productName;
+  const title = `${displayName} | Garage Kings`;
   const modelId = product?.sku ? ` Model ID: ${product.sku}.` : '';
   const description = (product?.description?.trim()
-    || `View ${brand}${productName} in the Garage Kings collection.${modelId}`
+    || `View ${displayName} in the Garage Kings collection.${modelId}`
   ).slice(0, 220);
   const image = firstImage(product);
 
@@ -61,7 +64,7 @@ function pageHtml(product, id) {
     <meta property="og:url" content="${escapeHtml(canonicalUrl)}">
     <meta property="og:image" content="${escapeHtml(image)}">
     <meta property="og:image:secure_url" content="${escapeHtml(image)}">
-    <meta property="og:image:alt" content="${escapeHtml(`${brand}${productName}`)}">
+    <meta property="og:image:alt" content="${escapeHtml(displayName)}">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="${escapeHtml(title)}">
     <meta name="twitter:description" content="${escapeHtml(description)}">
@@ -69,7 +72,7 @@ function pageHtml(product, id) {
   </head>
   <body style="margin:0;background:#090909;color:#f5f5f5;font-family:Arial,sans-serif">
     <main style="max-width:720px;margin:64px auto;padding:24px">
-      <h1>${escapeHtml(`${brand}${productName}`)}</h1>
+      <h1>${escapeHtml(displayName)}</h1>
       <p>${escapeHtml(description)}</p>
       <a href="${escapeHtml(canonicalUrl)}" style="color:#e1bd65">View on Garage Kings</a>
     </main>
