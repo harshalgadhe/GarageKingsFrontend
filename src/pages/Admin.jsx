@@ -1949,6 +1949,7 @@ export default function Admin() {
               variantsTotalPages={variantsTotalPages}
               variantsTotal={variantsTotal}
               setVariantsPage={setVariantsPage}
+              onCatalogChanged={() => fetchInventory(inventoryPage, inventorySearchQuery)}
             />
           )}
 

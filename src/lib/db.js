@@ -303,6 +303,15 @@ export async function checkProductSkuAvailability(sku, excludeId) {
   return await res.json();
 }
 
+export async function getAdminProducts(page = 1, limit = 100, search = '') {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit), search });
+  const res = await fetch(`${API_BASE_URL}/admin/products?${params.toString()}`, {
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw await createApiError(res, 'The catalog could not be loaded.');
+  return await res.json();
+}
+
 export async function updateCar(id, updatedFields) {
   const res = await fetch(`${API_BASE_URL.replace('/api/v1', '')}/api/v1/admin/products/${id}`, {
     method: 'PATCH',
@@ -885,6 +894,14 @@ export async function getSupplierMetrics() {
 // ==========================================
 
 // Brands
+export async function getCatalogLookups() {
+  const res = await fetch(`${API_BASE_URL}/admin/catalog/lookups`, {
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw await createApiError(res, 'Catalog options could not be loaded.');
+  return await res.json();
+}
+
 export async function getBrands(adminMode = false) {
   const path = adminMode ? 'admin/brands' : 'brands';
   const res = await fetch(`${API_BASE_URL}/${path}`, {

@@ -1,7 +1,9 @@
-import React from 'react';
-import { Search, Plus, Trash2, RefreshCw, ArrowUpRight, MoreHorizontal, PackageCheck, Pencil } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { Search, Plus, Trash2, RefreshCw, ArrowUpRight, MoreHorizontal, PackageCheck, Pencil, Download, Upload, FileSpreadsheet, X, CheckCircle2, AlertTriangle } from 'lucide-react';
 import MasterData from '../../pages/admin/MasterData';
 import Pagination from './Pagination';
+import { addCar, getAdminProducts, getCatalogLookups, updateCar } from '../../lib/db';
+import { downloadCatalogTemplate, exportCatalogWorkbook, readCatalogWorkbook } from '../../lib/catalogWorkbook';
 
 export default function AdminCatalogTab({
   catalogSubTab,
@@ -29,8 +31,195 @@ export default function AdminCatalogTab({
   variantsPage,
   variantsTotalPages,
   variantsTotal,
-  setVariantsPage
+  setVariantsPage,
+  onCatalogChanged
 }) {
+  const fileInputRef = useRef(null);
+  const [transferBusy, setTransferBusy] = useState(false);
+  const [importRows, setImportRows] = useState([]);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importResult, setImportResult] = useState(null);
+  const [importMode, setImportMode] = useState('create');
+
+  const getRowErrors = (row) => [
+    ...row.errors,
+    ...(importMode === 'create' && row.existingProduct ? ['Model ID already exists; row will be skipped'] : []),
+  ];
+
+  const changeFields = [
+    ['brand', 'Brand'], ['name', 'Model name'], ['series', 'Series'], ['scale', 'Scale'],
+    ['casingType', 'Packaging'], ['price', 'Price'], ['purchasePrice', 'Purchase price'],
+    ['availableStock', 'Stock'], ['isPrebook', 'Pre-booking'],
+    ['prebookDepositAmount', 'Deposit'], ['arrivalDate', 'Arrival date'],
+    ['releaseDate', 'Release date'], ['customerEta', 'Expected arrival'],
+    ['category', 'Category'], ['tag', 'Rarity'], ['tags', 'Tags'], ['supplier', 'Supplier'],
+    ['maxQtyPerCustomer', 'Maximum per customer'], ['description', 'Description'],
+    ['showOnHomepage', 'Show on homepage'], ['isFeatured', 'Featured'],
+  ];
+
+  const existingValue = (product, key) => {
+    if (!product) return undefined;
+    if (key === 'casingType') return product.casingType ?? product.casing;
+    if (key === 'availableStock') return product.availableStock ?? product.totalStock ?? product.stock;
+    if (key === 'purchasePrice') return product.purchasePrice ?? product.purchase_price;
+    if (key === 'prebookDepositAmount') return product.prebookDepositAmount ?? product.poAmount;
+    return product[key];
+  };
+
+  const comparable = (value) => {
+    if (Array.isArray(value)) return value.map(item => String(item).trim()).filter(Boolean).sort().join(', ');
+    if (value === null || value === undefined || value === '') return '';
+    if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+    if (typeof value === 'number') return String(value);
+    return String(value).trim();
+  };
+
+  const numericFields = new Set(['price', 'purchasePrice', 'availableStock', 'prebookDepositAmount', 'maxQtyPerCustomer']);
+  const comparableFieldValue = (key, value) => {
+    if (numericFields.has(key) && value !== '' && value !== null && value !== undefined) {
+      const numeric = Number(value);
+      return Number.isFinite(numeric) ? String(numeric) : comparable(value);
+    }
+    return comparable(value);
+  };
+
+  const getRowChanges = (row) => changeFields.flatMap(([key, label]) => {
+    if (row.existingProduct && Array.isArray(row.providedFields) && !row.providedFields.includes(key)) return [];
+    const next = comparableFieldValue(key, row.product[key]);
+    if (!row.existingProduct) return next === '' ? [] : [{ key, label, before: '', after: next, isNew: true }];
+    const before = comparableFieldValue(key, existingValue(row.existingProduct, key));
+    return before === next ? [] : [{ key, label, before, after: next, isNew: false }];
+  });
+
+  const getUpdatePayload = (row) => {
+    const provided = new Set(row.providedFields || []);
+    const payload = {};
+    provided.forEach(key => { payload[key] = row.product[key]; });
+    payload.sku = row.product.sku;
+    if (provided.has('price')) payload.sellingPrice = row.product.price;
+    if (provided.has('availableStock')) {
+      payload.stock = row.product.availableStock;
+      payload.totalStock = row.product.availableStock;
+    }
+    if (provided.has('casingType')) payload.casing = row.product.casingType;
+    if (provided.has('tags')) payload.subtags = row.product.tags;
+    if (provided.has('prebookDepositAmount')) payload.poAmount = row.product.prebookDepositAmount;
+    if (provided.has('isPrebook')) payload.status = row.product.isPrebook ? 'Pre-Order' : 'Published';
+    return payload;
+  };
+
+  const isRowReady = (row) => {
+    if (getRowErrors(row).length) return false;
+    return !(importMode === 'update' && row.existingProduct && getRowChanges(row).length === 0);
+  };
+
+  const loadAllProducts = async () => {
+    const first = await getAdminProducts(1, 250, '');
+    const products = [...(first.products || [])];
+    for (let page = 2; page <= Number(first.totalPages || 1); page += 1) {
+      const next = await getAdminProducts(page, 250, '');
+      products.push(...(next.products || []));
+    }
+    return products;
+  };
+
+  const normalizeLookupProduct = (row, lookups) => {
+    const product = { ...row.product };
+    const errors = [...row.errors];
+    const provided = new Set(row.providedFields || []);
+    const rules = [
+      ['brand', 'Brand', lookups.brands], ['scale', 'Scale', lookups.scales],
+      ['casingType', 'Packaging', lookups.casingTypes], ['category', 'Category', lookups.categories],
+      ['series', 'Series', lookups.series], ['tag', 'Rarity', lookups.tags],
+    ];
+    rules.forEach(([key, label, options]) => {
+      if (!provided.has(key) && key !== 'brand') return;
+      if (!Array.isArray(options) || options.length === 0) {
+        errors.push(`${label} options are not configured in Admin settings`);
+        return;
+      }
+      const value = String(product[key] || '').trim();
+      const canonical = options.find(option => option.toLocaleLowerCase() === value.toLocaleLowerCase());
+      if (!canonical) errors.push(`${label} "${value || 'blank'}" is not an available option`);
+      else product[key] = canonical;
+    });
+    if (provided.has('tags')) {
+      if (!Array.isArray(lookups.tags) || lookups.tags.length === 0) errors.push('Tag options are not configured in Admin settings');
+      else {
+        const canonicalTags = [];
+        product.tags.forEach(value => {
+          const canonical = lookups.tags.find(option => option.toLocaleLowerCase() === String(value).toLocaleLowerCase());
+          if (!canonical) errors.push(`Tag "${value}" is not an available option`);
+          else canonicalTags.push(canonical);
+        });
+        product.tags = canonicalTags;
+        product.subtags = canonicalTags;
+      }
+    }
+    return { ...row, product, errors };
+  };
+
+  const handleExport = async () => {
+    setTransferBusy(true);
+    try { await exportCatalogWorkbook(await loadAllProducts()); }
+    finally { setTransferBusy(false); }
+  };
+
+  const handleTemplateDownload = async () => {
+    setTransferBusy(true);
+    try { await downloadCatalogTemplate(await getCatalogLookups()); }
+    finally { setTransferBusy(false); }
+  };
+
+  const handleImportFile = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setTransferBusy(true);
+    setImportResult(null);
+    try {
+      const [rows, existing, lookups] = await Promise.all([readCatalogWorkbook(file), loadAllProducts(), getCatalogLookups()]);
+      const existingBySku = new Map(existing.map(product => [String(product.sku || '').trim().toUpperCase(), product]));
+      const fileSkus = new Set();
+      const reviewed = rows.map(sourceRow => {
+        const row = normalizeLookupProduct(sourceRow, lookups);
+        const errors = [...row.errors];
+        if (row.product.sku && fileSkus.has(row.product.sku)) errors.push('Duplicate Model ID in this workbook');
+        if (row.product.sku) fileSkus.add(row.product.sku);
+        return { ...row, errors, existingProduct: existingBySku.get(row.product.sku) || null };
+      });
+      setImportMode('create');
+      setImportRows(reviewed);
+      setImportOpen(true);
+    } catch (error) {
+      setImportRows([{ rowNumber: '-', product: { sku: '', brand: '', name: '' }, errors: [error.message] }]);
+      setImportOpen(true);
+    } finally { setTransferBusy(false); }
+  };
+
+  const commitImport = async () => {
+    const validRows = importRows.filter(isRowReady);
+    if (!validRows.length) return;
+    setTransferBusy(true);
+    const failures = [];
+    let created = 0;
+    let updated = 0;
+    for (const row of validRows) {
+      try {
+        if (importMode === 'update' && row.existingProduct) {
+          await updateCar(row.existingProduct.id, getUpdatePayload(row));
+          updated += 1;
+        } else {
+          await addCar(row.product);
+          created += 1;
+        }
+      }
+      catch (error) { failures.push({ rowNumber: row.rowNumber, sku: row.product.sku, message: error.message }); }
+    }
+    setImportResult({ created, updated, failures });
+    setTransferBusy(false);
+    if ((created || updated) && typeof onCatalogChanged === 'function') onCatalogChanged();
+  };
   return (
     <div className="space-y-6">
       {/* Sub Navigation */}
@@ -56,7 +245,7 @@ export default function AdminCatalogTab({
       {catalogSubTab === 'products' && (
         <div className="space-y-6">
           {/* Search Bar & Actions */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div className="flex w-full max-w-md items-center gap-2 rounded-xl border border-white/[0.09] bg-[#080808] px-3.5 py-2.5 focus-within:border-[#C8AE7D]/40">
               <Search size={14} className="text-zinc-500" />
               <input
@@ -68,6 +257,17 @@ export default function AdminCatalogTab({
               />
             </div>
 
+            <div className="flex flex-wrap items-center gap-2">
+              <input ref={fileInputRef} type="file" accept=".xlsx" className="hidden" onChange={handleImportFile} />
+              <button type="button" disabled={transferBusy} onClick={handleTemplateDownload} className="flex items-center gap-1.5 rounded-full border border-white/[0.09] px-3.5 py-2.5 text-[10px] font-bold uppercase tracking-wider text-[#A9A49C] transition hover:border-white/[0.17] hover:text-white disabled:opacity-40">
+                <FileSpreadsheet size={14} /> Template
+              </button>
+              <button type="button" disabled={transferBusy} onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 rounded-full border border-white/[0.09] px-3.5 py-2.5 text-[10px] font-bold uppercase tracking-wider text-[#D8D3CB] transition hover:border-[#C8AE7D]/35 disabled:opacity-40">
+                <Upload size={14} /> Import
+              </button>
+              <button type="button" disabled={transferBusy} onClick={handleExport} className="flex items-center gap-1.5 rounded-full border border-white/[0.09] px-3.5 py-2.5 text-[10px] font-bold uppercase tracking-wider text-[#D8D3CB] transition hover:border-[#C8AE7D]/35 disabled:opacity-40">
+                {transferBusy ? <RefreshCw size={14} className="animate-spin" /> : <Download size={14} />} Export
+              </button>
             <button
               onClick={() => {
                 setEditingProductId(null);
@@ -78,7 +278,106 @@ export default function AdminCatalogTab({
             >
               <Plus size={14} /> Add Casting
             </button>
+            </div>
           </div>
+
+          {importOpen && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-black/75 p-3 backdrop-blur-sm md:p-6">
+              <div className="flex h-[calc(100dvh-1.5rem)] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-white/[0.1] bg-[#11110F] shadow-2xl md:h-[min(88vh,780px)]">
+                <div className="flex shrink-0 items-start justify-between border-b border-white/[0.08] p-5 md:p-6">
+                  <div>
+                    <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#C8AE7D]">Catalog import</p>
+                    <h3 className="mt-2 text-xl font-semibold text-[#F4F1EC]">Review catalog changes</h3>
+                    <p className="mt-1 text-xs text-[#858078]">Choose whether existing Model IDs should be skipped or updated. Nothing changes until you confirm.</p>
+                  </div>
+                  <button onClick={() => setImportOpen(false)} className="rounded-full border border-white/[0.09] p-2 text-[#A09B93] hover:text-white"><X size={17} /></button>
+                </div>
+                <div
+                  className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain p-4 [scrollbar-color:#5F5748_#171512] md:p-6"
+                  data-lenis-prevent="true"
+                  data-lenis-prevent-wheel="true"
+                  data-lenis-prevent-touch="true"
+                >
+                  <div className="mb-4 flex flex-col gap-2 rounded-2xl border border-white/[0.08] bg-black/20 p-2 sm:flex-row">
+                    <button type="button" onClick={() => { setImportMode('create'); setImportResult(null); }} className={`flex-1 rounded-xl px-4 py-3 text-left transition ${importMode === 'create' ? 'bg-[#E8E2D8] text-[#111]' : 'text-[#A9A49C] hover:bg-white/[0.04]'}`}>
+                      <strong className="block text-xs">Add new products only</strong>
+                      <span className="mt-1 block text-[10px] opacity-70">Existing Model IDs are skipped.</span>
+                    </button>
+                    <button type="button" onClick={() => { setImportMode('update'); setImportResult(null); }} className={`flex-1 rounded-xl px-4 py-3 text-left transition ${importMode === 'update' ? 'bg-[#E8E2D8] text-[#111]' : 'text-[#A9A49C] hover:bg-white/[0.04]'}`}>
+                      <strong className="block text-xs">Add new and update existing</strong>
+                      <span className="mt-1 block text-[10px] opacity-70">Matches by Model ID and preserves uploaded images.</span>
+                    </button>
+                  </div>
+                  <div className="mb-4 grid grid-cols-3 gap-3">
+                    <div className="rounded-xl border border-white/[0.08] p-3"><span className="text-[9px] uppercase text-[#77736D]">Rows</span><strong className="mt-1 block text-lg text-white">{importRows.length}</strong></div>
+                    <div className="rounded-xl border border-emerald-500/15 bg-emerald-500/[0.04] p-3"><span className="text-[9px] uppercase text-emerald-300/70">Ready</span><strong className="mt-1 block text-lg text-emerald-300">{importRows.filter(isRowReady).length}</strong></div>
+                    <div className="rounded-xl border border-amber-500/15 bg-amber-500/[0.04] p-3"><span className="text-[9px] uppercase text-amber-200/70">Skipped</span><strong className="mt-1 block text-lg text-amber-200">{importRows.filter(row => !isRowReady(row)).length}</strong></div>
+                  </div>
+                  <div className="space-y-2">
+                    {importRows.map((row, index) => {
+                      const rowErrors = getRowErrors(row);
+                      const changes = getRowChanges(row);
+                      const isExistingUpdate = importMode === 'update' && row.existingProduct;
+                      const action = isExistingUpdate ? (changes.length ? `Update product · ${changes.length} changes` : 'No changes') : 'Create product';
+                      return (
+                      <div key={`${row.rowNumber}-${index}`} className="overflow-hidden rounded-xl border border-white/[0.07] bg-black/20">
+                        <div className="grid gap-2 p-3 sm:grid-cols-[1fr_auto] md:grid-cols-[55px_120px_minmax(0,1fr)_90px_minmax(150px,1fr)] md:items-center">
+                          <span className="text-[10px] text-[#66625C]">Row {row.rowNumber}</span>
+                          <span className="font-mono text-xs text-[#D8D3CB]">{row.product.sku || 'No ID'}</span>
+                          <span className="truncate text-xs text-[#EEEAE2]">{row.product.brand} {row.product.name}</span>
+                          <span className="flex items-center gap-1.5 text-[10px] text-[#9B968E]">
+                            <PackageCheck size={13} className="shrink-0 text-[#C8AE7D]" />
+                            Stock
+                            {row.existingProduct && importMode === 'update' ? (
+                              <strong className="font-mono text-[#EEEAE2]">
+                                {existingValue(row.existingProduct, 'availableStock') ?? 0} → {row.product.availableStock ?? 0}
+                              </strong>
+                            ) : (
+                              <strong className="font-mono text-[#EEEAE2]">{row.product.availableStock ?? 0}</strong>
+                            )}
+                          </span>
+                          <span className={`flex items-start gap-1.5 text-[10px] ${rowErrors.length ? 'text-amber-200' : (isExistingUpdate && !changes.length ? 'text-[#77736D]' : 'text-emerald-300')}`}>
+                            {rowErrors.length ? <AlertTriangle size={13} className="shrink-0" /> : <CheckCircle2 size={13} className="shrink-0" />}
+                            {rowErrors.join('; ') || action}
+                          </span>
+                        </div>
+                        {!rowErrors.length && changes.length > 0 && (
+                          <details className="border-t border-white/[0.06]" data-lenis-prevent="true">
+                            <summary className="cursor-pointer list-none px-3 py-2 text-[9px] font-bold uppercase tracking-[0.14em] text-[#B8A77E] hover:bg-white/[0.025] [&::-webkit-details-marker]:hidden">
+                              Preview {changes.length} {changes.length === 1 ? 'change' : 'changes'}
+                            </summary>
+                            <div className="grid gap-px bg-white/[0.05] sm:grid-cols-2">
+                              {changes.map(change => (
+                                <div key={change.key} className="min-w-0 bg-[#0C0C0B] p-3">
+                                  <span className="block text-[8px] font-bold uppercase tracking-[0.14em] text-[#66625C]">{change.label}</span>
+                                  {change.isNew ? (
+                                    <strong className="mt-1 block break-words text-[11px] font-medium text-emerald-200">{change.after}</strong>
+                                  ) : (
+                                    <div className="mt-1 grid grid-cols-[1fr_auto_1fr] items-start gap-2 text-[11px]">
+                                      <span className="break-words text-[#77736D] line-through">{change.before || 'Empty'}</span>
+                                      <span className="text-[#5F5A53]">→</span>
+                                      <strong className="break-words font-medium text-[#F1ECE4]">{change.after || 'Empty'}</strong>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </details>
+                        )}
+                      </div>
+                    );})}
+                  </div>
+                  {importResult && <div className="mt-4 rounded-xl border border-[#C8AE7D]/20 bg-[#C8AE7D]/[0.06] p-4 text-sm text-[#E7E2DA]">Created {importResult.created} and updated {importResult.updated} products. {importResult.failures.length ? `${importResult.failures.length} failed during save.` : 'All valid rows were saved.'}</div>}
+                </div>
+                <div className="flex shrink-0 items-center justify-end gap-3 border-t border-white/[0.08] bg-[#11110F] p-4 md:px-6">
+                  <button onClick={() => setImportOpen(false)} className="rounded-full px-5 py-2.5 text-[10px] font-bold uppercase tracking-wider text-[#9A958D]">Close</button>
+                  <button disabled={transferBusy || importResult || !importRows.some(isRowReady)} onClick={commitImport} className="flex items-center gap-2 rounded-full bg-[#E8E2D8] px-5 py-2.5 text-[10px] font-black uppercase tracking-wider text-[#111] disabled:opacity-40">
+                    {transferBusy && <RefreshCw size={13} className="animate-spin" />} Confirm {importRows.filter(isRowReady).length} rows
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Marketplace-style catalog grid */}
           <div className="grid gap-3 md:grid-cols-2 md:gap-4 2xl:grid-cols-3">
