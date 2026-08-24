@@ -10,12 +10,11 @@ import {
 import { getCurrentUser, signOutCognito } from '../lib/auth';
 import { 
   getCars, getProduct, addCar, updateCar, deleteCar, uploadImageToStorage, getGlobalSettings, updateGlobalSettings,
-  getReceipts, addReceipt, updateReceipt, deleteReceipt,
+  getReceipts, addReceipt, bulkAddReceipts, getReceiptBackup, updateReceipt, deleteReceipt,
   getSuppliers, createSupplier, getSupplierPurchases, getSupplierPurchaseDetails, addSupplierPurchase,
   recordSupplierPayment, receiveSupplierShipment, updateSupplierPurchaseStatus, getSupplierMetrics,
   getDashboardAggregates, getAdminVariants, getInventoryVariantDetails, getCategories, createCategory,
-  updateCategory, deleteCategory, getTags, createTag, updateTag, deleteTag, getExpenseCategories,
-  createExpenseCategory, updateExpenseCategory, deleteExpenseCategory, getPaymentMethods,
+  updateCategory, deleteCategory, getTags, createTag, updateTag, deleteTag, getPaymentMethods,
   createPaymentMethod, updatePaymentMethod, deletePaymentMethod, getShippingProviders,
   createShippingProvider, updateShippingProvider, deleteShippingProvider, getOrderStatuses,
   getPurchaseStatuses, getLogisticsStatuses, getCurrencies, getCountries, getAllInventoryBatches,
@@ -41,7 +40,6 @@ import AdminReceiptsTab from '../components/admin/AdminReceiptsTab';
 import AdminOrdersTab from '../components/admin/AdminOrdersTab';
 import AdminProcurementTab from '../components/admin/AdminProcurementTab';
 import AdminCustomersTab from '../components/admin/AdminCustomersTab';
-import AdminReportsTab from '../components/admin/AdminReportsTab';
 import AdminNotificationsTab from '../components/admin/AdminNotificationsTab';
 import AdminSettingsTab from '../components/admin/AdminSettingsTab';
 import AdminDiagnosticsTab from '../components/admin/AdminDiagnosticsTab';
@@ -829,17 +827,70 @@ export default function Admin() {
     setActiveReceiptPreview(norm);
   };
 
-  const handleExportReceipts = async (options) => {
+  const handleExportReceipts = async (options = {}) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/receipts`, { credentials: 'include' });
-      if (!response.ok) throw new Error('Could not load receipts for export.');
-      const records = await response.json();
+      const search = String(options.search || '').trim();
+      const payload = await getReceiptBackup(search);
+      const records = payload.receipts || [];
       await exportReceiptsWorkbook(records.map(normalizeReceipt), options);
       showToast('Receipt workbook exported.');
     } catch (error) {
       showToast(error.message || 'Receipt export failed.', 'error');
       throw error;
     }
+  };
+
+  const handlePrepareReceiptImport = async (rows) => {
+    const response = await fetch(`${API_BASE_URL}/receipts`, { credentials: 'include' });
+    if (!response.ok) throw new Error('Could not check existing receipt numbers.');
+    const payload = await response.json();
+    const records = Array.isArray(payload) ? payload : (payload.receipts || payload.items || []);
+    const existingByNumber = new Map(records
+      .map(normalizeReceipt)
+      .map(receipt => [String(receipt.receiptNumber || '').trim().toLowerCase(), receipt])
+      .filter(([number]) => Boolean(number)));
+
+    const workbookNumbers = new Set();
+    return rows.map(row => {
+      const receiptNumber = String(row.receipt?.receiptNumber || '').trim().toLowerCase();
+      const existingReceipt = receiptNumber ? existingByNumber.get(receiptNumber) : null;
+      const duplicateInWorkbook = receiptNumber && workbookNumbers.has(receiptNumber);
+      if (receiptNumber) workbookNumbers.add(receiptNumber);
+      const duplicateError = duplicateInWorkbook ? 'Receipt Number is repeated in this workbook; this copy will be skipped.' : null;
+      return {
+        ...row,
+        existingReceipt: existingReceipt || null,
+        errors: [...(row.errors || []), ...(duplicateError ? [duplicateError] : [])],
+      };
+    });
+  };
+
+  const handleImportReceipts = async (rows, updateExisting = false) => {
+    const failures = [];
+    const skipped = [];
+    let created = 0;
+    let updated = 0;
+    const batchSize = 50;
+    for (let start = 0; start < rows.length; start += batchSize) {
+      const batch = rows.slice(start, start + batchSize);
+      try {
+        const result = await bulkAddReceipts(batch.map(row => row.receipt), updateExisting);
+        created += Number(result.created || 0);
+        updated += Number(result.updated || 0);
+        (result.skipped || []).forEach(item => skipped.push({ ...item, rowNumber: batch[item.index]?.rowNumber }));
+        (result.failures || []).forEach(item => failures.push({ ...item, rowNumber: batch[item.index]?.rowNumber }));
+      } catch (error) {
+        batch.forEach(row => failures.push({ receiptNumber: row.receipt?.receiptNumber, rowNumber: row.rowNumber, message: error.message || 'Receipt batch failed.' }));
+      }
+    }
+    await Promise.all([fetchReceiptsList(1, ''), fetchDashboardAggregates()]);
+    setReceiptPage(1);
+    setReceiptsSearch('');
+    showToast(
+      failures.length ? `${created} created, ${updated} updated, ${skipped.length} skipped, ${failures.length} failed.` : `${created} created, ${updated} updated, ${skipped.length} skipped.`,
+      failures.length ? 'error' : 'success'
+    );
+    return { created, updated, skipped, failures };
   };
 
   // Local drop settings form state
@@ -2015,6 +2066,8 @@ export default function Admin() {
               handleDeleteReceipt={handleDeleteReceipt}
               handlePrintReceipt={handlePrintReceipt}
               handleExportReceipts={handleExportReceipts}
+              handlePrepareReceiptImport={handlePrepareReceiptImport}
+              handleImportReceipts={handleImportReceipts}
               activeReceiptPreview={activeReceiptPreview}
               setActiveReceiptPreview={setActiveReceiptPreview}
               cars={cars}
@@ -2106,25 +2159,6 @@ export default function Admin() {
               customersTotalPages={customersTotalPages}
               customersTotal={customersTotal}
               setCustomersPage={setCustomersPage}
-            />
-          )}
-
-          {/* 8. REPORTS TAB */}
-          {adminTab === 'reports' && (
-            <AdminReportsTab
-              reportsSubTab={reportsSubTab}
-              setReportsSubTab={setReportsSubTab}
-              cashAccounts={cashAccounts}
-              setCashAccountForm={setCashAccountForm}
-              setIsAddingCashAccount={setIsAddingCashAccount}
-              setCashAdjustmentForm={setCashAdjustmentForm}
-              setIsAdjustingCash={setIsAdjustingCash}
-              setSettlementForm={setSettlementForm}
-              setIsAddingSettlement={setIsAddingSettlement}
-              splitsData={splitsData}
-              setFounderLedgerForm={setFounderLedgerForm}
-              setIsReimbursing={setIsReimbursing}
-              founderLedger={founderLedger}
             />
           )}
 
@@ -3044,9 +3078,6 @@ export default function Admin() {
           </div>
         </div>
       )}
-
-
-
       {/* Sleek Floating Toast Notification */}
       {toast && (
         <div className="fixed bottom-6 right-6 z-[200] flex items-center gap-3 bg-[#111111] border border-white/5 rounded-2xl px-5 py-4 shadow-2xl animate-fade-in max-w-sm">

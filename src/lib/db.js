@@ -312,6 +312,20 @@ export async function getAdminProducts(page = 1, limit = 100, search = '') {
   return await res.json();
 }
 
+export async function getCatalogBackup() {
+  const res = await fetch(`${API_BASE_URL}/admin/products/backup`, { headers: getAuthHeaders() });
+  if (!res.ok) throw await createApiError(res, 'The complete catalog backup could not be loaded.');
+  return await res.json();
+}
+
+export async function bulkSaveProducts(operations) {
+  const res = await fetch(`${API_BASE_URL}/admin/products/bulk`, {
+    method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ operations })
+  });
+  if (!res.ok) throw await createApiError(res, 'The product batch could not be saved.');
+  return await res.json();
+}
+
 export async function updateCar(id, updatedFields) {
   const res = await fetch(`${API_BASE_URL.replace('/api/v1', '')}/api/v1/admin/products/${id}`, {
     method: 'PATCH',
@@ -902,6 +916,35 @@ export async function getCatalogLookups() {
   return await res.json();
 }
 
+export async function bulkAddReceipts(receipts, updateExisting = false) {
+  const res = await fetch(`${API_BASE_URL}/receipts/bulk`, {
+    method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ receipts, updateExisting })
+  });
+  if (!res.ok) throw await createApiError(res, 'The receipt batch could not be saved.');
+  return await res.json();
+}
+
+export async function getReceiptBackup(search = '') {
+  const params = new URLSearchParams({ search: String(search || '').trim() });
+  const res = await fetch(`${API_BASE_URL}/receipts/backup/all?${params}`, { headers: getAuthHeaders() });
+  if (!res.ok) throw await createApiError(res, 'The complete receipt backup could not be loaded.');
+  return await res.json();
+}
+
+export async function getMasterDataBackup() {
+  const res = await fetch(`${API_BASE_URL}/admin/catalog/master-data/backup`, { headers: getAuthHeaders() });
+  if (!res.ok) throw await createApiError(res, 'Lookup backup data could not be loaded.');
+  return await res.json();
+}
+
+export async function bulkSaveMasterData(operations) {
+  const res = await fetch(`${API_BASE_URL}/admin/catalog/master-data/bulk`, {
+    method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ operations })
+  });
+  if (!res.ok) throw await createApiError(res, 'The lookup batch could not be saved.');
+  return await res.json();
+}
+
 export async function getBrands(adminMode = false) {
   const path = adminMode ? 'admin/brands' : 'brands';
   const res = await fetch(`${API_BASE_URL}/${path}`, {
@@ -1165,41 +1208,6 @@ export async function deleteTag(id) {
     headers: getAuthHeaders()
   });
   if (!res.ok) throw new Error("Failed to delete tag");
-  return await res.json();
-}
-
-// Expense Categories
-export async function getExpenseCategories(adminMode = false) {
-  const res = await fetch(`${API_BASE_URL}/expense-categories?adminMode=${adminMode}`, {
-    headers: getAuthHeaders()
-  });
-  if (!res.ok) throw new Error("Failed to fetch expense categories");
-  return await res.json();
-}
-export async function createExpenseCategory(cat) {
-  const res = await fetch(`${API_BASE_URL}/admin/expense-categories`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify(cat)
-  });
-  if (!res.ok) throw new Error("Failed to create expense category");
-  return await res.json();
-}
-export async function updateExpenseCategory(id, cat) {
-  const res = await fetch(`${API_BASE_URL}/admin/expense-categories/${id}`, {
-    method: 'PATCH',
-    headers: getAuthHeaders(),
-    body: JSON.stringify(cat)
-  });
-  if (!res.ok) throw new Error("Failed to update expense category");
-  return await res.json();
-}
-export async function deleteExpenseCategory(id) {
-  const res = await fetch(`${API_BASE_URL}/admin/expense-categories/${id}`, {
-    method: 'DELETE',
-    headers: getAuthHeaders()
-  });
-  if (!res.ok) throw new Error("Failed to delete expense category");
   return await res.json();
 }
 

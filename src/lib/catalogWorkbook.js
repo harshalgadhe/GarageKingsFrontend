@@ -19,6 +19,8 @@ const COLUMNS = [
   { header: 'Supplier', key: 'supplier', width: 24 },
   { header: 'Maximum per customer', key: 'maxQtyPerCustomer', width: 22 },
   { header: 'Description', key: 'description', width: 48 },
+  { header: 'Cover image URL', key: 'image', width: 52 },
+  { header: 'All image URLs', key: 'images', width: 72 },
   { header: 'Show on homepage', key: 'showOnHomepage', width: 20 },
   { header: 'Featured', key: 'isFeatured', width: 14 },
 ];
@@ -33,6 +35,8 @@ const HEADER_ALIASES = {
   'arrival date': 'arrivalDate', 'release date': 'releaseDate', 'expected arrival': 'customerEta', eta: 'customerEta',
   category: 'category', rarity: 'tag', tag: 'tag', tags: 'tags', supplier: 'supplier',
   'maximum per customer': 'maxQtyPerCustomer', 'max per customer': 'maxQtyPerCustomer', description: 'description',
+  'cover image url': 'image', 'primary image url': 'image', 'image url': 'image', image: 'image',
+  'all image urls': 'images', 'image urls': 'images', images: 'images', 'gallery image urls': 'images',
   'show on homepage': 'showOnHomepage', featured: 'isFeatured',
 };
 
@@ -76,6 +80,8 @@ function normalizeRow(raw, rowNumber) {
   const deposit = Number(raw.prebookDepositAmount ?? 0);
   const isPrebook = booleanValue(raw.isPrebook);
   const tags = listValue(raw.tags);
+  const coverImage = text(raw.image);
+  const imageReferences = Array.from(new Set([coverImage, ...listValue(raw.images)].filter(Boolean)));
   const maxQty = text(raw.maxQtyPerCustomer) ? Number(raw.maxQtyPerCustomer) : null;
   const product = {
     sku: text(raw.sku).toUpperCase(),
@@ -101,8 +107,8 @@ function normalizeRow(raw, rowNumber) {
     supplier: text(raw.supplier),
     maxQtyPerCustomer: maxQty,
     description: text(raw.description),
-    image: null,
-    images: [],
+    image: imageReferences[0] || null,
+    images: imageReferences,
     showOnHomepage: booleanValue(raw.showOnHomepage, true),
     isFeatured: booleanValue(raw.isFeatured, false),
     status: isPrebook ? 'Pre-Order' : 'Published',
@@ -117,6 +123,9 @@ function normalizeRow(raw, rowNumber) {
   if (!Number.isFinite(deposit) || deposit < 0) errors.push('Deposit must be zero or greater');
   if (isPrebook && deposit > price) errors.push('Deposit cannot exceed price');
   if (maxQty !== null && (!Number.isInteger(maxQty) || maxQty < 1)) errors.push('Maximum per customer must be a positive whole number');
+  imageReferences.forEach((url, index) => {
+    if (/^(data:|blob:)/i.test(url)) errors.push(`${index === 0 ? 'Cover image' : `Image ${index + 1}`} must be a persistent S3, CDN or API URL`);
+  });
   return { rowNumber, product, errors, providedFields };
 }
 
@@ -143,6 +152,33 @@ export async function readCatalogWorkbook(file) {
     if (Object.values(raw).every(value => text(value) === '')) return;
     rows.push(normalizeRow(raw, rowNumber));
   });
+  const lookupSheet = workbook.worksheets.find(candidate => candidate.name.toLowerCase() === 'catalog options');
+  const lookupHeaderKeys = {
+    brands: 'brands', scales: 'scales', packaging: 'casingTypes', categories: 'categories',
+    series: 'series', rarity: 'tags', suppliers: 'suppliers',
+  };
+  const embeddedLookups = {};
+  if (lookupSheet) {
+    lookupSheet.getRow(1).eachCell((cell, columnNumber) => {
+      const key = lookupHeaderKeys[text(cell.value).toLowerCase()];
+      if (!key) return;
+      const values = [];
+      for (let row = 2; row <= lookupSheet.rowCount; row += 1) {
+        const value = text(lookupSheet.getCell(row, columnNumber).value);
+        if (value) values.push(value);
+      }
+      embeddedLookups[key] = Array.from(new Set(values));
+    });
+    const rowLookupFields = {
+      brands: 'brand', scales: 'scale', casingTypes: 'casingType', categories: 'category',
+      series: 'series', tags: 'tag', suppliers: 'supplier',
+    };
+    Object.entries(rowLookupFields).forEach(([lookupKey, productKey]) => {
+      const values = [...(embeddedLookups[lookupKey] || []), ...rows.map(row => text(row.product?.[productKey])).filter(Boolean)];
+      embeddedLookups[lookupKey] = Array.from(new Map(values.map(value => [value.toLocaleLowerCase(), value])).values());
+    });
+  }
+  rows.embeddedLookups = embeddedLookups;
   return rows;
 }
 
@@ -159,6 +195,92 @@ function styleSheet(sheet) {
   sheet.getColumn('purchasePrice').numFmt = '₹#,##0.00';
   sheet.getColumn('prebookDepositAmount').numFmt = '₹#,##0.00';
   sheet.getColumn('availableStock').numFmt = '0';
+  sheet.getColumn('description').alignment = { vertical: 'top', wrapText: true };
+  sheet.getColumn('image').alignment = { vertical: 'top', wrapText: true };
+  sheet.getColumn('images').alignment = { vertical: 'top', wrapText: true };
+}
+
+function imageReference(image) {
+  if (typeof image === 'string') return text(image);
+  if (!image || typeof image !== 'object') return '';
+  return text(image.fullUrl || image.url || image.src || image.mediumUrl || image.thumbnailUrl);
+}
+
+function productImageReferences(product) {
+  const references = [product.image];
+  if (Array.isArray(product.images)) references.push(...product.images);
+  const variants = [
+    ...(Array.isArray(product.variants) ? product.variants : []),
+    ...(Array.isArray(product.caseVariants) ? product.caseVariants : []),
+  ];
+  variants.forEach(variant => {
+    references.push(variant?.image);
+    if (Array.isArray(variant?.images)) references.push(...variant.images);
+  });
+  return Array.from(new Set(references.map(imageReference).filter(Boolean)));
+}
+
+function addCatalogOptions(workbook, sheet, lookups = {}, validationEndRow = 1000) {
+  const lookupSheet = workbook.addWorksheet('Catalog options', { state: 'veryHidden' });
+  const lookupColumns = [
+    ['Brands', lookups.brands],
+    ['Scales', lookups.scales],
+    ['Packaging', lookups.casingTypes],
+    ['Categories', lookups.categories],
+    ['Series', lookups.series],
+    ['Rarity', lookups.tags],
+    ['Suppliers', lookups.suppliers],
+    ['Yes or No', ['Yes', 'No']],
+  ];
+
+  const normalizedColumns = lookupColumns.map(([header, values]) => [
+    header,
+    Array.from(new Set((Array.isArray(values) ? values : [])
+      .map(value => text(value))
+      .filter(Boolean)))
+      .sort((left, right) => left.localeCompare(right)),
+  ]);
+
+  normalizedColumns.forEach(([header, values], index) => {
+    const column = index + 1;
+    lookupSheet.getCell(1, column).value = header;
+    values.forEach((value, rowIndex) => { lookupSheet.getCell(rowIndex + 2, column).value = value; });
+  });
+
+  const validationColumns = [
+    ['brand', 1, lookups.brands, false],
+    ['scale', 2, lookups.scales, true],
+    ['casingType', 3, lookups.casingTypes, true],
+    ['category', 4, lookups.categories, true],
+    ['series', 5, lookups.series, true],
+    ['tag', 6, lookups.tags, true],
+    ['supplier', 7, lookups.suppliers, true],
+    ['isPrebook', 8, ['Yes', 'No'], false],
+    ['showOnHomepage', 8, ['Yes', 'No'], false],
+    ['isFeatured', 8, ['Yes', 'No'], false],
+  ];
+
+  validationColumns.forEach(([key, lookupColumn, sourceValues, allowBlank]) => {
+    const values = normalizedColumns[lookupColumn - 1]?.[1] || [];
+    if (!Array.isArray(sourceValues) || values.length === 0) return;
+    const targetColumn = COLUMNS.findIndex(column => column.key === key) + 1;
+    const letter = String.fromCharCode(64 + lookupColumn);
+    const optionRange = `'Catalog options'!$${letter}$2:$${letter}$${values.length + 1}`;
+    for (let row = 2; row <= validationEndRow; row += 1) {
+      sheet.getCell(row, targetColumn).dataValidation = {
+        type: 'list',
+        allowBlank,
+        formulae: [optionRange],
+        showInputMessage: true,
+        promptTitle: COLUMNS[targetColumn - 1].header,
+        prompt: 'Choose a value from the dropdown.',
+        showErrorMessage: true,
+        errorStyle: 'stop',
+        errorTitle: 'Choose an available option',
+        error: `Select ${COLUMNS[targetColumn - 1].header.toLowerCase()} from the dropdown list.`,
+      };
+    }
+  });
 }
 
 async function downloadWorkbook(workbook, filename) {
@@ -182,34 +304,9 @@ export async function downloadCatalogTemplate(lookups = {}) {
     series: lookups.series?.[0] || '', scale: lookups.scales?.[0] || '',
     casingType: lookups.casingTypes?.[0] || '', price: 2200, purchasePrice: 1800,
     availableStock: 1, isPrebook: 'No', prebookDepositAmount: 0,
-    category: lookups.categories?.[0] || '', tags: '', showOnHomepage: 'Yes', isFeatured: 'No'
+    category: lookups.categories?.[0] || '', tags: '', image: '', images: '', showOnHomepage: 'Yes', isFeatured: 'No'
   });
-  const lookupSheet = workbook.addWorksheet('Catalog options', { state: 'veryHidden' });
-  const lookupColumns = [
-    ['Brands', lookups.brands], ['Scales', lookups.scales], ['Packaging', lookups.casingTypes],
-    ['Categories', lookups.categories], ['Series', lookups.series], ['Tags', lookups.tags],
-  ];
-  lookupColumns.forEach(([header, values], index) => {
-    const column = index + 1;
-    lookupSheet.getCell(1, column).value = header;
-    (Array.isArray(values) ? values : []).forEach((value, rowIndex) => { lookupSheet.getCell(rowIndex + 2, column).value = value; });
-  });
-  const validationColumns = [
-    ['brand', 1, lookups.brands], ['scale', 2, lookups.scales], ['casingType', 3, lookups.casingTypes],
-    ['category', 4, lookups.categories], ['series', 5, lookups.series], ['tag', 6, lookups.tags],
-  ];
-  validationColumns.forEach(([key, lookupColumn, values]) => {
-    if (!Array.isArray(values) || values.length === 0) return;
-    const targetColumn = COLUMNS.findIndex(column => column.key === key) + 1;
-    const letter = String.fromCharCode(64 + lookupColumn);
-    for (let row = 2; row <= 1000; row += 1) {
-      sheet.getCell(row, targetColumn).dataValidation = {
-        type: 'list', allowBlank: key !== 'brand',
-        formulae: [`'Catalog options'!$${letter}$2:$${letter}$${values.length + 1}`],
-        showErrorMessage: true, errorTitle: 'Choose a catalog option', error: `Select ${key} from the dropdown list.`,
-      };
-    }
-  });
+  addCatalogOptions(workbook, sheet, lookups);
   const notes = workbook.addWorksheet('Instructions');
   notes.columns = [{ width: 26 }, { width: 90 }];
   notes.addRows([
@@ -217,44 +314,65 @@ export async function downloadCatalogTemplate(lookups = {}) {
     ['Required fields', 'Model ID, Brand and Model name.'],
     ['Model ID', 'Must be unique. Existing products are skipped during import.'],
     ['Boolean fields', 'Use Yes or No for Pre-booking and Show on homepage.'],
-    ['Images', 'Images are intentionally not imported from Excel. Create the product first, then upload one or more images from its Admin edit screen.'],
+    ['Images', 'Cover image URL is the first image shown. Put every persistent S3, CDN or /api/v1/images reference in All image URLs, separated by semicolons or new lines. Binary image files are not embedded.'],
+    ['Backup restore', 'A full catalog export includes image references. Import it in Add new and update existing mode to restore products and reconnect their existing S3 images.'],
     ['Safety', 'The import preview must be confirmed before products are created.'],
   ]);
   notes.getRow(1).font = { bold: true };
   await downloadWorkbook(workbook, 'GarageKings-catalog-import-template.xlsx');
 }
 
-export async function exportCatalogWorkbook(products) {
+export async function buildCatalogWorkbook(products, lookups = {}) {
   const ExcelModule = await import('exceljs');
   const ExcelJS = ExcelModule.default || ExcelModule;
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet('Catalog');
   styleSheet(sheet);
   products.forEach(product => {
-    sheet.addRow({
-    sku: product.sku,
-    brand: product.brand,
-    name: product.name,
-    series: product.series,
-    scale: product.scale,
-    casingType: product.casing || product.casingType,
-    price: Number(product.price ?? product.sellingPrice ?? 0),
-    purchasePrice: Number(product.purchasePrice ?? product.purchase_price ?? 0),
-    availableStock: Number(product.availableStock ?? product.totalStock ?? 0),
-    isPrebook: product.isPrebook ? 'Yes' : 'No',
-    prebookDepositAmount: Number(product.prebookDepositAmount ?? product.poAmount ?? 0),
-    arrivalDate: dateValue(product.arrivalDate),
-    releaseDate: dateValue(product.releaseDate),
-    customerEta: product.customerEta,
-    category: product.category,
-    tag: product.tag || product.grade || product.lane,
-    tags: Array.isArray(product.tags) ? product.tags.join('; ') : product.tags,
-    supplier: product.supplier,
-    maxQtyPerCustomer: product.maxQtyPerCustomer,
-    description: product.description,
-    showOnHomepage: product.showOnHomepage ? 'Yes' : 'No',
-    isFeatured: product.isFeatured ? 'Yes' : 'No',
+    const imageReferences = productImageReferences(product);
+    const row = sheet.addRow({
+      sku: product.sku,
+      brand: product.brand,
+      name: product.name,
+      series: product.series,
+      scale: product.scale,
+      casingType: product.casing || product.casingType,
+      price: Number(product.price ?? product.sellingPrice ?? 0),
+      purchasePrice: Number(product.purchasePrice ?? product.purchase_price ?? 0),
+      availableStock: Number(product.availableStock ?? product.totalStock ?? 0),
+      isPrebook: product.isPrebook ? 'Yes' : 'No',
+      prebookDepositAmount: Number(product.prebookDepositAmount ?? product.poAmount ?? 0),
+      arrivalDate: dateValue(product.arrivalDate),
+      releaseDate: dateValue(product.releaseDate),
+      customerEta: product.customerEta,
+      category: product.category,
+      tag: product.tag || product.grade || product.lane,
+      tags: Array.isArray(product.tags) ? product.tags.join('; ') : product.tags,
+      supplier: product.supplier,
+      maxQtyPerCustomer: product.maxQtyPerCustomer,
+      description: product.description,
+      image: imageReferences[0] || '',
+      images: imageReferences.join('; '),
+      showOnHomepage: product.showOnHomepage ? 'Yes' : 'No',
+      isFeatured: product.isFeatured ? 'Yes' : 'No',
+    });
+    if (imageReferences.length > 1 || product.description) row.height = 44;
   });
-  });
+  const productLookupFields = {
+    brands: 'brand', scales: 'scale', casingTypes: 'casing', categories: 'category',
+    series: 'series', tags: 'tag', suppliers: 'supplier',
+  };
+  const backupLookups = Object.fromEntries(Object.entries(productLookupFields).map(([lookupKey, productKey]) => {
+    const configured = lookups[lookupKey] || [];
+    const used = products.map(product => product[productKey] || (productKey === 'casing' ? product.casingType : '')).filter(Boolean);
+    const values = [...configured, ...used];
+    return [lookupKey, Array.from(new Map(values.map(value => [String(value).trim().toLocaleLowerCase(), String(value).trim()])).values())];
+  }));
+  addCatalogOptions(workbook, sheet, backupLookups, Math.max(1000, products.length + 250));
+  return workbook;
+}
+
+export async function exportCatalogWorkbook(products, lookups = {}) {
+  const workbook = await buildCatalogWorkbook(products, lookups);
   await downloadWorkbook(workbook, `GarageKings-catalog-${new Date().toISOString().slice(0, 10)}.xlsx`);
 }

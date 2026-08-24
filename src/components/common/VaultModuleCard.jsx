@@ -156,6 +156,13 @@ export default function VaultModuleCard({ car, onClick, isPreview = false, theme
               <span className="truncate">{car.customerEta}</span>
             </div>
           )}
+
+          {isPreview && hasStockFigure && (
+            <div className="mt-2 flex items-center justify-between rounded-lg border border-white/[0.08] bg-white/[0.025] px-3 py-2">
+              <span className="text-[8px] font-bold uppercase tracking-[0.14em] text-[#74716B]">Stock quantity</span>
+              <strong className="font-mono text-sm text-[#F4F1EC]">{Math.max(0, calculatedAvailableStock)}</strong>
+            </div>
+          )}
         </div>
 
         {/* ── 4. FINANCIAL FOOTER & ACTION ── */}

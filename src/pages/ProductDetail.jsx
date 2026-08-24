@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { ArrowLeft, ArrowRight, Check } from 'lucide-react'
 import { SiInstagram, SiWhatsapp } from 'react-icons/si'
@@ -31,6 +31,7 @@ export default function ProductDetail() {
   const [error, setError] = useState('')
   const [activeImage, setActiveImage] = useState(null)
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(0)
+  const galleryTouchStart = useRef(null)
 
   useEffect(() => {
     let active = true
@@ -88,6 +89,29 @@ export default function ProductDetail() {
   }, [product, variant])
 
   useEffect(() => setActiveImage(images[0] || null), [images])
+
+  const changeImage = (direction) => {
+    if (images.length < 2) return
+    const currentIndex = Math.max(0, images.indexOf(activeImage))
+    const nextIndex = (currentIndex + direction + images.length) % images.length
+    setActiveImage(images[nextIndex])
+  }
+
+  const handleGalleryTouchStart = (event) => {
+    const touch = event.touches[0]
+    galleryTouchStart.current = touch ? { x: touch.clientX, y: touch.clientY } : null
+  }
+
+  const handleGalleryTouchEnd = (event) => {
+    const start = galleryTouchStart.current
+    const touch = event.changedTouches[0]
+    galleryTouchStart.current = null
+    if (!start || !touch || images.length < 2) return
+    const deltaX = touch.clientX - start.x
+    const deltaY = touch.clientY - start.y
+    if (Math.abs(deltaX) < 48 || Math.abs(deltaX) <= Math.abs(deltaY) * 1.2) return
+    changeImage(deltaX < 0 ? 1 : -1)
+  }
 
   if (loading) {
     return <div className="flex min-h-[100svh] flex-col justify-between bg-black pt-16 text-[#F5F5F7]"><Navigation activeSection="vault" /><ProductDetailSkeleton /><Footer /></div>
@@ -163,9 +187,15 @@ export default function ProductDetail() {
                 </div>
               )}
 
-              <div className="relative z-10 flex min-h-0 w-full flex-1 items-center justify-center">
+              <div
+                className="relative z-10 flex min-h-0 w-full flex-1 touch-pan-y select-none items-center justify-center"
+                onTouchStart={handleGalleryTouchStart}
+                onTouchEnd={handleGalleryTouchEnd}
+              >
                 {activeImage ? (
-                  <img src={activeImage} alt={`${product.brand || ''} ${product.name}`} className="max-h-full max-w-full object-contain drop-shadow-[0_35px_42px_rgba(0,0,0,.72)]" />
+                  <div className="flex max-h-full max-w-full overflow-hidden rounded-[22px] shadow-[0_35px_42px_rgba(0,0,0,.72)]">
+                    <img src={activeImage} alt={`${product.brand || ''} ${product.name}`} draggable="false" className="block max-h-full max-w-full object-contain" />
+                  </div>
                 ) : (
                   <div className="text-center text-sm text-[#6E6E73]">Photography coming soon</div>
                 )}

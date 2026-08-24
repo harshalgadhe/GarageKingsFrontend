@@ -1,12 +1,13 @@
 import React from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Edit2, Trash2, FileText, X, Download } from "lucide-react";
+import { Plus, Edit2, Trash2, FileText, X, Download, Upload, MoreHorizontal, Eye, FileSpreadsheet } from "lucide-react";
 import Pagination from "./Pagination";
 import DebouncedSearchBar from "../common/DebouncedSearchBar";
 import ProductTypeahead from "./ProductTypeahead";
 import SearchableSelect from "./SearchableSelect";
 import { formatReceiptDate } from "../../lib/receiptDates";
+import { downloadReceiptImportTemplate, readReceiptImportWorkbook } from "../../lib/receiptExport";
 
 const FORMAT_NOTES = {
   standard:   "If fulfilment becomes unavailable, the GarageKings team will contact you to discuss the resolution under the terms confirmed for this acquisition.",
@@ -139,6 +140,7 @@ export default function AdminReceiptsTab({
   createDefaultReceiptForm,
   handleSaveReceipt, handleEditReceipt, handleDeleteReceipt, handlePrintReceipt,
   handleExportReceipts,
+  handlePrepareReceiptImport, handleImportReceipts,
   activeReceiptPreview, setActiveReceiptPreview,
   cars = [],
   customersList = [],
@@ -152,6 +154,96 @@ export default function AdminReceiptsTab({
   const [exportGroup, setExportGroup] = React.useState('none');
   const [exportFormat, setExportFormat] = React.useState('all');
   const [isExporting, setIsExporting] = React.useState(false);
+  const [openedReceipt, setOpenedReceipt] = React.useState(null);
+  const [actionReceipt, setActionReceipt] = React.useState(null);
+  const [importRows, setImportRows] = React.useState([]);
+  const [isImportReviewOpen, setIsImportReviewOpen] = React.useState(false);
+  const [isImporting, setIsImporting] = React.useState(false);
+  const [importResult, setImportResult] = React.useState(null);
+  const [importMode, setImportMode] = React.useState('create');
+  const importInputRef = React.useRef(null);
+  const printRequestedRef = React.useRef(false);
+
+  const receiptItemsSummary = items => (items || []).map(item =>
+    `${Number(item.qty || item.quantity || 0)}x ${item.description || item.itemDescription || 'Item'} (₹${Number(item.amount || item.unitAmount || 0).toLocaleString('en-IN')})`
+  ).join(' | ');
+
+  const receiptImportFields = [
+    ['receiptDate', 'Receipt date'], ['customerName', 'Customer'], ['customerPhone', 'Phone'],
+    ['customerEmail', 'Email'], ['customerInsta', 'Instagram'], ['customerAddress', 'Address'],
+    ['formatType', 'Receipt type'], ['items', 'Items'], ['shippingCharges', 'Shipping'],
+    ['taxAmount', 'Tax'], ['advancePaid', 'Amount paid'], ['pendingBalance', 'Pending balance'],
+    ['totalAmount', 'Total'], ['footerNote', 'Footer note'],
+  ];
+
+  const receiptFieldValue = (receipt, key) => {
+    if (key === 'items') return receiptItemsSummary(receipt?.items);
+    if (key === 'receiptDate') return receipt?.dateString || receipt?.receiptDate || receipt?.createdAt || receipt?.created_at || '';
+    const value = receipt?.[key];
+    if (value === null || value === undefined || value === '') return '';
+    if (typeof value === 'number') return String(value);
+    return String(value).trim();
+  };
+
+  const getReceiptImportChanges = row => receiptImportFields.flatMap(([key, label]) => {
+    const after = receiptFieldValue(row.receipt, key);
+    if (!row.existingReceipt) return after ? [{ key, label, before: '', after, isNew: true }] : [];
+    const before = receiptFieldValue(row.existingReceipt, key);
+    return before === after ? [] : [{ key, label, before, after, isNew: false }];
+  });
+
+  const rowBlockingErrors = row => (row.errors || []).filter(error => !(
+    importMode === 'update' && /receipt number already exists/i.test(String(error))
+  ));
+  const isNoChangeRow = row => importMode === 'update' && row.existingReceipt && getReceiptImportChanges(row).length === 0;
+  const readyImportRows = importRows.filter(row =>
+    !rowBlockingErrors(row).length
+    && (importMode === 'update' || !row.existingReceipt)
+    && !isNoChangeRow(row)
+  );
+  const importFailedCount = importRows.filter(row => rowBlockingErrors(row).length).length;
+  const importSkippedCount = importRows.filter(row =>
+    !rowBlockingErrors(row).length
+    && ((importMode === 'create' && row.existingReceipt) || isNoChangeRow(row))
+  ).length;
+
+  const requestPrint = receipt => {
+    printRequestedRef.current = true;
+    setOpenedReceipt(null);
+    setActionReceipt(null);
+    handlePrintReceipt(receipt);
+  };
+
+  const handleReceiptImportFile = async event => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setIsImporting(true);
+    setImportResult(null);
+    try {
+      const parsed = await readReceiptImportWorkbook(file);
+      const reviewed = handlePrepareReceiptImport ? await handlePrepareReceiptImport(parsed) : parsed;
+      setImportRows(reviewed);
+      setIsImportReviewOpen(true);
+    } catch (error) {
+      setImportRows([{ rowNumber: 0, receipt: { receiptNumber: file.name }, errors: [error.message || 'Could not read this workbook.'] }]);
+      setIsImportReviewOpen(true);
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const confirmReceiptImport = async () => {
+    if (!readyImportRows.length || !handleImportReceipts) return;
+    setIsImporting(true);
+    try {
+      const result = await handleImportReceipts(readyImportRows, importMode === 'update');
+      setImportResult(result);
+      if (!result.failures?.length) setIsImportReviewOpen(false);
+    } finally {
+      setIsImporting(false);
+    }
+  };
 
   const handleFormatChange = (formatType) => {
     setReceiptForm(previous => ({
@@ -319,7 +411,8 @@ export default function AdminReceiptsTab({
   };
 
   React.useEffect(() => {
-    if (activeReceiptPreview) {
+    if (activeReceiptPreview && printRequestedRef.current) {
+      printRequestedRef.current = false;
       const timer = setTimeout(() => {
         window.print();
       }, 300);
@@ -346,7 +439,8 @@ export default function AdminReceiptsTab({
           <h3 className="text-base font-black uppercase tracking-wider text-white">Billing &amp; Receipts</h3>
           <p className="text-[10px] text-zinc-400 mt-0.5">Generate, issue, and manage official customer billing receipts</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:gap-3">
+          <input ref={importInputRef} type="file" accept=".xlsx" onChange={handleReceiptImportFile} className="hidden" />
           <DebouncedSearchBar
             className="w-full sm:w-64"
             value={receiptSearch}
@@ -356,15 +450,35 @@ export default function AdminReceiptsTab({
               setReceiptPage(1);
             }}
           />
-          <select aria-label="Receipt export format" value={exportFormat} onChange={event => setExportFormat(event.target.value)} className="hidden lg:block bg-black/50 border border-white/10 rounded-xl px-3 py-2.5 text-[10px] text-zinc-300">
-            <option value="all">All formats</option><option value="standard">Standard</option><option value="prebooking">Pre-Order</option>
-          </select>
-          <select aria-label="Group exported receipts" value={exportGroup} onChange={event => setExportGroup(event.target.value)} className="hidden lg:block bg-black/50 border border-white/10 rounded-xl px-3 py-2.5 text-[10px] text-zinc-300">
-            <option value="none">One sheet</option><option value="format">Group by format</option><option value="month">Group by month</option>
-          </select>
-          <button disabled={isExporting} onClick={async () => { setIsExporting(true); try { await handleExportReceipts({ groupBy: exportGroup, format: exportFormat }); } finally { setIsExporting(false); } }} className="border border-white/10 text-zinc-300 hover:text-white px-3 py-2.5 rounded-xl text-[10px] font-bold uppercase flex items-center gap-1.5 disabled:opacity-50">
-            <Download size={14} /> {isExporting ? 'Exporting' : 'Excel'}
-          </button>
+          <details className="relative">
+            <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-full border border-white/[0.09] bg-white/[0.04] px-4 text-[10px] font-bold uppercase tracking-wider text-[#D8D3CB] transition hover:bg-white/[0.08] [&::-webkit-details-marker]:hidden">
+              {(isExporting || isImporting) ? <span className="h-3.5 w-3.5 animate-spin rounded-full border border-[#C8AE7D]/30 border-t-[#C8AE7D]" /> : <FileSpreadsheet size={14} />} Backup
+            </summary>
+            <div className="absolute right-0 top-[calc(100%+0.5rem)] z-40 w-72 overflow-hidden rounded-xl border border-white/[0.11] bg-[#151412] p-2 shadow-[0_18px_45px_rgba(0,0,0,.65)]">
+              <div className="space-y-2 border-b border-white/[0.07] p-2 pb-3">
+                <label className="block text-[9px] font-bold uppercase tracking-wider text-[#77736D]">Receipt format</label>
+                <select aria-label="Receipt export format" value={exportFormat} onChange={event => setExportFormat(event.target.value)} className="w-full rounded-lg border border-white/[0.09] bg-[#0B0B0A] px-3 py-2 text-xs text-[#DDD8CF] outline-none focus:border-[#C8AE7D]/40">
+                  <option value="all">All formats</option><option value="standard">Standard</option><option value="prebooking">Pre-Order</option>
+                </select>
+                <label className="block pt-1 text-[9px] font-bold uppercase tracking-wider text-[#77736D]">Workbook layout</label>
+                <select aria-label="Group exported receipts" value={exportGroup} onChange={event => setExportGroup(event.target.value)} className="w-full rounded-lg border border-white/[0.09] bg-[#0B0B0A] px-3 py-2 text-xs text-[#DDD8CF] outline-none focus:border-[#C8AE7D]/40">
+                  <option value="none">One sheet</option><option value="format">Group by format</option><option value="month">Group by month</option>
+                </select>
+              </div>
+              <button disabled={isExporting || isImporting} onClick={async event => { event.currentTarget.closest('details')?.removeAttribute('open'); setIsExporting(true); try { await handleExportReceipts({ groupBy: exportGroup, format: exportFormat, search: receiptSearch }); } finally { setIsExporting(false); } }} className="mt-1 flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left text-xs text-[#EEEAE2] hover:bg-white/[0.06] disabled:opacity-40">
+                <Download size={14} className="mt-0.5 shrink-0 text-[#C8AE7D]" />
+                <span><strong className="block font-semibold">Export filtered receipts</strong><small className="mt-0.5 block text-[9px] leading-relaxed text-[#77736D]">Uses the current search, format and grouping selections.</small></span>
+              </button>
+              <button disabled={isExporting || isImporting} onClick={event => { event.currentTarget.closest('details')?.removeAttribute('open'); importInputRef.current?.click(); }} className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left text-xs text-[#EEEAE2] hover:bg-white/[0.06] disabled:opacity-40">
+                <Upload size={14} className="mt-0.5 shrink-0 text-[#C8AE7D]" />
+                <span><strong className="block font-semibold">Import backup</strong><small className="mt-0.5 block text-[9px] leading-relaxed text-[#77736D]">Review receipt data before saving.</small></span>
+              </button>
+              <button disabled={isExporting || isImporting} onClick={event => { event.currentTarget.closest('details')?.removeAttribute('open'); downloadReceiptImportTemplate(); }} className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left text-xs text-[#EEEAE2] hover:bg-white/[0.06] disabled:opacity-40">
+                <FileSpreadsheet size={14} className="mt-0.5 shrink-0 text-[#C8AE7D]" />
+                <span><strong className="block font-semibold">Blank template</strong><small className="mt-0.5 block text-[9px] leading-relaxed text-[#77736D]">Download the supported receipt import format.</small></span>
+              </button>
+            </div>
+          </details>
           <button
             onClick={() => {
               setReceiptForm(createDefaultReceiptForm());
@@ -666,7 +780,7 @@ export default function AdminReceiptsTab({
             ) : paginated.length === 0 ? (
               <tr><td colSpan="6" className="p-8 text-center text-zinc-500 font-mono">No receipts found.</td></tr>
             ) : paginated.map(r => (
-              <tr key={r.id} className={`border-b border-white/5 hover:bg-white/[0.015] ${r.status === 'Voided' ? 'opacity-55' : ''}`}>
+              <tr key={r.id} tabIndex={0} role="button" onClick={() => setOpenedReceipt(r)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') setOpenedReceipt(r); }} className={`cursor-pointer border-b border-white/5 transition hover:bg-white/[0.035] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#ff5500]/60 ${r.status === 'Voided' ? 'opacity-55' : ''}`}>
                 <td className="p-4 font-mono font-bold text-[#ff5500]">{r.receiptNumber}</td>
                 <td className="p-4 text-zinc-400 text-[10px] font-mono">{r.dateString || new Date(r.createdAt || r.created_at).toLocaleDateString("en-IN")}</td>
                 <td className="p-4">
@@ -687,14 +801,9 @@ export default function AdminReceiptsTab({
                 </td>
                 <td className="p-4 text-right font-mono font-bold text-white">&#x20B9;{Number(r.totalAmount || 0).toLocaleString("en-IN", { minimumFractionDigits:2 })}</td>
                 <td className="p-4 text-center">
-                  <div className="flex items-center justify-center gap-2">
-                    <button onClick={() => handlePrintReceipt(r)} title="Print / Save PDF"
-                      className="p-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 transition-colors cursor-pointer"><FileText size={14} /></button>
-                    {r.status !== 'Voided' && <button onClick={() => handleEditReceipt(r)} title="Edit"
-                      className="p-1.5 rounded-lg bg-white/5 border border-white/10 text-zinc-300 hover:bg-white/10 transition-colors cursor-pointer"><Edit2 size={14} /></button>}
-                    <button onClick={() => setDeleteTarget(r)} title="Delete receipt"
-                      className="p-1.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-300 hover:bg-rose-500/20 transition-colors cursor-pointer"><Trash2 size={14} /></button>
-                  </div>
+                  <button onClick={event => { event.stopPropagation(); setActionReceipt(r); }} className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-zinc-300 transition hover:border-white/20 hover:bg-white/[0.08] hover:text-white">
+                    Actions <MoreHorizontal size={14} />
+                  </button>
                 </td>
               </tr>
             ))}
@@ -715,7 +824,7 @@ export default function AdminReceiptsTab({
         ) : paginated.length === 0 ? (
           <div className="p-8 text-center text-zinc-500 font-mono bg-[#141414] border border-white/5 rounded-2xl">No receipts found.</div>
         ) : paginated.map(r => (
-          <div key={r.id} className={`bg-[#141414] border border-white/5 rounded-2xl p-4 space-y-3 ${r.status === 'Voided' ? 'opacity-55' : ''}`}>
+          <article key={r.id} tabIndex={0} role="button" onClick={() => setOpenedReceipt(r)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') setOpenedReceipt(r); }} className={`cursor-pointer bg-[#141414] border border-white/5 rounded-2xl p-4 space-y-3 transition active:scale-[0.995] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#ff5500]/60 ${r.status === 'Voided' ? 'opacity-55' : ''}`}>
             <div className="flex justify-between items-start">
               <div>
                 <span className="font-mono font-bold text-[#ff5500] text-sm block">{r.receiptNumber}</span>
@@ -742,25 +851,112 @@ export default function AdminReceiptsTab({
                 <span className="text-base font-mono font-black text-white">₹{Number(r.totalAmount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
               </div>
 
-              <div className="flex items-center gap-1.5">
-                <button onClick={() => handlePrintReceipt(r)} className="px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold flex items-center gap-1 cursor-pointer">
-                  <FileText size={14} /> Print
-                </button>
-                {r.status !== 'Voided' && <button onClick={() => handleEditReceipt(r)} className="p-2 rounded-lg bg-white/5 border border-white/10 text-zinc-300 cursor-pointer">
-                  <Edit2 size={14} />
-                </button>}
-                <button onClick={() => setDeleteTarget(r)} aria-label={`Delete receipt ${r.receiptNumber}`} className="p-2 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-300 cursor-pointer">
-                  <Trash2 size={14} />
-                </button>
-              </div>
+              <button onClick={event => { event.stopPropagation(); setActionReceipt(r); }} className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.05] px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-zinc-200">
+                Actions <MoreHorizontal size={15} />
+              </button>
             </div>
-          </div>
+          </article>
         ))}
       </div>
 
       {(paginated.length > 0 || receiptsTotal > 0) && (
         <Pagination currentPage={receiptPage} totalPages={totalPages} onPageChange={p => setReceiptPage(p)} totalCount={receiptsTotal || paginated.length} pageSize={pageSize} />
       )}
+
+      <AnimatePresence>
+        {actionReceipt && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[170] flex items-end justify-center bg-black/75 p-3 backdrop-blur-sm sm:items-center" onClick={() => setActionReceipt(null)}>
+            <motion.div initial={{ opacity: 0, y: 24, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 24, scale: 0.98 }} className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#111] p-3 shadow-2xl" onClick={event => event.stopPropagation()}>
+              <div className="flex items-center justify-between border-b border-white/10 px-2 pb-3 pt-1">
+                <div><div className="text-xs font-bold text-white">{actionReceipt.receiptNumber}</div><div className="mt-0.5 text-[10px] text-zinc-500">Choose an action</div></div>
+                <button onClick={() => setActionReceipt(null)} className="rounded-lg p-2 text-zinc-500 hover:bg-white/5 hover:text-white"><X size={16} /></button>
+              </div>
+              <div className="mt-2 grid gap-1">
+                <button onClick={() => { setOpenedReceipt(actionReceipt); setActionReceipt(null); }} className="flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold text-zinc-200 hover:bg-white/[0.06]"><Eye size={17} className="text-[#ff5500]" /> Open receipt</button>
+                <button onClick={() => requestPrint(actionReceipt)} className="flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold text-zinc-200 hover:bg-white/[0.06]"><FileText size={17} className="text-blue-400" /> Print or save PDF</button>
+                {actionReceipt.status !== 'Voided' && <button onClick={() => { handleEditReceipt(actionReceipt); setActionReceipt(null); }} className="flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold text-zinc-200 hover:bg-white/[0.06]"><Edit2 size={17} /> Edit receipt</button>}
+                <button onClick={() => { setDeleteTarget(actionReceipt); setActionReceipt(null); }} className="flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold text-rose-300 hover:bg-rose-500/[0.08]"><Trash2 size={17} /> Delete receipt</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {openedReceipt && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[165] flex items-center justify-center bg-black/85 p-3 backdrop-blur-sm" onClick={() => setOpenedReceipt(null)}>
+            <motion.div initial={{ opacity: 0, y: 16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 16, scale: 0.98 }} className="flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#121212] shadow-2xl" onClick={event => event.stopPropagation()}>
+              <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 sm:px-5">
+                <div><h3 className="text-sm font-bold text-white">Receipt {openedReceipt.receiptNumber}</h3><p className="mt-0.5 text-[10px] text-zinc-500">Click Print when you need a PDF or paper copy.</p></div>
+                <button onClick={() => setOpenedReceipt(null)} className="rounded-lg p-2 text-zinc-400 hover:bg-white/5 hover:text-white"><X size={18} /></button>
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto bg-zinc-900 p-2 sm:p-4"><div className="overflow-hidden rounded-xl"><ReceiptBody r={openedReceipt} /></div></div>
+              <div className="flex flex-wrap justify-end gap-2 border-t border-white/10 p-3 sm:p-4">
+                {openedReceipt.status !== 'Voided' && <button onClick={() => { handleEditReceipt(openedReceipt); setOpenedReceipt(null); }} className="rounded-xl border border-white/10 px-4 py-2.5 text-xs font-bold text-zinc-200 hover:bg-white/5">Edit</button>}
+                <button onClick={() => requestPrint(openedReceipt)} className="inline-flex items-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-xs font-bold text-white hover:bg-blue-600"><FileText size={15} /> Print / Save PDF</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isImportReviewOpen && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[180] flex items-center justify-center bg-black/85 p-3 backdrop-blur-sm" onClick={() => !isImporting && setIsImportReviewOpen(false)}>
+            <motion.div initial={{ opacity: 0, y: 18, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 18, scale: 0.98 }} className="flex h-[calc(100dvh-1.5rem)] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-white/[0.1] bg-[#11110F] shadow-2xl md:h-[min(88vh,780px)]" onClick={event => event.stopPropagation()}>
+              <div className="flex shrink-0 items-start justify-between gap-4 border-b border-white/[0.08] p-4 sm:p-5">
+                <div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#ff6a2b]">Receipt import</p><h3 className="mt-1 text-xl font-semibold text-white">Review receipt changes</h3><p className="mt-1 text-xs leading-5 text-zinc-400">Nothing is saved until you confirm. Choose whether matching receipt numbers should be skipped or updated.</p></div>
+                <button onClick={() => setIsImportReviewOpen(false)} disabled={isImporting} className="rounded-lg p-2 text-zinc-400 hover:bg-white/5 hover:text-white"><X size={18} /></button>
+              </div>
+              <div className="grid shrink-0 grid-cols-4 border-b border-white/10 bg-black/25 text-center">
+                <div className="p-3"><div className="text-lg font-bold text-white">{importRows.length}</div><div className="text-[9px] uppercase tracking-wider text-zinc-500">Receipts</div></div>
+                <div className="border-l border-white/10 p-3"><div className="text-lg font-bold text-emerald-400">{readyImportRows.length}</div><div className="text-[9px] uppercase tracking-wider text-zinc-500">Ready</div></div>
+                <div className="border-l border-white/10 p-3"><div className="text-lg font-bold text-amber-300">{importSkippedCount}</div><div className="text-[9px] uppercase tracking-wider text-zinc-500">Skipped</div></div>
+                <div className="border-l border-white/10 p-3"><div className="text-lg font-bold text-rose-300">{importFailedCount}</div><div className="text-[9px] uppercase tracking-wider text-zinc-500">Failed</div></div>
+              </div>
+              <div className="grid shrink-0 gap-2 border-b border-white/10 bg-black/15 p-3 sm:grid-cols-2 sm:px-5">
+                <button type="button" onClick={() => setImportMode('create')} className={`rounded-xl border p-3 text-left transition ${importMode === 'create' ? 'border-[#ff6a2b]/50 bg-[#ff6a2b]/10 text-white' : 'border-white/10 text-zinc-400 hover:border-white/20'}`}>
+                  <strong className="block text-xs">Add new receipts only</strong><span className="mt-1 block text-[10px] opacity-70">Existing receipt numbers are skipped.</span>
+                </button>
+                <button type="button" onClick={() => setImportMode('update')} className={`rounded-xl border p-3 text-left transition ${importMode === 'update' ? 'border-[#ff6a2b]/50 bg-[#ff6a2b]/10 text-white' : 'border-white/10 text-zinc-400 hover:border-white/20'}`}>
+                  <strong className="block text-xs">Add new and update existing</strong><span className="mt-1 block text-[10px] opacity-70">Matches by receipt number and keeps the existing receipt ID.</span>
+                </button>
+              </div>
+              <div className="min-h-0 flex-1 touch-pan-y space-y-2 overflow-y-auto overscroll-contain p-3 [scrollbar-color:#5F5748_#171512] sm:p-5" data-lenis-prevent="true" data-lenis-prevent-wheel="true" data-lenis-prevent-touch="true">
+                {importRows.map((row, index) => {
+                  const receipt = row.receipt || {};
+                  const changes = getReceiptImportChanges(row);
+                  const blockingErrors = rowBlockingErrors(row);
+                  const noChanges = isNoChangeRow(row);
+                  return <div key={`${receipt.receiptNumber}-${index}`} className={`overflow-hidden rounded-xl border ${blockingErrors.length ? 'border-rose-400/20 bg-rose-500/[0.05]' : 'border-white/10 bg-white/[0.025]'}`}>
+                    <div className="flex flex-wrap items-start justify-between gap-3 p-4"><div><div className="font-mono text-xs font-bold text-[#ff6a2b]">{receipt.receiptNumber || `Row ${row.rowNumber}`}</div><div className="mt-1 text-sm font-semibold text-white">{receipt.customerName || 'Customer missing'}</div><div className="mt-1 text-[11px] text-zinc-500">{receipt.items?.length || 0} item{receipt.items?.length === 1 ? '' : 's'} · ₹{Number(receipt.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div></div><span className={`rounded-full px-2.5 py-1 text-[9px] font-bold uppercase ${blockingErrors.length ? 'bg-rose-400/10 text-rose-300' : (noChanges || row.existingReceipt && importMode === 'create') ? 'bg-amber-400/10 text-amber-200' : 'bg-emerald-400/10 text-emerald-300'}`}>{blockingErrors.length ? 'Failed' : noChanges ? 'No changes' : row.existingReceipt && importMode === 'create' ? 'Skipped' : row.existingReceipt ? 'Update' : 'New'}</span></div>
+                    {blockingErrors.length > 0 && <ul className="mt-3 space-y-1 border-t border-rose-400/10 pt-3 text-[11px] text-rose-200">{blockingErrors.map(error => <li key={error}>{error}</li>)}</ul>}
+                    {changes.length > 0 && <details className="border-t border-white/[0.07]" data-lenis-prevent="true">
+                      <summary className="cursor-pointer list-none px-4 py-3 text-[9px] font-bold uppercase tracking-[0.14em] text-[#B8A77E] hover:bg-white/[0.025] [&::-webkit-details-marker]:hidden">Preview {changes.length} {changes.length === 1 ? 'change' : 'changes'}</summary>
+                      <div className="grid gap-px bg-white/[0.05] sm:grid-cols-2">
+                        {changes.map(change => <div key={change.key} className="min-w-0 bg-[#0C0C0B] p-3">
+                          <span className="block text-[8px] font-bold uppercase tracking-[0.14em] text-[#66625C]">{change.label}</span>
+                          {change.isNew ? <strong className="mt-1 block break-words text-[11px] font-medium text-emerald-200">{change.after}</strong> : <div className="mt-1 grid grid-cols-[1fr_auto_1fr] items-start gap-2 text-[11px]"><span className="break-words text-[#77736D] line-through">{change.before || 'Empty'}</span><span className="text-[#5F5A53]">→</span><strong className="break-words font-medium text-[#F1ECE4]">{change.after || 'Empty'}</strong></div>}
+                        </div>)}
+                      </div>
+                    </details>}
+                  </div>;
+                })}
+                {importResult && <div className={`rounded-xl border p-4 text-xs ${importResult.failures?.length ? 'border-rose-400/20 bg-rose-400/[0.05] text-rose-100' : 'border-emerald-400/20 bg-emerald-400/[0.05] text-emerald-100'}`}>
+                  <strong className="block text-sm">Import result</strong>
+                  <p className="mt-1 text-[11px] opacity-80">{importResult.created || 0} created, {importResult.updated || 0} updated, {importResult.skipped?.length || 0} skipped, {importResult.failures?.length || 0} failed.</p>
+                  {importResult.skipped?.length > 0 && <div className="mt-3 space-y-1 border-t border-white/10 pt-3 text-amber-100">{importResult.skipped.map((item, index) => <div key={`${item.receiptNumber}-${index}`}>Row {item.rowNumber || '?'} · {item.receiptNumber || 'No number'}: {item.reason || 'Duplicate receipt.'}</div>)}</div>}
+                  {importResult.failures?.length > 0 && <div className="mt-3 space-y-1 border-t border-white/10 pt-3">{importResult.failures.map((failure, index) => <div key={`${failure.receiptNumber}-${index}`}>Row {failure.rowNumber || '?'} · {failure.receiptNumber || 'No number'}: {failure.message || 'Unknown save error.'}</div>)}</div>}
+                </div>}
+              </div>
+              <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-white/10 bg-[#11110F] p-4 sm:px-5">
+                <button onClick={downloadReceiptImportTemplate} className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 hover:text-white">Download template</button>
+                <div className="flex gap-2"><button onClick={() => setIsImportReviewOpen(false)} disabled={isImporting} className="rounded-xl border border-white/10 px-4 py-2.5 text-xs font-bold text-zinc-300">Cancel</button><button onClick={confirmReceiptImport} disabled={isImporting || !readyImportRows.length} className="rounded-xl bg-[#ff5500] px-4 py-2.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40">{isImporting ? 'Importing...' : `Import ${readyImportRows.length}`}</button></div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {deleteTarget && (

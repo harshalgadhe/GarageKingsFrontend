@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Search, Plus, Trash2, RefreshCw, ArrowUpRight, MoreHorizontal, PackageCheck, Pencil, Download, Upload, FileSpreadsheet, X, CheckCircle2, AlertTriangle } from 'lucide-react';
 import MasterData from '../../pages/admin/MasterData';
 import Pagination from './Pagination';
-import { addCar, getAdminProducts, getCatalogLookups, updateCar } from '../../lib/db';
+import { bulkSaveProducts, getAdminProducts, getCatalogBackup, getCatalogLookups } from '../../lib/db';
 import { downloadCatalogTemplate, exportCatalogWorkbook, readCatalogWorkbook } from '../../lib/catalogWorkbook';
 
 export default function AdminCatalogTab({
@@ -32,7 +32,7 @@ export default function AdminCatalogTab({
   variantsTotalPages,
   variantsTotal,
   setVariantsPage,
-  onCatalogChanged
+  onCatalogChanged,
 }) {
   const fileInputRef = useRef(null);
   const [transferBusy, setTransferBusy] = useState(false);
@@ -54,6 +54,7 @@ export default function AdminCatalogTab({
     ['releaseDate', 'Release date'], ['customerEta', 'Expected arrival'],
     ['category', 'Category'], ['tag', 'Rarity'], ['tags', 'Tags'], ['supplier', 'Supplier'],
     ['maxQtyPerCustomer', 'Maximum per customer'], ['description', 'Description'],
+    ['image', 'Cover image URL'], ['images', 'All image URLs'],
     ['showOnHomepage', 'Show on homepage'], ['isFeatured', 'Featured'],
   ];
 
@@ -63,6 +64,11 @@ export default function AdminCatalogTab({
     if (key === 'availableStock') return product.availableStock ?? product.totalStock ?? product.stock;
     if (key === 'purchasePrice') return product.purchasePrice ?? product.purchase_price;
     if (key === 'prebookDepositAmount') return product.prebookDepositAmount ?? product.poAmount;
+    if (key === 'image') return product.image ?? product.images?.[0];
+    if (key === 'images') {
+      const entries = Array.isArray(product.images) ? product.images : [];
+      return entries.map(item => typeof item === 'string' ? item : (item?.fullUrl || item?.url || item?.src || item?.mediumUrl || item?.thumbnailUrl)).filter(Boolean);
+    }
     return product[key];
   };
 
@@ -83,12 +89,37 @@ export default function AdminCatalogTab({
     return comparable(value);
   };
 
+  const displayFieldValue = (key, value) => {
+    if (key === 'images') {
+      const references = Array.isArray(value) ? value.filter(Boolean) : [];
+      return references.length ? `${references.length} image ${references.length === 1 ? 'reference' : 'references'}` : '';
+    }
+    if (key === 'image') {
+      const reference = comparable(value);
+      if (!reference) return '';
+      try {
+        const parsed = new URL(reference, window.location.origin);
+        const filename = parsed.pathname.split('/').filter(Boolean).pop();
+        return filename ? `${parsed.host || 'Website'} / ${filename}` : reference;
+      } catch {
+        return reference;
+      }
+    }
+    return comparableFieldValue(key, value);
+  };
+
   const getRowChanges = (row) => changeFields.flatMap(([key, label]) => {
     if (row.existingProduct && Array.isArray(row.providedFields) && !row.providedFields.includes(key)) return [];
     const next = comparableFieldValue(key, row.product[key]);
-    if (!row.existingProduct) return next === '' ? [] : [{ key, label, before: '', after: next, isNew: true }];
+    if (!row.existingProduct) return next === '' ? [] : [{ key, label, before: '', after: displayFieldValue(key, row.product[key]), isNew: true }];
     const before = comparableFieldValue(key, existingValue(row.existingProduct, key));
-    return before === next ? [] : [{ key, label, before, after: next, isNew: false }];
+    return before === next ? [] : [{
+      key,
+      label,
+      before: displayFieldValue(key, existingValue(row.existingProduct, key)),
+      after: displayFieldValue(key, row.product[key]),
+      isNew: false,
+    }];
   });
 
   const getUpdatePayload = (row) => {
@@ -105,6 +136,8 @@ export default function AdminCatalogTab({
     if (provided.has('tags')) payload.subtags = row.product.tags;
     if (provided.has('prebookDepositAmount')) payload.poAmount = row.product.prebookDepositAmount;
     if (provided.has('isPrebook')) payload.status = row.product.isPrebook ? 'Pre-Order' : 'Published';
+    if (provided.has('images')) payload.images = row.product.images;
+    if (provided.has('image')) payload.image = row.product.image;
     return payload;
   };
 
@@ -114,13 +147,8 @@ export default function AdminCatalogTab({
   };
 
   const loadAllProducts = async () => {
-    const first = await getAdminProducts(1, 250, '');
-    const products = [...(first.products || [])];
-    for (let page = 2; page <= Number(first.totalPages || 1); page += 1) {
-      const next = await getAdminProducts(page, 250, '');
-      products.push(...(next.products || []));
-    }
-    return products;
+    const backup = await getCatalogBackup();
+    return backup.products || [];
   };
 
   const normalizeLookupProduct = (row, lookups) => {
@@ -159,9 +187,26 @@ export default function AdminCatalogTab({
     return { ...row, product, errors };
   };
 
+  const mergeLookups = (serverLookups = {}, embeddedLookups = {}) => {
+    const keys = ['brands', 'scales', 'casingTypes', 'categories', 'series', 'tags', 'suppliers'];
+    return Object.fromEntries(keys.map(key => {
+      const values = [...(serverLookups[key] || []), ...(embeddedLookups[key] || [])];
+      const seen = new Set();
+      return [key, values.filter(value => {
+        const normalized = String(value || '').trim().toLocaleLowerCase();
+        if (!normalized || seen.has(normalized)) return false;
+        seen.add(normalized);
+        return true;
+      })];
+    }));
+  };
+
   const handleExport = async () => {
     setTransferBusy(true);
-    try { await exportCatalogWorkbook(await loadAllProducts()); }
+    try {
+      const [products, lookups] = await Promise.all([loadAllProducts(), getCatalogLookups()]);
+      await exportCatalogWorkbook(products, lookups);
+    }
     finally { setTransferBusy(false); }
   };
 
@@ -178,7 +223,8 @@ export default function AdminCatalogTab({
     setTransferBusy(true);
     setImportResult(null);
     try {
-      const [rows, existing, lookups] = await Promise.all([readCatalogWorkbook(file), loadAllProducts(), getCatalogLookups()]);
+      const [rows, existing, serverLookups] = await Promise.all([readCatalogWorkbook(file), loadAllProducts(), getCatalogLookups()]);
+      const lookups = mergeLookups(serverLookups, rows.embeddedLookups);
       const existingBySku = new Map(existing.map(product => [String(product.sku || '').trim().toUpperCase(), product]));
       const fileSkus = new Set();
       const reviewed = rows.map(sourceRow => {
@@ -204,17 +250,23 @@ export default function AdminCatalogTab({
     const failures = [];
     let created = 0;
     let updated = 0;
-    for (const row of validRows) {
+    const operations = validRows.map(row => ({
+      action: importMode === 'update' && row.existingProduct ? 'update' : 'create',
+      id: row.existingProduct?.id,
+      rowNumber: row.rowNumber,
+      sku: row.product.sku,
+      product: importMode === 'update' && row.existingProduct ? getUpdatePayload(row) : row.product,
+    }));
+    const batchSize = 10;
+    for (let start = 0; start < operations.length; start += batchSize) {
+      const batch = operations.slice(start, start + batchSize);
       try {
-        if (importMode === 'update' && row.existingProduct) {
-          await updateCar(row.existingProduct.id, getUpdatePayload(row));
-          updated += 1;
-        } else {
-          await addCar(row.product);
-          created += 1;
-        }
+        const result = await bulkSaveProducts(batch);
+        created += Number(result.created || 0);
+        updated += Number(result.updated || 0);
+        failures.push(...(result.failures || []));
       }
-      catch (error) { failures.push({ rowNumber: row.rowNumber, sku: row.product.sku, message: error.message }); }
+      catch (error) { batch.forEach(item => failures.push({ rowNumber: item.rowNumber, sku: item.sku, message: error.message || 'Product batch failed.' })); }
     }
     setImportResult({ created, updated, failures });
     setTransferBusy(false);
@@ -259,15 +311,25 @@ export default function AdminCatalogTab({
 
             <div className="flex flex-wrap items-center gap-2">
               <input ref={fileInputRef} type="file" accept=".xlsx" className="hidden" onChange={handleImportFile} />
-              <button type="button" disabled={transferBusy} onClick={handleTemplateDownload} className="flex items-center gap-1.5 rounded-full border border-white/[0.09] px-3.5 py-2.5 text-[10px] font-bold uppercase tracking-wider text-[#A9A49C] transition hover:border-white/[0.17] hover:text-white disabled:opacity-40">
-                <FileSpreadsheet size={14} /> Template
-              </button>
-              <button type="button" disabled={transferBusy} onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 rounded-full border border-white/[0.09] px-3.5 py-2.5 text-[10px] font-bold uppercase tracking-wider text-[#D8D3CB] transition hover:border-[#C8AE7D]/35 disabled:opacity-40">
-                <Upload size={14} /> Import
-              </button>
-              <button type="button" disabled={transferBusy} onClick={handleExport} className="flex items-center gap-1.5 rounded-full border border-white/[0.09] px-3.5 py-2.5 text-[10px] font-bold uppercase tracking-wider text-[#D8D3CB] transition hover:border-[#C8AE7D]/35 disabled:opacity-40">
-                {transferBusy ? <RefreshCw size={14} className="animate-spin" /> : <Download size={14} />} Export
-              </button>
+              <details className="relative">
+                <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-full border border-white/[0.09] bg-white/[0.04] px-4 text-[10px] font-bold uppercase tracking-wider text-[#D8D3CB] transition hover:bg-white/[0.08] [&::-webkit-details-marker]:hidden">
+                  {transferBusy ? <RefreshCw size={14} className="animate-spin" /> : <FileSpreadsheet size={14} />} Backup
+                </summary>
+                <div className="absolute right-0 top-[calc(100%+0.5rem)] z-40 w-64 overflow-hidden rounded-xl border border-white/[0.11] bg-[#151412] p-1.5 shadow-[0_18px_45px_rgba(0,0,0,.65)]">
+                  <button type="button" disabled={transferBusy} onClick={(event) => { event.currentTarget.closest('details')?.removeAttribute('open'); handleExport(); }} className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left text-xs text-[#EEEAE2] hover:bg-white/[0.06] disabled:opacity-40">
+                    <Download size={14} className="mt-0.5 shrink-0 text-[#C8AE7D]" />
+                    <span><strong className="block font-semibold">Export catalog</strong><small className="mt-0.5 block text-[9px] leading-relaxed text-[#77736D]">Back up every product and its image references.</small></span>
+                  </button>
+                  <button type="button" disabled={transferBusy} onClick={(event) => { event.currentTarget.closest('details')?.removeAttribute('open'); fileInputRef.current?.click(); }} className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left text-xs text-[#EEEAE2] hover:bg-white/[0.06] disabled:opacity-40">
+                    <Upload size={14} className="mt-0.5 shrink-0 text-[#C8AE7D]" />
+                    <span><strong className="block font-semibold">Import backup</strong><small className="mt-0.5 block text-[9px] leading-relaxed text-[#77736D]">Review additions and updates before saving.</small></span>
+                  </button>
+                  <button type="button" disabled={transferBusy} onClick={(event) => { event.currentTarget.closest('details')?.removeAttribute('open'); handleTemplateDownload(); }} className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left text-xs text-[#EEEAE2] hover:bg-white/[0.06] disabled:opacity-40">
+                    <FileSpreadsheet size={14} className="mt-0.5 shrink-0 text-[#C8AE7D]" />
+                    <span><strong className="block font-semibold">Blank template</strong><small className="mt-0.5 block text-[9px] leading-relaxed text-[#77736D]">Download a validated workbook for adding products.</small></span>
+                  </button>
+                </div>
+              </details>
             <button
               onClick={() => {
                 setEditingProductId(null);
@@ -305,7 +367,7 @@ export default function AdminCatalogTab({
                     </button>
                     <button type="button" onClick={() => { setImportMode('update'); setImportResult(null); }} className={`flex-1 rounded-xl px-4 py-3 text-left transition ${importMode === 'update' ? 'bg-[#E8E2D8] text-[#111]' : 'text-[#A9A49C] hover:bg-white/[0.04]'}`}>
                       <strong className="block text-xs">Add new and update existing</strong>
-                      <span className="mt-1 block text-[10px] opacity-70">Matches by Model ID and preserves uploaded images.</span>
+                      <span className="mt-1 block text-[10px] opacity-70">Matches by Model ID. Restores image URLs when included; otherwise preserves existing images.</span>
                     </button>
                   </div>
                   <div className="mb-4 grid grid-cols-3 gap-3">

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, X, Check, Eye, Layers, Star } from 'lucide-react';
-import { checkProductSkuAvailability, getBrands, uploadImageToStorage } from '../../lib/db';
+import { checkProductSkuAvailability, getCatalogLookups, uploadImageToStorage } from '../../lib/db';
 import ProductCard from '../common/ProductCard';
 import SearchableSelect from './SearchableSelect';
 
@@ -15,10 +15,6 @@ function resolveImageUrl(url) {
   return `${SERVER_ORIGIN}${url.startsWith('/') ? '' : '/'}${url}`;
 }
 
-const SCALES_LIST = ['1:64', '1:43', '1:18', '1:24', '1:12', 'Other'];
-const CASE_TYPES = ['Blister', 'Box', 'Acrylic', 'Other'];
-const GENERIC_TAGS = ['None', 'Limited', 'Hot', 'Rare', 'New Drop', 'Exclusive'];
-
 export default function ProductForm({
   productId = null,
   initialData = null,
@@ -28,11 +24,17 @@ export default function ProductForm({
 }) {
   // Shared Product Information
   const [brand, setBrand] = useState('Mini GT');
-  const [brandOptions, setBrandOptions] = useState(['Mini GT', 'Other']);
-  const [customBrand, setCustomBrand] = useState('');
+  const [brandOptions, setBrandOptions] = useState([]);
+  const [scaleOptions, setScaleOptions] = useState([]);
+  const [seriesOptions, setSeriesOptions] = useState([]);
+  const [casingOptions, setCasingOptions] = useState([]);
+  const [categoryOptions, setCategoryOptions] = useState([]);
+  const [tagOptions, setTagOptions] = useState([]);
   const [sku, setSku] = useState('');
   const [name, setName] = useState('');
   const [scale, setScale] = useState('1:64');
+  const [series, setSeries] = useState('');
+  const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
   const [tag, setTag] = useState('None');
   const [subtags, setSubtags] = useState([]);
@@ -59,11 +61,15 @@ export default function ProductForm({
 
   useEffect(() => {
     let active = true;
-    getBrands().then((records) => {
+    getCatalogLookups().then((lookups) => {
       if (!active) return;
-      const names = (Array.isArray(records) ? records : []).map(item => item.name).filter(Boolean);
-      setBrandOptions([...new Set([...names, 'Other'])]);
-    }).catch(() => {});
+      setBrandOptions(lookups.brands || []);
+      setScaleOptions(lookups.scales || []);
+      setSeriesOptions(lookups.series || []);
+      setCasingOptions(lookups.casingTypes || []);
+      setCategoryOptions(lookups.categories || []);
+      setTagOptions(['None', ...(lookups.tags || [])]);
+    }).catch(() => setValidationError('Catalog options could not be loaded. Check Lookup Settings before editing products.'));
     return () => { active = false; };
   }, []);
 
@@ -81,17 +87,13 @@ export default function ProductForm({
   useEffect(() => {
     if (initialData) {
       const b = initialData.brand || initialData.carBrand || 'Mini GT';
-      if (brandOptions.includes(b)) {
-        setBrand(b);
-        setCustomBrand('');
-      } else {
-        setBrand('Other');
-        setCustomBrand(b);
-      }
+      setBrand(b);
 
       setSku(initialData.sku || '');
       setName(initialData.name || '');
       setScale(initialData.scale || '1:64');
+      setSeries(initialData.series || '');
+      setCategory(initialData.category || '');
       setDescription(initialData.description || '');
       setTag(initialData.tag || initialData.grade || 'None');
       const initialSubtags = Array.isArray(initialData.subtags) && initialData.subtags.length > 0
@@ -114,7 +116,7 @@ export default function ProductForm({
       const v0 = Array.isArray(initialData.variants) && initialData.variants[0];
       const rawCasing = (initialData.casing || initialData.casingType || v0?.casing || 'Blister');
       const casingCap = rawCasing.charAt(0).toUpperCase() + rawCasing.slice(1).toLowerCase();
-      setCasingType(CASE_TYPES.includes(casingCap) ? casingCap : 'Blister');
+      setCasingType(casingCap);
 
       setPrice(initialData.price ?? initialData.sellingPrice ?? v0?.sellingPrice ?? '');
       setAvailableStock(initialData.availableStock ?? initialData.totalStock ?? v0?.availableStock ?? 0);
@@ -137,10 +139,11 @@ export default function ProductForm({
     } else {
       // RESET TO CLEAN DEFAULTS FOR NEW PRODUCT
       setBrand('Mini GT');
-      setCustomBrand('');
       setSku('');
       setName('');
       setScale('1:64');
+      setSeries('');
+      setCategory('');
       setDescription('');
       setTag('None');
       setSubtags([]);
@@ -221,7 +224,11 @@ export default function ProductForm({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const finalBrand = brand === 'Other' ? (customBrand.trim() || 'Other') : brand;
+    const finalBrand = brand;
+    if (!brandOptions.includes(finalBrand) || !scaleOptions.includes(scale) || !seriesOptions.includes(series) || !casingOptions.includes(casingType) || !categoryOptions.includes(category)) {
+      setValidationError('Choose Brand, Scale, Series, Packaging and Category from the configured catalog options.');
+      return;
+    }
     const userSku = sku.trim();
     if (!userSku) {
       setValidationError('SKU ID is required and must be unique.');
@@ -268,8 +275,8 @@ export default function ProductForm({
         price: mainPrice,
         sellingPrice: mainPrice,
         sku: userSku,
-        category: 'JDM',
-        series: finalBrand,
+        category,
+        series,
         casing: finalCasing,
         casingType: finalCasing,
         casingTypes: [finalCasing],
@@ -341,15 +348,6 @@ export default function ProductForm({
                 onChange={setBrand}
                 options={brandOptions}
               />
-              {brand === 'Other' && (
-                <input
-                  type="text"
-                  placeholder="Enter brand name..."
-                  value={customBrand}
-                  onChange={e => setCustomBrand(e.target.value)}
-                  className="mt-2 w-full bg-[#111116] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none"
-                />
-              )}
             </div>
 
             {/* Scale */}
@@ -359,7 +357,17 @@ export default function ProductForm({
                 required
                 value={scale}
                 onChange={setScale}
-                options={SCALES_LIST}
+                options={scaleOptions}
+              />
+            </div>
+
+            <div>
+              <SearchableSelect
+                label="Category"
+                required
+                value={category}
+                onChange={setCategory}
+                options={categoryOptions}
               />
             </div>
 
@@ -375,6 +383,16 @@ export default function ProductForm({
                 onChange={e => setSku(e.target.value)}
                 className="w-full bg-[#111116] border border-white/10 rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-[#ff5500]"
                 required
+              />
+            </div>
+
+            <div>
+              <SearchableSelect
+                label="Series"
+                required
+                value={series}
+                onChange={setSeries}
+                options={seriesOptions}
               />
             </div>
 
@@ -399,7 +417,7 @@ export default function ProductForm({
                 label="Main Badge / Tag"
                 value={tag}
                 onChange={setTag}
-                options={GENERIC_TAGS}
+                options={tagOptions}
               />
             </div>
 
@@ -409,20 +427,15 @@ export default function ProductForm({
                 Subtags (Up to 5)
               </label>
               <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder={subtags.length >= 5 ? "Max 5 subtags reached" : "Type subtag (e.g. JDM, Chase, Sealed)..."}
-                  value={subtagInput}
-                  disabled={subtags.length >= 5}
-                  onChange={e => setSubtagInput(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleAddSubtag();
-                    }
-                  }}
-                  className="flex-1 bg-[#111116] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#ff5500] disabled:opacity-40"
-                />
+                <div className="flex-1">
+                  <SearchableSelect
+                    label=""
+                    value={subtagInput}
+                    onChange={setSubtagInput}
+                    options={tagOptions.filter(option => option !== 'None' && !subtags.includes(option))}
+                    disabled={subtags.length >= 5}
+                  />
+                </div>
                 <button
                   type="button"
                   onClick={handleAddSubtag}
@@ -480,7 +493,7 @@ export default function ProductForm({
                 required
                 value={casingType}
                 onChange={setCasingType}
-                options={CASE_TYPES}
+                options={casingOptions}
               />
             </div>
 
@@ -702,7 +715,7 @@ export default function ProductForm({
             const previewCar = {
               id: 'preview',
               name: name.trim() || 'Product Title / Casting Name',
-              brand: brand === 'Other' ? (customBrand || 'Other') : brand,
+              brand,
               scale: scale || '1:64',
               casingType: casingType || 'Blister',
               price: price ? Number(price) : 0,
