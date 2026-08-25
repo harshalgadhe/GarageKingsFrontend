@@ -1,18 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Edit2, Archive, RefreshCw, Eye, EyeOff, Globe, Sparkles, MoreHorizontal, Search, ImagePlus, Trash2 } from 'lucide-react';
+import { Plus, Edit2, Archive, RefreshCw, Eye, EyeOff, Globe, Sparkles, MoreHorizontal, Search, ImagePlus, Trash2, Download, Upload, FileSpreadsheet, X, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { 
   getBrands, createBrand, updateBrand, deleteBrand, uploadImageToStorage,
   getManufacturers, createManufacturer, updateManufacturer, deleteManufacturer,
   getScales, createScale, updateScale, deleteScale,
-  getSeries, createSeries, updateSeries, deleteSeries
+  getSeries, createSeries, updateSeries, deleteSeries, getMasterDataBackup, bulkSaveMasterData
 } from '../../lib/db';
+import { exportMasterDataWorkbook, masterDataRecordValue, readMasterDataWorkbook } from '../../lib/masterDataWorkbook';
 
 export default function MasterData() {
   const formRef = useRef(null);
+  const importInputRef = useRef(null);
   const [activeTab, setActiveTab] = useState('brands'); // 'brands', 'manufacturers', 'scales', 'series'
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [transferBusy, setTransferBusy] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importRows, setImportRows] = useState([]);
+  const [importResult, setImportResult] = useState(null);
   
   // Search & Pagination
   const [searchQuery, setSearchQuery] = useState('');
@@ -101,19 +107,19 @@ export default function MasterData() {
     setCurrentItem(item);
     setFormData({
       name: item.name || '',
-      logoUrl: item.logo_url || '',
-      coverImageUrl: item.cover_image_url || '',
+      logoUrl: masterDataRecordValue(item, 'logoUrl') || '',
+      coverImageUrl: masterDataRecordValue(item, 'coverImageUrl') || '',
       website: item.website || '',
-      displayOrder: item.display_order ?? 0,
-      isVisible: item.is_visible ?? true,
+      displayOrder: masterDataRecordValue(item, 'displayOrder') ?? 0,
+      isVisible: masterDataRecordValue(item, 'isVisible') ?? true,
       status: item.status || 'Active',
-      accentColor: item.accent_color || '#C8AE7D',
-      secondaryColor: item.secondary_color || '#F4F1EC',
-      backgroundColor: item.background_color || '#080706',
-      themeVariant: item.theme_variant || 'archive',
-      logoTreatment: item.logo_treatment || 'natural',
+      accentColor: masterDataRecordValue(item, 'accentColor') || '#C8AE7D',
+      secondaryColor: masterDataRecordValue(item, 'secondaryColor') || '#F4F1EC',
+      backgroundColor: masterDataRecordValue(item, 'backgroundColor') || '#080706',
+      themeVariant: masterDataRecordValue(item, 'themeVariant') || 'archive',
+      logoTreatment: masterDataRecordValue(item, 'logoTreatment') || 'natural',
       kicker: item.kicker || '', headline: item.headline || '', description: item.description || '',
-      originLabel: item.origin_label || '', styleLabel: item.style_label || ''
+      originLabel: masterDataRecordValue(item, 'originLabel') || '', styleLabel: masterDataRecordValue(item, 'styleLabel') || ''
     });
     setTimeout(() => {
       formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -220,6 +226,127 @@ export default function MasterData() {
     }
   };
 
+  const transferConfig = {
+    brands: {
+      label: 'Brand',
+      fields: [
+        ['name', 'Name'], ['slug', 'Slug'], ['logoUrl', 'Logo URL'], ['coverImageUrl', 'Cover image URL'],
+        ['website', 'Website'], ['displayOrder', 'Display order'], ['isVisible', 'Visible'], ['status', 'Status'],
+        ['accentColor', 'Accent color'], ['secondaryColor', 'Secondary color'], ['backgroundColor', 'Background color'],
+        ['themeVariant', 'Theme'], ['logoTreatment', 'Logo treatment'], ['kicker', 'Short label'], ['headline', 'Headline'],
+        ['description', 'Description'], ['originLabel', 'Origin'], ['styleLabel', 'Collector focus'],
+      ],
+      create: createBrand,
+      update: updateBrand,
+    },
+    scales: {
+      label: 'Scale', fields: [['name', 'Name'], ['displayOrder', 'Display order'], ['status', 'Status']],
+      create: createScale, update: updateScale,
+    },
+    series: {
+      label: 'Series', fields: [['name', 'Name'], ['displayOrder', 'Display order'], ['status', 'Status']],
+      create: createSeries, update: updateSeries,
+    },
+  };
+
+  const comparableValue = (value) => {
+    if (value === null || value === undefined || value === '') return '';
+    if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+    if (typeof value === 'number') return String(value);
+    return String(value).trim();
+  };
+
+  const getImportChanges = (row) => {
+    const config = transferConfig[row.type];
+    return config.fields.flatMap(([key, label]) => {
+      if (row.existingItem && !row.providedFields.includes(key)) return [];
+      const after = comparableValue(row.data[key]);
+      if (!row.existingItem) return after ? [{ key, label, before: '', after, isNew: true }] : [];
+      const before = comparableValue(masterDataRecordValue(row.existingItem, key));
+      return before === after ? [] : [{ key, label, before, after, isNew: false }];
+    });
+  };
+
+  const isImportRowReady = (row) => row.errors.length === 0 && (!row.existingItem || getImportChanges(row).length > 0);
+
+  const loadMasterDataBackup = async () => {
+    return getMasterDataBackup();
+  };
+
+  const handleExportBackup = async () => {
+    setTransferBusy(true);
+    setError('');
+    try {
+      await exportMasterDataWorkbook(await loadMasterDataBackup());
+    } catch (err) {
+      console.error(err);
+      setError('Master data could not be exported. Please try again.');
+    } finally {
+      setTransferBusy(false);
+    }
+  };
+
+  const handleImportFile = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setTransferBusy(true);
+    setError('');
+    setImportResult(null);
+    try {
+      const [rows, existing] = await Promise.all([readMasterDataWorkbook(file), loadMasterDataBackup()]);
+      const reviewed = rows.map(row => {
+        const records = existing[row.type] || [];
+        const byId = row.data.id ? records.find(item => String(item.id) === row.data.id) : null;
+        const byName = records.find(item => String(item.name || '').trim().toLocaleLowerCase() === row.data.name.toLocaleLowerCase());
+        return { ...row, existingItem: byId || byName || null };
+      });
+      setImportRows(reviewed);
+      setImportOpen(true);
+    } catch (err) {
+      console.error(err);
+      setError(err.message || 'The master data workbook could not be read.');
+    } finally {
+      setTransferBusy(false);
+    }
+  };
+
+  const importPayload = (row) => {
+    if (!row.existingItem) return { ...row.data };
+    const payload = {};
+    row.providedFields.forEach(key => { if (key !== 'id') payload[key] = row.data[key]; });
+    return payload;
+  };
+
+  const commitImport = async () => {
+    const ready = importRows.filter(isImportRowReady);
+    if (!ready.length) return;
+    setTransferBusy(true);
+    setImportResult(null);
+    const result = { created: 0, updated: 0, failures: [] };
+    const operations = ready.map(row => ({
+      type: row.type,
+      action: row.existingItem ? 'update' : 'create',
+      id: row.existingItem?.id,
+      rowNumber: row.rowNumber,
+      data: importPayload(row),
+    }));
+    for (let start = 0; start < operations.length; start += 50) {
+      const batch = operations.slice(start, start + 50);
+      try {
+        const batchResult = await bulkSaveMasterData(batch);
+        result.created += Number(batchResult.created || 0);
+        result.updated += Number(batchResult.updated || 0);
+        result.failures.push(...(batchResult.failures || []).map(failure => `${failure.name || `Row ${failure.rowNumber || '?'}`}: ${failure.message}`));
+      } catch (err) {
+        batch.forEach(operation => result.failures.push(`${operation.data?.name || `Row ${operation.rowNumber}`}: ${err.message || 'Batch save failed'}`));
+      }
+    }
+    setImportResult(result);
+    setTransferBusy(false);
+    await fetchData();
+  };
+
   // Filtered List
   const filteredItems = items.filter(item => 
     (item.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -255,18 +382,34 @@ export default function MasterData() {
           ))}
         </div>
         <div className="flex items-center gap-2">
+          <input ref={importInputRef} type="file" accept=".xlsx" className="hidden" onChange={handleImportFile} />
           <button
             onClick={() => { resetForm(); setIsFormOpen(true); }}
             className="flex min-h-10 items-center gap-1.5 rounded-full border border-[#C8AE7D]/30 bg-[#C8AE7D]/[0.12] px-4 text-[10px] font-bold uppercase tracking-wider text-[#F1D99F] transition hover:bg-[#C8AE7D]/[0.2]"
           >
             <Plus size={14} /> Add {activeTab.slice(0, -1)}
           </button>
+          <details className="relative">
+            <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-full border border-white/[0.09] bg-white/[0.04] px-4 text-[10px] font-bold uppercase tracking-wider text-[#D8D3CB] transition hover:bg-white/[0.08] [&::-webkit-details-marker]:hidden">
+              <FileSpreadsheet size={14} /> Backup
+            </summary>
+            <div className="absolute right-0 top-[calc(100%+0.5rem)] z-30 w-60 overflow-hidden rounded-xl border border-white/[0.11] bg-[#151412] p-1.5 shadow-[0_18px_45px_rgba(0,0,0,.65)]">
+              <button type="button" disabled={transferBusy} onClick={(event) => { event.currentTarget.closest('details')?.removeAttribute('open'); handleExportBackup(); }} className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left text-xs text-[#EEEAE2] hover:bg-white/[0.06] disabled:opacity-40">
+                <Download size={14} className="mt-0.5 shrink-0 text-[#C8AE7D]" />
+                <span><strong className="block font-semibold">Export all</strong><small className="mt-0.5 block text-[9px] leading-relaxed text-[#77736D]">Brands, scales, series and brand image references.</small></span>
+              </button>
+              <button type="button" disabled={transferBusy} onClick={(event) => { event.currentTarget.closest('details')?.removeAttribute('open'); importInputRef.current?.click(); }} className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left text-xs text-[#EEEAE2] hover:bg-white/[0.06] disabled:opacity-40">
+                <Upload size={14} className="mt-0.5 shrink-0 text-[#C8AE7D]" />
+                <span><strong className="block font-semibold">Import backup</strong><small className="mt-0.5 block text-[9px] leading-relaxed text-[#77736D]">Review additions and updates before saving.</small></span>
+              </button>
+            </div>
+          </details>
           <button
             onClick={fetchData}
             aria-label="Reload settings"
             className="grid h-10 w-10 place-items-center rounded-full border border-white/[0.09] bg-white/[0.04] text-zinc-400 transition hover:bg-white/[0.08] hover:text-white"
           >
-            <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
+            <RefreshCw size={14} className={isLoading || transferBusy ? 'animate-spin' : ''} />
           </button>
         </div>
       </div>
@@ -451,7 +594,11 @@ export default function MasterData() {
                 <p className="text-sm font-semibold text-[#D8D3CB]">{isLoading ? 'Loading settings...' : `No ${activeTab} found`}</p>
                 {!isLoading && <p className="mt-1 text-xs text-[#706C65]">Add the first entry or try another search.</p>}
               </div>
-            ) : paginatedItems.map(item => (
+            ) : paginatedItems.map(item => {
+              const itemLogo = masterDataRecordValue(item, 'logoUrl');
+              const itemVisible = masterDataRecordValue(item, 'isVisible') ?? true;
+              const itemDisplayOrder = masterDataRecordValue(item, 'displayOrder') ?? 0;
+              return (
               <article
                 key={item.id}
                 onClick={() => handleEditClick(item)}
@@ -459,7 +606,7 @@ export default function MasterData() {
               >
                 <div className="flex min-h-28 items-start gap-4 p-4">
                   <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.035]">
-                    {item.logo_url ? <img src={item.logo_url} alt="" className="h-full w-full object-contain p-2" /> : <span className="font-mono text-sm font-semibold uppercase text-[#A7A198]">{item.name?.slice(0, 2) || 'NA'}</span>}
+                    {itemLogo ? <img src={itemLogo} alt="" className="h-full w-full object-contain p-2" /> : <span className="font-mono text-sm font-semibold uppercase text-[#A7A198]">{item.name?.slice(0, 2) || 'NA'}</span>}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#B8A77E]">{activeTab.slice(0, -1)}</p>
@@ -467,14 +614,14 @@ export default function MasterData() {
                     <p className="mt-1 truncate font-mono text-[10px] text-[#6F6B65]">{item.slug || 'No public identifier'}</p>
                     <div className="mt-3 flex flex-wrap gap-1.5">
                       <span className={`rounded-full border px-2 py-1 text-[8px] font-bold uppercase tracking-[0.12em] ${item.status === 'Active' ? 'border-emerald-500/20 bg-emerald-500/[0.08] text-emerald-300' : 'border-white/[0.08] bg-white/[0.035] text-[#77736D]'}`}>{item.status}</span>
-                      {(activeTab === 'brands' || activeTab === 'manufacturers') && <span className={`rounded-full border px-2 py-1 text-[8px] font-bold uppercase tracking-[0.12em] ${item.is_visible ? 'border-[#C8AE7D]/20 bg-[#C8AE7D]/[0.08] text-[#D8BC78]' : 'border-white/[0.08] bg-white/[0.035] text-[#77736D]'}`}>{item.is_visible ? 'Visible' : 'Hidden'}</span>}
+                      {(activeTab === 'brands' || activeTab === 'manufacturers') && <span className={`rounded-full border px-2 py-1 text-[8px] font-bold uppercase tracking-[0.12em] ${itemVisible ? 'border-[#C8AE7D]/20 bg-[#C8AE7D]/[0.08] text-[#D8BC78]' : 'border-white/[0.08] bg-white/[0.035] text-[#77736D]'}`}>{itemVisible ? 'Visible' : 'Hidden'}</span>}
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center justify-between border-t border-white/[0.07] bg-white/[0.015] px-4 py-3">
                   <div>
                     <span className="block text-[8px] uppercase tracking-[0.14em] text-[#625F59]">Display order</span>
-                    <strong className="mt-0.5 block font-mono text-xs font-medium text-[#C8C3BB]">{item.display_order ?? 0}</strong>
+                    <strong className="mt-0.5 block font-mono text-xs font-medium text-[#C8C3BB]">{itemDisplayOrder}</strong>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
@@ -495,7 +642,7 @@ export default function MasterData() {
                   </div>
                 </div>
               </article>
-            ))}
+            );})}
           </div>
 
           <div className="hidden">
@@ -633,6 +780,81 @@ export default function MasterData() {
         </div>
 
       </div>
+
+      {importOpen && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 p-3 backdrop-blur-sm sm:p-6">
+          <div className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-white/[0.1] bg-[#0D0D0C] shadow-[0_30px_100px_rgba(0,0,0,.75)]">
+            <div className="flex shrink-0 items-start justify-between border-b border-white/[0.08] p-5 md:px-6">
+              <div>
+                <p className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-[0.16em] text-[#C8AE7D]"><FileSpreadsheet size={13} /> Master data import</p>
+                <h3 className="mt-2 text-xl font-semibold text-[#F4F1EC]">Review backup changes</h3>
+                <p className="mt-1 text-xs text-[#817C74]">Existing records match by ID first, then by name. Nothing changes until you confirm.</p>
+              </div>
+              <button type="button" onClick={() => setImportOpen(false)} aria-label="Close import review" className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/[0.09] bg-white/[0.04] text-[#918C84] hover:text-white"><X size={16} /></button>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6" data-lenis-prevent="true">
+              <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="rounded-xl border border-white/[0.08] p-3"><span className="text-[9px] uppercase text-[#77736D]">Rows</span><strong className="mt-1 block text-lg text-white">{importRows.length}</strong></div>
+                <div className="rounded-xl border border-emerald-500/15 bg-emerald-500/[0.04] p-3"><span className="text-[9px] uppercase text-emerald-300/70">Create</span><strong className="mt-1 block text-lg text-emerald-300">{importRows.filter(row => isImportRowReady(row) && !row.existingItem).length}</strong></div>
+                <div className="rounded-xl border border-[#C8AE7D]/20 bg-[#C8AE7D]/[0.05] p-3"><span className="text-[9px] uppercase text-[#C8AE7D]">Update</span><strong className="mt-1 block text-lg text-[#E2CE9E]">{importRows.filter(row => isImportRowReady(row) && row.existingItem).length}</strong></div>
+                <div className="rounded-xl border border-amber-500/15 bg-amber-500/[0.04] p-3"><span className="text-[9px] uppercase text-amber-200/70">Skipped</span><strong className="mt-1 block text-lg text-amber-200">{importRows.filter(row => !isImportRowReady(row)).length}</strong></div>
+              </div>
+
+              <div className="space-y-2">
+                {importRows.map((row, index) => {
+                  const changes = getImportChanges(row);
+                  const config = transferConfig[row.type];
+                  const ready = isImportRowReady(row);
+                  return (
+                    <div key={`${row.type}-${row.rowNumber}-${index}`} className="overflow-hidden rounded-xl border border-white/[0.07] bg-black/20">
+                      <div className="grid gap-2 p-3 sm:grid-cols-[80px_minmax(0,1fr)_auto] sm:items-center">
+                        <span className="text-[9px] font-bold uppercase tracking-[0.13em] text-[#B8A77E]">{config.label}</span>
+                        <div className="min-w-0"><strong className="block truncate text-xs font-medium text-[#EEEAE2]">{row.data.name || 'Unnamed record'}</strong><span className="mt-0.5 block text-[9px] text-[#66625C]">Row {row.rowNumber}{row.data.id ? ` · ${row.data.id}` : ''}</span></div>
+                        <span className={`flex items-center gap-1.5 text-[10px] ${row.errors.length ? 'text-amber-200' : ready ? 'text-emerald-300' : 'text-[#77736D]'}`}>
+                          {row.errors.length ? <AlertTriangle size={13} /> : <CheckCircle2 size={13} />}
+                          {row.errors.join('; ') || (ready ? `${row.existingItem ? 'Update' : 'Create'} · ${changes.length} ${changes.length === 1 ? 'change' : 'changes'}` : 'No changes')}
+                        </span>
+                      </div>
+                      {!row.errors.length && changes.length > 0 && (
+                        <details className="border-t border-white/[0.06]" data-lenis-prevent="true">
+                          <summary className="cursor-pointer list-none px-3 py-2 text-[9px] font-bold uppercase tracking-[0.14em] text-[#B8A77E] hover:bg-white/[0.025] [&::-webkit-details-marker]:hidden">Preview {changes.length} {changes.length === 1 ? 'change' : 'changes'}</summary>
+                          <div className="grid gap-px bg-white/[0.05] sm:grid-cols-2">
+                            {changes.map(change => (
+                              <div key={change.key} className="min-w-0 bg-[#0C0C0B] p-3">
+                                <span className="block text-[8px] font-bold uppercase tracking-[0.14em] text-[#66625C]">{change.label}</span>
+                                {change.isNew ? <strong className="mt-1 line-clamp-2 break-all text-[11px] font-medium text-emerald-200">{change.after}</strong> : (
+                                  <div className="mt-1 grid grid-cols-[1fr_auto_1fr] items-start gap-2 text-[11px]">
+                                    <span className="line-clamp-2 break-all text-[#77736D] line-through">{change.before || 'Empty'}</span><span className="text-[#5F5A53]">→</span><strong className="line-clamp-2 break-all font-medium text-[#F1ECE4]">{change.after || 'Empty'}</strong>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {importResult && (
+                <div className="mt-4 rounded-xl border border-[#C8AE7D]/20 bg-[#C8AE7D]/[0.06] p-4 text-sm text-[#E7E2DA]">
+                  Created {importResult.created} and updated {importResult.updated} records.
+                  {importResult.failures.length > 0 && <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-amber-200">{importResult.failures.map(failure => <li key={failure}>{failure}</li>)}</ul>}
+                </div>
+              )}
+            </div>
+
+            <div className="flex shrink-0 items-center justify-end gap-3 border-t border-white/[0.08] bg-[#11110F] p-4 md:px-6">
+              <button type="button" onClick={() => setImportOpen(false)} className="rounded-full px-5 py-2.5 text-[10px] font-bold uppercase tracking-wider text-[#9A958D]">Close</button>
+              <button type="button" disabled={transferBusy || importResult || !importRows.some(isImportRowReady)} onClick={commitImport} className="flex items-center gap-2 rounded-full bg-[#E8E2D8] px-5 py-2.5 text-[10px] font-black uppercase tracking-wider text-[#111] disabled:opacity-40">
+                {transferBusy ? <RefreshCw size={13} className="animate-spin" /> : <Upload size={13} />} Confirm import
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
