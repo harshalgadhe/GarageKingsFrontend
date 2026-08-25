@@ -9,6 +9,7 @@ export const ADMIN_TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: TrendingUp },
   { id: 'catalog', label: 'Catalog', icon: FolderOpen },
   { id: 'receipts', label: 'Receipts', icon: Receipt },
+  { id: 'customers', label: 'Customers', icon: Users },
   { id: 'settings', label: 'Settings', icon: Settings },
   { id: 'diagnostics', label: 'Diagnostics', icon: Activity }
 ];

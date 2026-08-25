@@ -916,6 +916,21 @@ export async function getCatalogLookups() {
   return await res.json();
 }
 
+export async function getAdminCustomers(page = 1, limit = 12, search = '') {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit), search: String(search || '').trim() });
+  const res = await fetch(`${API_BASE_URL}/admin/customers?${params}`, { headers: getAuthHeaders() });
+  if (!res.ok) throw await createApiError(res, 'Customers could not be loaded.');
+  return await res.json();
+}
+
+export async function updateUserRole(email, role) {
+  const res = await fetch(`${API_BASE_URL}/admin/users/role`, {
+    method: 'PATCH', headers: getAuthHeaders(), body: JSON.stringify({ email, role })
+  });
+  if (!res.ok) throw await createApiError(res, 'The customer role could not be updated.');
+  return await res.json();
+}
+
 export async function bulkAddReceipts(receipts, updateExisting = false) {
   const res = await fetch(`${API_BASE_URL}/receipts/bulk`, {
     method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ receipts, updateExisting })

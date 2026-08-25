@@ -18,7 +18,7 @@ import {
   createPaymentMethod, updatePaymentMethod, deletePaymentMethod, getShippingProviders,
   createShippingProvider, updateShippingProvider, deleteShippingProvider, getOrderStatuses,
   getPurchaseStatuses, getLogisticsStatuses, getCurrencies, getCountries, getAllInventoryBatches,
-  getAllInventoryLedger, getCustomers, getSupplierReceipts
+  getAllInventoryLedger, getCustomers, getAdminCustomers, updateUserRole, getSupplierReceipts
 } from '../lib/db';
 import Navigation from '../components/Navigation';
 import { StatisticsSkeleton } from '../components/Skeletons';
@@ -299,6 +299,8 @@ export default function Admin() {
   const [globalSettings, setGlobalSettings] = useState({
     showPrices: true,
     showSoldOutProducts: null,
+    storageDriver: null,
+    activeStorageDriver: null,
     instagramUrl: 'https://www.instagram.com/garagekingsindia/',
     companyUpiId: 'garagekings@upi',
     upiQrImage: '/upi-qr.png',
@@ -371,6 +373,8 @@ export default function Admin() {
   const [customersTotalPages, setCustomersTotalPages] = useState(1);
   const [customersTotal, setCustomersTotal] = useState(0);
   const [customersSearchQuery, setCustomersSearchQuery] = useState('');
+  const [customersSummary, setCustomersSummary] = useState({});
+  const [customerRoleSavingId, setCustomerRoleSavingId] = useState(null);
 
   // Goods Receipts List
   const [goodsReceiptsList, setGoodsReceiptsList] = useState([]);
@@ -1086,6 +1090,8 @@ export default function Admin() {
       }
     } else if (tab === 'receipts') {
       fetchReceiptsList(receiptsPage, receiptsSearch);
+    } else if (tab === 'customers') {
+      fetchCustomersData(customersPage, customersSearchQuery);
     } else if (tab === 'settings') {
       fetchSettings();
     } else if (tab === 'notifications') {
@@ -1273,15 +1279,28 @@ export default function Admin() {
   const fetchCustomersData = async (page, search) => {
     setCustomersLoading(true);
     try {
-      const data = await getCustomers(page, 10, search);
-      const list = Array.isArray(data) ? data : (data.customers || []);
-      setCustomersList(list);
-      setCustomersTotal(list.length);
-      setCustomersTotalPages(1);
+      const data = await getAdminCustomers(page, 12, search);
+      setCustomersList(data.customers || []);
+      setCustomersTotal(data.total || 0);
+      setCustomersTotalPages(data.totalPages || 1);
+      setCustomersSummary(data.summary || {});
     } catch (e) {
       console.error("Error loading customers:", e);
     } finally {
       setCustomersLoading(false);
+    }
+  };
+
+  const handleCustomerRoleChange = async (customer, role) => {
+    setCustomerRoleSavingId(customer.id);
+    try {
+      await updateUserRole(customer.email, role);
+      showToast(`${customer.email} is now ${role === 'Collector' ? 'a customer' : 'an admin'}.`);
+      await fetchCustomersData(customersPage, customersSearchQuery);
+    } catch (error) {
+      showToast(error.message || 'Customer role could not be updated.', 'error');
+    } finally {
+      setCustomerRoleSavingId(null);
     }
   };
 
@@ -2159,6 +2178,10 @@ export default function Admin() {
               customersTotalPages={customersTotalPages}
               customersTotal={customersTotal}
               setCustomersPage={setCustomersPage}
+              customersSummary={customersSummary}
+              canManageRoles={Boolean(user?.roles?.includes('owner'))}
+              customerRoleSavingId={customerRoleSavingId}
+              onRoleChange={handleCustomerRoleChange}
             />
           )}
 
