@@ -177,6 +177,9 @@ export async function readCatalogWorkbook(file) {
       const values = [...(embeddedLookups[lookupKey] || []), ...rows.map(row => text(row.product?.[productKey])).filter(Boolean)];
       embeddedLookups[lookupKey] = Array.from(new Map(values.map(value => [value.toLocaleLowerCase(), value])).values());
     });
+    const usedTags = rows.flatMap(row => Array.isArray(row.product?.tags) ? row.product.tags : []).map(text).filter(Boolean);
+    embeddedLookups.tags = Array.from(new Map([...(embeddedLookups.tags || []), ...usedTags]
+      .map(value => [value.toLocaleLowerCase(), value])).values());
   }
   rows.embeddedLookups = embeddedLookups;
   return rows;
@@ -368,6 +371,11 @@ export async function buildCatalogWorkbook(products, lookups = {}) {
     const values = [...configured, ...used];
     return [lookupKey, Array.from(new Map(values.map(value => [String(value).trim().toLocaleLowerCase(), String(value).trim()])).values())];
   }));
+  const productTags = products.flatMap(product => Array.isArray(product.tags) ? product.tags : [])
+    .map(value => String(value || '').trim())
+    .filter(Boolean);
+  backupLookups.tags = Array.from(new Map([...(backupLookups.tags || []), ...productTags]
+    .map(value => [value.toLocaleLowerCase(), value])).values());
   addCatalogOptions(workbook, sheet, backupLookups, Math.max(1000, products.length + 250));
   return workbook;
 }

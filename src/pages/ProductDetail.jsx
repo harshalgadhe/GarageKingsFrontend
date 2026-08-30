@@ -168,19 +168,16 @@ export default function ProductDetail() {
     <div className="min-h-[100svh] bg-black pt-16 text-[#F5F5F7]">
       <Navigation activeSection="vault" />
 
-      <div className="border-b border-white/[0.08]">
-        <div className="mx-auto flex max-w-[1440px] items-center px-4 py-4 sm:px-6 lg:px-12">
-          <button onClick={() => navigate('/marketplace')} className="flex items-center gap-2 text-xs font-semibold text-[#A1A1A6] transition hover:text-white"><ArrowLeft size={15} /> Back to collection</button>
-        </div>
-      </div>
-
       <main>
-        <section className="mx-auto grid max-w-[1440px] gap-8 px-4 pb-12 pt-6 sm:px-6 md:pt-8 lg:min-h-[calc(100svh-121px)] lg:grid-cols-12 lg:items-center lg:gap-12 lg:px-12 lg:pb-5 lg:pt-5">
+        <section className="mx-auto grid max-w-[1440px] gap-8 px-4 pb-12 pt-4 sm:px-6 md:pt-6 lg:min-h-[calc(100svh-64px)] lg:grid-cols-12 lg:items-center lg:gap-12 lg:px-12 lg:pb-5 lg:pt-5">
           <motion.div initial={reduceMotion ? false : { opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.65 }} className="relative lg:col-span-7">
             <div className="relative flex min-h-[500px] flex-col overflow-hidden rounded-[26px] border border-white/[0.09] bg-[#0C0C0C] p-5 sm:min-h-[600px] sm:p-10 lg:h-[calc(100svh-166px)] lg:min-h-[500px] lg:max-h-[680px] lg:pl-24">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(255,255,255,.11),transparent_34%),linear-gradient(145deg,rgba(255,255,255,.025),transparent_45%)]" />
+              <button onClick={() => navigate('/marketplace')} aria-label="Back to collection" className="absolute left-4 top-4 z-30 grid h-10 w-10 place-items-center rounded-full border border-white/[0.12] bg-black/65 text-[#D2D2D7] backdrop-blur-md transition hover:border-white/25 hover:text-white lg:hidden">
+                <ArrowLeft size={16} />
+              </button>
               {(soldOut || preOrder) && (
-                <div className="relative z-20 flex w-full shrink-0 pb-4">
+                <div className="relative z-20 flex w-full shrink-0 justify-end pb-4 lg:justify-start">
                   <span className={`rounded-full px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.14em] ${soldOut ? 'bg-[#FF453A]/12 text-[#FF6961]' : 'bg-[#E1BD65]/12 text-[#E1BD65]'}`}>
                     {soldOut ? 'Sold out' : 'Pre-booking'}
                   </span>
@@ -214,7 +211,10 @@ export default function ProductDetail() {
           </motion.div>
 
           <motion.aside initial={reduceMotion ? false : { opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.65, delay: 0.08 }} className="self-start lg:col-span-5 lg:self-center">
-            <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#D8BC78]">{product.brand || 'GarageKings'}</div>
+            <div className="flex items-center justify-between gap-4">
+              <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#D8BC78]">{product.brand || 'GarageKings'}</div>
+              <button onClick={() => navigate('/marketplace')} className="hidden items-center gap-2 rounded-full border border-white/[0.1] px-3 py-2 text-[10px] font-semibold text-[#A1A1A6] transition hover:border-white/20 hover:text-white lg:flex"><ArrowLeft size={13} /> Back to collection</button>
+            </div>
             <h1 className="mt-3 text-4xl font-semibold leading-[0.96] tracking-[-0.045em] text-white sm:text-5xl lg:text-5xl">{product.name}</h1>
 
             <div className="mt-5 grid grid-cols-2 gap-x-6 gap-y-0 border-y border-white/[0.08] py-2">

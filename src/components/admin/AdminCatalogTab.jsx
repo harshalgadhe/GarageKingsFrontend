@@ -39,7 +39,7 @@ export default function AdminCatalogTab({
   const [importRows, setImportRows] = useState([]);
   const [importOpen, setImportOpen] = useState(false);
   const [importResult, setImportResult] = useState(null);
-  const [importMode, setImportMode] = useState('create');
+  const [importMode, setImportMode] = useState('update');
 
   const getRowErrors = (row) => [
     ...row.errors,
@@ -234,7 +234,9 @@ export default function AdminCatalogTab({
         if (row.product.sku) fileSkus.add(row.product.sku);
         return { ...row, errors, existingProduct: existingBySku.get(row.product.sku) || null };
       });
-      setImportMode('create');
+      // A catalog backup is primarily a restore artifact. Default to upsert so
+      // existing Model IDs are reviewed for changes instead of being skipped.
+      setImportMode('update');
       setImportRows(reviewed);
       setImportOpen(true);
     } catch (error) {
