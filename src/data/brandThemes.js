@@ -20,19 +20,21 @@ const plainBrandCopy = (value) => String(value || '')
 
 export function buildBrandTheme(brand) {
   if (!brand) return null
-  const accent = safeColor(brand.accent_color, '#C8AE7D')
-  const secondary = safeColor(brand.secondary_color, '#F4F1EC')
-  const background = safeColor(brand.background_color, '#080706')
-  const mode = MOTIFS[brand.theme_variant] ? brand.theme_variant : 'archive'
+  const value = (camelKey, snakeKey) => brand[camelKey] ?? brand[snakeKey]
+  const accent = safeColor(value('accentColor', 'accent_color'), '#C8AE7D')
+  const secondary = safeColor(value('secondaryColor', 'secondary_color'), '#F4F1EC')
+  const background = safeColor(value('backgroundColor', 'background_color'), '#080706')
+  const themeVariant = value('themeVariant', 'theme_variant')
+  const mode = MOTIFS[themeVariant] ? themeVariant : 'archive'
 
   return {
     name: brand.name,
     slug: brand.slug,
-    logo: brand.logo_url || null,
-    coverImage: brand.cover_image_url || null,
-    logoClass: brand.logo_treatment === 'invert' ? 'invert' : '',
-    origin: brand.origin_label || 'GarageKings collection',
-    style: plainBrandCopy(brand.style_label) || 'Scale models',
+    logo: value('logoUrl', 'logo_url') || null,
+    coverImage: value('coverImageUrl', 'cover_image_url') || null,
+    logoClass: value('logoTreatment', 'logo_treatment') === 'invert' ? 'invert' : '',
+    origin: value('originLabel', 'origin_label') || 'GarageKings collection',
+    style: plainBrandCopy(value('styleLabel', 'style_label')) || 'Scale models',
     kicker: plainBrandCopy(brand.kicker) || 'Featured brand',
     headline: plainBrandCopy(brand.headline) || `${brand.name} at GarageKings.`,
     description: plainBrandCopy(brand.description) || `Browse ${brand.name} models available through GarageKings, with current photos and product details.`,
@@ -41,7 +43,7 @@ export function buildBrandTheme(brand) {
     secondary,
     background,
     motif: MOTIFS[mode](accent),
-    productCount: Number(brand.product_count || 0),
+    productCount: Number(value('productCount', 'product_count') || 0),
     website: brand.website || null,
   }
 }
