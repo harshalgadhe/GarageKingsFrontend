@@ -27,24 +27,25 @@ export function createProductEnquiryUrl(
   const productUrl = pageUrl.split('#')[0]
 
   const lines = [
-    'Hello GarageKings,',
-    '',
-    'I would like to enquire about this model:',
+    // 'Hello GarageKings,',
+    // '',
+    // 'I would like to enquire about this model:',
     `*${name || 'GarageKings collectible'}*`,
     '',
-    archiveId ? `Reference: ${archiveId}` : null,
-    product?.sku ? `SKU: ${product.sku}` : null,
-    product?.scale ? `Scale: ${product.scale}` : null,
+    // archiveId ? `Reference: ${archiveId}` : null,
+    // product?.sku ? `SKU: ${product.sku}` : null,
+    // product?.scale ? `Scale: ${product.scale}` : null,
     packaging ? `Packaging: ${packaging}` : null,
-    `Availability: ${availability}`,
-    Number.isFinite(price) && price > 0 ? `Displayed price: ₹${price.toLocaleString('en-IN')}` : null,
-    isPreBooking && Number.isFinite(deposit) && deposit > 0 ? `Displayed deposit: ₹${deposit.toLocaleString('en-IN')}` : null,
+    // `Availability: ${availability}`,
+    Number.isFinite(price) && price > 0 ? `Price: ₹${price.toLocaleString('en-IN')}` : null,
+    isPreBooking && Number.isFinite(deposit) && deposit > 0 ? `PO Amount: ₹${deposit.toLocaleString('en-IN')}` : null,
     '',
-    `Product page: ${productUrl}`,
+    `More Info: ${productUrl}`,
     '',
-    isUnavailable
-      ? 'Please let me know if this model can be restocked or sourced, along with the expected price and timeline.'
-      : 'Please confirm its current availability, condition, final price and delivery or collection options.'
+    'DM any admin to book yours now'
+    // isUnavailable
+    //   ? 'Please let me know if this model can be restocked or sourced, along with the expected price and timeline.'
+    //   : 'Please confirm its current availability, condition, final price and delivery or collection options.'
   ].filter((line) => line !== null)
 
   const message = lines.join('\n')
